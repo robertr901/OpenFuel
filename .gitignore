@@ -1,0 +1,17 @@
+# macOS
+.DS_Store
+
+# IntelliJ / Android Studio
+.idea/
+*.iml
+
+# Android/Gradle
+android/.gradle/
+android/**/build/
+android/local.properties
+
+# Node (future-proof)
+node_modules/
+dist/
+.env
+.env.*

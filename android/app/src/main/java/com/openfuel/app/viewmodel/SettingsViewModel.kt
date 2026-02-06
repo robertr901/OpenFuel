@@ -51,7 +51,7 @@ class SettingsViewModel(
         }
     }
 
-    fun saveTodayGoal(
+    fun saveGoals(
         caloriesTarget: Double?,
         proteinTarget: Double?,
         carbsTarget: Double?,

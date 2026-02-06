@@ -90,7 +90,7 @@ fun SettingsScreen(
             currentGoal = uiState.dailyGoal,
             onDismiss = { showGoalsDialog = false },
             onSave = { calories, protein, carbs, fat ->
-                viewModel.saveTodayGoal(calories, protein, carbs, fat)
+                viewModel.saveGoals(calories, protein, carbs, fat)
             },
         )
     }
@@ -151,12 +151,12 @@ fun SettingsScreen(
             }
             HorizontalDivider()
             Text(
-                text = "Daily goals",
+                text = "Goals",
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.SemiBold,
             )
             Text(
-                text = "Optional targets stored locally on this device.",
+                text = "Optional targets stored locally on this device and applied to all days.",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -227,9 +227,9 @@ private fun GoalSummary(goal: DailyGoal?) {
         fatTarget <= 0.0
     ) {
         Text(
-            text = "No daily goals set.",
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        text = "No goals set.",
+        style = MaterialTheme.typography.bodyMedium,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
         return
     }
@@ -276,7 +276,7 @@ private fun GoalsDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Edit daily goals") },
+        title = { Text("Edit goals") },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(Dimens.s)) {
                 OutlinedTextField(

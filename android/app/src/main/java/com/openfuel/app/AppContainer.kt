@@ -18,12 +18,12 @@ class AppContainer(context: Context) {
 
     val foodRepository: FoodRepository = FoodRepositoryImpl(database.foodDao())
     val logRepository: LogRepository = LogRepositoryImpl(database.mealEntryDao())
-    val goalsRepository: GoalsRepository = GoalsRepositoryImpl(database.dailyGoalDao())
+    val goalsRepository: GoalsRepository = GoalsRepositoryImpl(context.settingsDataStore)
     val settingsRepository: SettingsRepository = SettingsRepositoryImpl(context.settingsDataStore)
 
     val exportManager: ExportManager = ExportManager(
         foodDao = database.foodDao(),
         mealEntryDao = database.mealEntryDao(),
-        dailyGoalDao = database.dailyGoalDao(),
+        goalsRepository = goalsRepository,
     )
 }

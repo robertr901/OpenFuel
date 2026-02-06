@@ -23,6 +23,8 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -33,6 +35,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -45,6 +48,7 @@ import com.openfuel.app.domain.model.DailyGoal
 import com.openfuel.app.domain.util.GoalValidation
 import com.openfuel.app.ui.theme.Dimens
 import com.openfuel.app.ui.util.formatMacro
+import com.openfuel.app.ui.util.parseDecimalInput
 import com.openfuel.app.viewmodel.ExportState
 import com.openfuel.app.viewmodel.GoalSaveResult
 import com.openfuel.app.viewmodel.SettingsViewModel
@@ -57,6 +61,7 @@ fun SettingsScreen(
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val context = LocalContext.current
+    val snackbarHostState = remember { SnackbarHostState() }
     var showGoalsDialog by rememberSaveable { mutableStateOf(false) }
 
     LaunchedEffect(uiState.exportState) {
@@ -75,6 +80,8 @@ fun SettingsScreen(
             }
             context.startActivity(Intent.createChooser(intent, "Share export"))
             viewModel.consumeExport()
+        } else if (exportState is ExportState.Error) {
+            snackbarHostState.showSnackbar(exportState.message)
         }
     }
 
@@ -104,6 +111,7 @@ fun SettingsScreen(
                 },
             )
         },
+        snackbarHost = { SnackbarHost(snackbarHostState) },
     ) { padding ->
         Column(
             modifier = Modifier
@@ -357,7 +365,7 @@ private fun GoalsDialog(
 private fun parseOptionalDouble(raw: String): Double? {
     val value = raw.trim()
     if (value.isEmpty()) return null
-    return value.toDoubleOrNull()
+    return parseDecimalInput(value)
 }
 
 private fun valueToInput(value: Double): String {

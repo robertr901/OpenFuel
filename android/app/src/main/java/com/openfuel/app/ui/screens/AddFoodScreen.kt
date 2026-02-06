@@ -44,6 +44,7 @@ import com.openfuel.app.ui.components.MealTypeDropdown
 import com.openfuel.app.ui.theme.Dimens
 import com.openfuel.app.ui.util.formatCalories
 import com.openfuel.app.ui.util.formatMacro
+import com.openfuel.app.ui.util.parseDecimalInput
 import com.openfuel.app.viewmodel.AddFoodViewModel
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
@@ -258,14 +259,14 @@ private fun handleQuickAdd(
     scope: CoroutineScope,
     snackbarHostState: SnackbarHostState,
 ) {
-    val caloriesValue = input.calories.toDoubleOrNull()
+    val caloriesValue = parseDecimalInput(input.calories)
     if (caloriesValue == null) {
         scope.launch { snackbarHostState.showSnackbar("Enter calories") }
         return
     }
-    val proteinValue = input.protein.toDoubleOrNull() ?: 0.0
-    val carbsValue = input.carbs.toDoubleOrNull() ?: 0.0
-    val fatValue = input.fat.toDoubleOrNull() ?: 0.0
+    val proteinValue = parseDecimalInput(input.protein) ?: 0.0
+    val carbsValue = parseDecimalInput(input.carbs) ?: 0.0
+    val fatValue = parseDecimalInput(input.fat) ?: 0.0
     viewModel.quickAdd(
         name = input.name,
         caloriesKcal = caloriesValue,

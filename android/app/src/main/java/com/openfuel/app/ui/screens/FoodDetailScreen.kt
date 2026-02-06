@@ -43,6 +43,7 @@ import com.openfuel.app.ui.components.UnitDropdown
 import com.openfuel.app.ui.theme.Dimens
 import com.openfuel.app.ui.util.formatCalories
 import com.openfuel.app.ui.util.formatMacro
+import com.openfuel.app.ui.util.parseDecimalInput
 import kotlinx.coroutines.launch
 import java.time.Instant
 import java.util.UUID
@@ -181,7 +182,7 @@ private fun FoodDetailContent(
         ) {
             Button(
                 onClick = {
-                    val value = quantity.toDoubleOrNull() ?: 0.0
+                    val value = parseDecimalInput(quantity) ?: 0.0
                     onLog(value, unit, mealType)
                 },
                 modifier = Modifier.fillMaxWidth(),

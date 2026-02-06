@@ -96,6 +96,25 @@ class HomeViewModelTest {
         assertEquals(entry.id, repository.deletedId)
     }
 
+    @Test
+    fun deleteEntry_whenRepositoryFails_exposesMessage() = runTest {
+        val repository = FakeLogRepository(throwOnDelete = true)
+        val viewModel = HomeViewModel(repository, FakeGoalsRepository(), ZoneId.of("UTC"))
+        val collectJob = launch { viewModel.uiState.collect { } }
+
+        viewModel.deleteEntry("entry-1")
+        advanceUntilIdle()
+
+        assertEquals(
+            "Could not delete entry. Please try again.",
+            viewModel.uiState.value.message,
+        )
+        viewModel.consumeMessage()
+        advanceUntilIdle()
+        assertNull(viewModel.uiState.value.message)
+        collectJob.cancel()
+    }
+
     private fun sampleUiEntry(): MealEntryUi {
         return MealEntryUi(
             id = "entry-1",
@@ -110,7 +129,9 @@ class HomeViewModelTest {
     }
 }
 
-private class FakeLogRepository : LogRepository {
+private class FakeLogRepository(
+    private val throwOnDelete: Boolean = false,
+) : LogRepository {
     val requestedDates = mutableListOf<LocalDate>()
     var updatedEntry: MealEntry? = null
     var deletedId: String? = null
@@ -124,6 +145,9 @@ private class FakeLogRepository : LogRepository {
     }
 
     override suspend fun deleteMealEntry(id: String) {
+        if (throwOnDelete) {
+            throw IllegalStateException("delete failed")
+        }
         deletedId = id
     }
 

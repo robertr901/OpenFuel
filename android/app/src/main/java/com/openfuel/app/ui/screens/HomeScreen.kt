@@ -29,10 +29,13 @@ import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -55,6 +58,7 @@ import com.openfuel.app.ui.theme.Dimens
 import com.openfuel.app.ui.util.formatCalories
 import com.openfuel.app.ui.util.formatMacro
 import com.openfuel.app.ui.util.formatQuantity
+import com.openfuel.app.ui.util.parseDecimalInput
 import com.openfuel.app.viewmodel.HomeViewModel
 import com.openfuel.app.viewmodel.MealEntryUi
 import com.openfuel.app.viewmodel.MealSectionUi
@@ -72,9 +76,16 @@ fun HomeScreen(
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     var editEntry by remember { mutableStateOf<MealEntryUi?>(null) }
     var deleteEntry by remember { mutableStateOf<MealEntryUi?>(null) }
+    val snackbarHostState = remember { SnackbarHostState() }
 
     val formattedDate = remember(uiState.date) {
         uiState.date.format(DateTimeFormatter.ofPattern("EEE, MMM d", Locale.getDefault()))
+    }
+
+    LaunchedEffect(uiState.message) {
+        val message = uiState.message ?: return@LaunchedEffect
+        snackbarHostState.showSnackbar(message)
+        viewModel.consumeMessage()
     }
 
     if (editEntry != null) {
@@ -144,6 +155,7 @@ fun HomeScreen(
                 onClick = onAddFood,
             )
         },
+        snackbarHost = { SnackbarHost(snackbarHostState) },
     ) { padding ->
         LazyColumn(
             modifier = Modifier
@@ -161,6 +173,11 @@ fun HomeScreen(
                     goal = uiState.goal,
                 )
             }
+            if (uiState.meals.all { it.entries.isEmpty() }) {
+                item {
+                    EmptyDayState()
+                }
+            }
             items(uiState.meals, key = { it.mealType.name }) { meal ->
                 MealSection(
                     mealSection = meal,
@@ -172,6 +189,30 @@ fun HomeScreen(
             item {
                 Spacer(modifier = Modifier.height(Dimens.xl))
             }
+        }
+    }
+}
+
+@Composable
+private fun EmptyDayState() {
+    Card(
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        Column(
+            modifier = Modifier.padding(Dimens.m),
+            verticalArrangement = Arrangement.spacedBy(Dimens.xs),
+        ) {
+            Text(
+                text = "No meals logged yet",
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.SemiBold,
+            )
+            Text(
+                text = "Tap Add food to start logging for this day.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
         }
     }
 }
@@ -373,7 +414,7 @@ private fun EditMealEntryDialog(
     var selectedUnit by rememberSaveable(entry.id) { mutableStateOf(entry.unit) }
     var selectedMealType by rememberSaveable(entry.id) { mutableStateOf(entry.mealType) }
 
-    val quantityValue = quantityInput.toDoubleOrNull()
+    val quantityValue = parseDecimalInput(quantityInput)
     val validQuantity = quantityValue?.let { EntryValidation.isValidQuantity(it) } ?: false
 
     AlertDialog(

@@ -21,11 +21,10 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
-import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
-import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -36,8 +35,9 @@ class HomeViewModel(
 ) : ViewModel() {
     private val _selectedDate = MutableStateFlow(LocalDate.now(zoneId))
     val selectedDate: StateFlow<LocalDate> = _selectedDate.asStateFlow()
+    private val message = MutableStateFlow<String?>(null)
 
-    val uiState: StateFlow<HomeUiState> = selectedDate
+    private val baseUiState: StateFlow<HomeUiState> = selectedDate
         .flatMapLatest { date ->
             combine(
                 logRepository.entriesForDate(date, zoneId),
@@ -56,8 +56,17 @@ class HomeViewModel(
                 meals = MealType.values().map { mealType ->
                     MealSectionUi(mealType = mealType, entries = emptyList(), totals = MacroTotals.Zero)
                 },
+                message = null,
             ),
         )
+
+    val uiState: StateFlow<HomeUiState> = combine(baseUiState, message) { baseState, currentMessage ->
+        baseState.copy(message = currentMessage)
+    }.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(5_000),
+        initialValue = baseUiState.value,
+    )
 
     fun goToPreviousDay() {
         _selectedDate.update { current -> current.minusDays(1) }
@@ -77,23 +86,35 @@ class HomeViewModel(
             return
         }
         viewModelScope.launch {
-            logRepository.updateMealEntry(
-                MealEntry(
-                    id = entry.id,
-                    timestamp = entry.timestamp,
-                    mealType = mealType,
-                    foodItemId = entry.foodId,
-                    quantity = quantity,
-                    unit = unit,
-                ),
-            )
+            try {
+                logRepository.updateMealEntry(
+                    MealEntry(
+                        id = entry.id,
+                        timestamp = entry.timestamp,
+                        mealType = mealType,
+                        foodItemId = entry.foodId,
+                        quantity = quantity,
+                        unit = unit,
+                    ),
+                )
+            } catch (_: Exception) {
+                message.value = "Could not update entry. Please try again."
+            }
         }
     }
 
     fun deleteEntry(entryId: String) {
         viewModelScope.launch {
-            logRepository.deleteMealEntry(entryId)
+            try {
+                logRepository.deleteMealEntry(entryId)
+            } catch (_: Exception) {
+                message.value = "Could not delete entry. Please try again."
+            }
         }
+    }
+
+    fun consumeMessage() {
+        message.value = null
     }
 
     private fun buildUiState(
@@ -133,6 +154,7 @@ class HomeViewModel(
             totals = totals,
             goal = goal,
             meals = meals,
+            message = null,
         )
     }
 }
@@ -142,6 +164,7 @@ data class HomeUiState(
     val totals: MacroTotals,
     val goal: DailyGoal?,
     val meals: List<MealSectionUi>,
+    val message: String? = null,
 )
 
 data class MealSectionUi(

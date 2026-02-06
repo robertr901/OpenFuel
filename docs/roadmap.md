@@ -52,19 +52,26 @@
 
 ## Milestone 3 — Optional online enhancements (opt-in)
 **Scope**
-- Optional online food lookup (explicitly enabled).
+- User-initiated online food lookup and barcode lookup.
 - Clear data provenance and privacy notices.
-- Rate-limited and resilient network layer.
+- Fast-fail and resilient network layer with strict guardrails.
 
 **Acceptance criteria**
-- Online lookup is OFF by default and clearly explained.
-- App functions identically offline when disabled.
+- Online lookup is triggered only by explicit user actions (no background calls).
+- Local capture remains reliable when offline or when network calls fail.
+
+**Progress update (this worktree)**
+- Completed: OpenFoodFacts integration with `Retrofit` + `OkHttp` timeouts and retries disabled.
+- Completed: `UserInitiatedNetworkGuard` and tokenized network-call enforcement path in ViewModels/data source.
+- Completed: Add Food explicit "Search online" flow with local-first UI and online preview save/save-log actions.
+- Completed: Barcode scan screen with ML Kit + CameraX, plus lookup retry/error handling.
+- Completed: Food model and Room migration for barcode uniqueness and favorites persistence.
+- Completed: Add Food now surfaces favorites and recent logged foods for faster capture loops.
 
 ## Deferred from this worktree
-- Barcode scanning.
 - Photo-based logging.
 - Cloud sync and multi-device support.
-- Public food database integration.
+- Additional online providers beyond OpenFoodFacts.
 - Advanced quick-add presets and ranking heuristics.
 - Per-day goal overrides (goals are intentionally global in this phase).
-- Instrumentation coverage for Compose dialogs/interactions (unit coverage added, UI tests deferred).
+- Instrumentation coverage for camera scanning and Compose scanner interactions (unit coverage added, UI tests deferred).

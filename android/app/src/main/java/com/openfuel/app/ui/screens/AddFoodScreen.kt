@@ -58,17 +58,7 @@ fun AddFoodScreen(
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
-    var searchQuery by rememberSaveable { mutableStateOf("") }
-    val filteredFoods = remember(uiState.recentFoods, searchQuery) {
-        if (searchQuery.isBlank()) {
-            uiState.recentFoods
-        } else {
-            uiState.recentFoods.filter { food ->
-                food.name.contains(searchQuery, ignoreCase = true) ||
-                    (food.brand?.contains(searchQuery, ignoreCase = true) == true)
-            }
-        }
-    }
+    var searchInput by rememberSaveable { mutableStateOf(uiState.searchQuery) }
 
     Scaffold(
         topBar = {
@@ -112,16 +102,19 @@ fun AddFoodScreen(
             }
             item {
                 OutlinedTextField(
-                    value = searchQuery,
-                    onValueChange = { searchQuery = it },
+                    value = searchInput,
+                    onValueChange = {
+                        searchInput = it
+                        viewModel.updateSearchQuery(it)
+                    },
                     label = { Text("Search foods") },
                     modifier = Modifier.fillMaxWidth(),
                 )
             }
-            if (filteredFoods.isEmpty()) {
+            if (uiState.foods.isEmpty()) {
                 item {
                     Text(
-                        text = if (searchQuery.isBlank()) {
+                        text = if (searchInput.isBlank()) {
                             "No recent foods yet"
                         } else {
                             "No foods match your search"
@@ -131,7 +124,7 @@ fun AddFoodScreen(
                     )
                 }
             } else {
-                items(filteredFoods, key = { it.id }) { food ->
+                items(uiState.foods, key = { it.id }) { food ->
                     RecentFoodRow(
                         food = food,
                         onLog = { mealType ->

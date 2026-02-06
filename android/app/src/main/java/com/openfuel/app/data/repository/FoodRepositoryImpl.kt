@@ -23,4 +23,27 @@ class FoodRepositoryImpl(
         return foodDao.observeRecentFoods(limit)
             .map { foods -> foods.map { it.toDomain() } }
     }
+
+    override fun searchFoods(query: String, limit: Int): Flow<List<FoodItem>> {
+        val trimmedQuery = query.trim()
+        return if (trimmedQuery.isBlank()) {
+            foodDao.observeRecentFoods(limit)
+        } else {
+            foodDao.observeFoodsBySearch(escapeLikeQuery(trimmedQuery), limit)
+        }.map { foods -> foods.map { it.toDomain() } }
+    }
+}
+
+internal fun escapeLikeQuery(query: String): String {
+    val escaped = StringBuilder(query.length + 8)
+    query.forEach { char ->
+        when (char) {
+            '%', '_', '\\' -> {
+                escaped.append('\\')
+                escaped.append(char)
+            }
+            else -> escaped.append(char)
+        }
+    }
+    return escaped.toString()
 }

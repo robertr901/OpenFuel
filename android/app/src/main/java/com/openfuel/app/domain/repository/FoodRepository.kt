@@ -7,4 +7,5 @@ interface FoodRepository {
     suspend fun upsertFood(foodItem: FoodItem)
     suspend fun getFoodById(id: String): FoodItem?
     fun recentFoods(limit: Int): Flow<List<FoodItem>>
+    fun searchFoods(query: String, limit: Int): Flow<List<FoodItem>>
 }

@@ -10,23 +10,50 @@ import com.openfuel.app.domain.repository.FoodRepository
 import com.openfuel.app.domain.repository.LogRepository
 import java.time.Instant
 import java.util.UUID
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.FlowPreview
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.debounce
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
+@OptIn(ExperimentalCoroutinesApi::class, FlowPreview::class)
 class AddFoodViewModel(
     private val foodRepository: FoodRepository,
     private val logRepository: LogRepository,
 ) : ViewModel() {
-    val uiState: StateFlow<AddFoodUiState> = foodRepository.recentFoods(20)
-        .map { foods -> AddFoodUiState(recentFoods = foods) }
+    private val searchQuery = MutableStateFlow("")
+
+    val uiState: StateFlow<AddFoodUiState> = searchQuery
+        .debounce(300)
+        .distinctUntilChanged()
+        .flatMapLatest { query ->
+            foodRepository.searchFoods(query = query, limit = 20)
+                .map { foods ->
+                    AddFoodUiState(
+                        searchQuery = query,
+                        foods = foods,
+                    )
+                }
+        }
         .stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(5_000),
-            initialValue = AddFoodUiState(recentFoods = emptyList()),
+            initialValue = AddFoodUiState(
+                searchQuery = "",
+                foods = emptyList(),
+            ),
         )
+
+    fun updateSearchQuery(query: String) {
+        searchQuery.update { query }
+    }
 
     fun logFood(foodId: String, mealType: MealType, quantity: Double, unit: FoodUnit) {
         viewModelScope.launch {
@@ -76,5 +103,6 @@ class AddFoodViewModel(
 }
 
 data class AddFoodUiState(
-    val recentFoods: List<FoodItem>,
+    val searchQuery: String,
+    val foods: List<FoodItem>,
 )

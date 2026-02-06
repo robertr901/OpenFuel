@@ -27,6 +27,14 @@
 - Goals are editable and reflected in UI.
 - UX feels stable and consistent across screens.
 
+**Progress update (this worktree)**
+- Completed: Home date navigation (previous/next day) and selected-date ViewModel state.
+- Completed: Meal-entry edit/delete flows with confirmation and immediate totals refresh.
+- Completed: Local-only Room food search with escaped `LIKE` and 300ms debounced query.
+- Completed: Daily goals editing (local persistence) and Home progress indicators.
+- Completed: New unit coverage for day windows, ViewModel date/update/delete flows, goal validation, and search escaping.
+- Partial: quick add presets/ranking are still basic; no ranking model yet.
+
 ## Milestone 2 — Insights & personalization
 **Scope**
 - Trends (weekly/monthly summaries) computed locally.
@@ -52,3 +60,5 @@
 - Photo-based logging.
 - Cloud sync and multi-device support.
 - Public food database integration.
+- Advanced quick-add presets and ranking heuristics.
+- Instrumentation coverage for Compose dialogs/interactions (unit coverage added, UI tests deferred).

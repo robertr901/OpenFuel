@@ -4,9 +4,11 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.openfuel.app.domain.model.FoodUnit
 import com.openfuel.app.domain.model.MacroTotals
+import com.openfuel.app.domain.model.DailyGoal
 import com.openfuel.app.domain.model.MealEntry
 import com.openfuel.app.domain.model.MealEntryWithFood
 import com.openfuel.app.domain.model.MealType
+import com.openfuel.app.domain.repository.GoalsRepository
 import com.openfuel.app.domain.repository.LogRepository
 import com.openfuel.app.domain.util.EntryValidation
 import com.openfuel.app.domain.util.MealTotalsCalculator
@@ -23,11 +25,13 @@ import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class HomeViewModel(
     private val logRepository: LogRepository,
+    private val goalsRepository: GoalsRepository,
     private val zoneId: ZoneId = ZoneId.systemDefault(),
 ) : ViewModel() {
     private val _selectedDate = MutableStateFlow(LocalDate.now(zoneId))
@@ -35,8 +39,12 @@ class HomeViewModel(
 
     val uiState: StateFlow<HomeUiState> = selectedDate
         .flatMapLatest { date ->
-            logRepository.entriesForDate(date, zoneId)
-                .map { entries -> buildUiState(date, entries) }
+            combine(
+                logRepository.entriesForDate(date, zoneId),
+                goalsRepository.goalForDate(date),
+            ) { entries, goal ->
+                buildUiState(date, entries, goal)
+            }
         }
         .stateIn(
             scope = viewModelScope,
@@ -44,6 +52,7 @@ class HomeViewModel(
             initialValue = HomeUiState(
                 date = _selectedDate.value,
                 totals = MacroTotals.Zero,
+                goal = null,
                 meals = MealType.values().map { mealType ->
                     MealSectionUi(mealType = mealType, entries = emptyList(), totals = MacroTotals.Zero)
                 },
@@ -87,7 +96,11 @@ class HomeViewModel(
         }
     }
 
-    private fun buildUiState(date: LocalDate, entries: List<MealEntryWithFood>): HomeUiState {
+    private fun buildUiState(
+        date: LocalDate,
+        entries: List<MealEntryWithFood>,
+        goal: DailyGoal?,
+    ): HomeUiState {
         val totals = MealTotalsCalculator.totalsFor(entries).totals
         val grouped = entries.groupBy { it.entry.mealType }
         val meals = MealType.values().map { mealType ->
@@ -118,6 +131,7 @@ class HomeViewModel(
         return HomeUiState(
             date = date,
             totals = totals,
+            goal = goal,
             meals = meals,
         )
     }
@@ -126,6 +140,7 @@ class HomeViewModel(
 data class HomeUiState(
     val date: LocalDate,
     val totals: MacroTotals,
+    val goal: DailyGoal?,
     val meals: List<MealSectionUi>,
 )
 

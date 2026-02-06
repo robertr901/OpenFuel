@@ -5,6 +5,8 @@ import com.openfuel.app.domain.model.FoodUnit
 import com.openfuel.app.domain.model.MealEntry
 import com.openfuel.app.domain.model.MealEntryWithFood
 import com.openfuel.app.domain.model.MealType
+import com.openfuel.app.domain.model.DailyGoal
+import com.openfuel.app.domain.repository.GoalsRepository
 import com.openfuel.app.domain.repository.LogRepository
 import java.time.Instant
 import java.time.LocalDate
@@ -29,7 +31,7 @@ class HomeViewModelTest {
     @Test
     fun goToPreviousAndNextDay_updatesSelectedDate() = runTest {
         val repository = FakeLogRepository()
-        val viewModel = HomeViewModel(repository, ZoneId.of("UTC"))
+        val viewModel = HomeViewModel(repository, FakeGoalsRepository(), ZoneId.of("UTC"))
 
         val startDate = viewModel.selectedDate.value
         viewModel.goToPreviousDay()
@@ -42,7 +44,7 @@ class HomeViewModelTest {
     @Test
     fun selectedDateChange_requestsNewDateEntries() = runTest {
         val repository = FakeLogRepository()
-        val viewModel = HomeViewModel(repository, ZoneId.of("UTC"))
+        val viewModel = HomeViewModel(repository, FakeGoalsRepository(), ZoneId.of("UTC"))
         val collectJob = launch { viewModel.uiState.collect { } }
 
         advanceUntilIdle()
@@ -59,7 +61,7 @@ class HomeViewModelTest {
     @Test
     fun updateEntry_withInvalidQuantity_skipsRepositoryUpdate() = runTest {
         val repository = FakeLogRepository()
-        val viewModel = HomeViewModel(repository, ZoneId.of("UTC"))
+        val viewModel = HomeViewModel(repository, FakeGoalsRepository(), ZoneId.of("UTC"))
 
         viewModel.updateEntry(
             entry = sampleUiEntry(),
@@ -75,7 +77,7 @@ class HomeViewModelTest {
     @Test
     fun updateAndDeleteEntry_callRepositoryWithExpectedValues() = runTest {
         val repository = FakeLogRepository()
-        val viewModel = HomeViewModel(repository, ZoneId.of("UTC"))
+        val viewModel = HomeViewModel(repository, FakeGoalsRepository(), ZoneId.of("UTC"))
         val entry = sampleUiEntry()
 
         viewModel.updateEntry(
@@ -128,5 +130,15 @@ private class FakeLogRepository : LogRepository {
     override fun entriesForDate(date: LocalDate, zoneId: ZoneId): Flow<List<MealEntryWithFood>> {
         requestedDates += date
         return flowOf(emptyList())
+    }
+}
+
+private class FakeGoalsRepository : GoalsRepository {
+    override fun goalForDate(date: LocalDate): Flow<DailyGoal?> {
+        return flowOf(null)
+    }
+
+    override suspend fun upsertGoal(goal: DailyGoal) {
+        // no-op for tests
     }
 }

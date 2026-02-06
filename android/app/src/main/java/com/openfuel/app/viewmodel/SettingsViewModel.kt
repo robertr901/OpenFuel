@@ -2,9 +2,14 @@ package com.openfuel.app.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.openfuel.app.domain.model.DailyGoal
+import com.openfuel.app.domain.repository.GoalsRepository
 import com.openfuel.app.domain.repository.SettingsRepository
+import com.openfuel.app.domain.util.GoalValidation
 import com.openfuel.app.export.ExportManager
 import java.io.File
+import java.time.Clock
+import java.time.LocalDate
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -14,17 +19,21 @@ import kotlinx.coroutines.launch
 
 class SettingsViewModel(
     private val settingsRepository: SettingsRepository,
+    private val goalsRepository: GoalsRepository,
     private val exportManager: ExportManager,
+    private val clock: Clock = Clock.systemDefaultZone(),
 ) : ViewModel() {
     private val exportState = MutableStateFlow<ExportState>(ExportState.Idle)
 
     val uiState: StateFlow<SettingsUiState> = combine(
         settingsRepository.onlineLookupEnabled,
         exportState,
-    ) { onlineLookupEnabled, exportStateValue ->
+        goalsRepository.goalForDate(today()),
+    ) { onlineLookupEnabled, exportStateValue, dailyGoal ->
         SettingsUiState(
             onlineLookupEnabled = onlineLookupEnabled,
             exportState = exportStateValue,
+            dailyGoal = dailyGoal,
         )
     }.stateIn(
         scope = viewModelScope,
@@ -32,6 +41,7 @@ class SettingsViewModel(
         initialValue = SettingsUiState(
             onlineLookupEnabled = false,
             exportState = ExportState.Idle,
+            dailyGoal = null,
         ),
     )
 
@@ -39,6 +49,38 @@ class SettingsViewModel(
         viewModelScope.launch {
             settingsRepository.setOnlineLookupEnabled(enabled)
         }
+    }
+
+    fun saveTodayGoal(
+        caloriesTarget: Double?,
+        proteinTarget: Double?,
+        carbsTarget: Double?,
+        fatTarget: Double?,
+    ): GoalSaveResult {
+        if (caloriesTarget != null && !GoalValidation.isValidCalories(caloriesTarget)) {
+            return GoalSaveResult.Error("Calories must be between 0 and 10000.")
+        }
+        if (proteinTarget != null && !GoalValidation.isValidMacro(proteinTarget)) {
+            return GoalSaveResult.Error("Protein must be between 0 and 1000g.")
+        }
+        if (carbsTarget != null && !GoalValidation.isValidMacro(carbsTarget)) {
+            return GoalSaveResult.Error("Carbs must be between 0 and 1000g.")
+        }
+        if (fatTarget != null && !GoalValidation.isValidMacro(fatTarget)) {
+            return GoalSaveResult.Error("Fat must be between 0 and 1000g.")
+        }
+
+        val goal = DailyGoal(
+            date = today(),
+            caloriesKcalTarget = caloriesTarget ?: 0.0,
+            proteinGTarget = proteinTarget ?: 0.0,
+            carbsGTarget = carbsTarget ?: 0.0,
+            fatGTarget = fatTarget ?: 0.0,
+        )
+        viewModelScope.launch {
+            goalsRepository.upsertGoal(goal)
+        }
+        return GoalSaveResult.Success
     }
 
     fun exportData(cacheDir: File, appVersion: String) {
@@ -57,12 +99,20 @@ class SettingsViewModel(
     fun consumeExport() {
         exportState.value = ExportState.Idle
     }
+
+    private fun today(): LocalDate = LocalDate.now(clock)
 }
 
 data class SettingsUiState(
     val onlineLookupEnabled: Boolean,
     val exportState: ExportState,
+    val dailyGoal: DailyGoal?,
 )
+
+sealed class GoalSaveResult {
+    data object Success : GoalSaveResult()
+    data class Error(val message: String) : GoalSaveResult()
+}
 
 sealed class ExportState {
     data object Idle : ExportState()

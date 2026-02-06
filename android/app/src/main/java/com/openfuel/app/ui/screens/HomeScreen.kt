@@ -25,6 +25,7 @@ import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
@@ -42,6 +43,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.openfuel.app.domain.model.DailyGoal
 import com.openfuel.app.domain.model.FoodUnit
 import com.openfuel.app.domain.model.MealType
 import com.openfuel.app.domain.model.displayName
@@ -156,6 +158,7 @@ fun HomeScreen(
                     protein = uiState.totals.proteinG,
                     carbs = uiState.totals.carbsG,
                     fat = uiState.totals.fatG,
+                    goal = uiState.goal,
                 )
             }
             items(uiState.meals, key = { it.mealType.name }) { meal ->
@@ -179,6 +182,7 @@ private fun TotalsCard(
     protein: Double,
     carbs: Double,
     fat: Double,
+    goal: DailyGoal?,
 ) {
     Card(
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
@@ -200,6 +204,44 @@ private fun TotalsCard(
             MacroRow(label = "Protein", value = protein)
             MacroRow(label = "Carbs", value = carbs)
             MacroRow(label = "Fat", value = fat)
+            if (goal != null) {
+                if (goal.caloriesKcalTarget > 0.0) {
+                    Spacer(modifier = Modifier.height(Dimens.s))
+                    GoalProgressRow(
+                        label = "Calories",
+                        consumed = calories,
+                        target = goal.caloriesKcalTarget,
+                        unit = "kcal",
+                    )
+                }
+                if (goal.proteinGTarget > 0.0) {
+                    Spacer(modifier = Modifier.height(Dimens.s))
+                    GoalProgressRow(
+                        label = "Protein",
+                        consumed = protein,
+                        target = goal.proteinGTarget,
+                        unit = "g",
+                    )
+                }
+                if (goal.carbsGTarget > 0.0) {
+                    Spacer(modifier = Modifier.height(Dimens.s))
+                    GoalProgressRow(
+                        label = "Carbs",
+                        consumed = carbs,
+                        target = goal.carbsGTarget,
+                        unit = "g",
+                    )
+                }
+                if (goal.fatGTarget > 0.0) {
+                    Spacer(modifier = Modifier.height(Dimens.s))
+                    GoalProgressRow(
+                        label = "Fat",
+                        consumed = fat,
+                        target = goal.fatGTarget,
+                        unit = "g",
+                    )
+                }
+            }
         }
     }
 }
@@ -212,6 +254,28 @@ private fun MacroRow(label: String, value: Double) {
     ) {
         Text(text = label, style = MaterialTheme.typography.bodyMedium)
         Text(text = "${formatMacro(value)} g", style = MaterialTheme.typography.bodyMedium)
+    }
+}
+
+@Composable
+private fun GoalProgressRow(
+    label: String,
+    consumed: Double,
+    target: Double,
+    unit: String,
+) {
+    val progress = (consumed / target).coerceIn(0.0, 1.0).toFloat()
+    val consumedValue = if (unit == "kcal") formatCalories(consumed) else formatMacro(consumed)
+    val targetValue = if (unit == "kcal") formatCalories(target) else formatMacro(target)
+    Column(verticalArrangement = Arrangement.spacedBy(Dimens.xs)) {
+        Text(
+            text = "$label $consumedValue/$targetValue $unit",
+            style = MaterialTheme.typography.bodySmall,
+        )
+        LinearProgressIndicator(
+            progress = { progress },
+            modifier = Modifier.fillMaxWidth(),
+        )
     }
 }
 

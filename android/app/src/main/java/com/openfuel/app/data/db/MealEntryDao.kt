@@ -11,7 +11,10 @@ import kotlinx.coroutines.flow.Flow
 @Dao
 interface MealEntryDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insertEntry(entry: MealEntryEntity)
+    suspend fun upsertEntry(entry: MealEntryEntity)
+
+    @Query("DELETE FROM meal_entries WHERE id = :id")
+    suspend fun deleteById(id: String)
 
     @Transaction
     @Query(

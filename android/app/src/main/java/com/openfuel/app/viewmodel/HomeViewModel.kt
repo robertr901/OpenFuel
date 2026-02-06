@@ -3,30 +3,46 @@ package com.openfuel.app.viewmodel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.openfuel.app.domain.model.FoodUnit
+import com.openfuel.app.domain.model.MacroTotals
+import com.openfuel.app.domain.model.MealEntry
 import com.openfuel.app.domain.model.MealEntryWithFood
 import com.openfuel.app.domain.model.MealType
 import com.openfuel.app.domain.repository.LogRepository
-import com.openfuel.app.domain.model.MacroTotals
+import com.openfuel.app.domain.util.EntryValidation
 import com.openfuel.app.domain.util.MealTotalsCalculator
 import com.openfuel.app.domain.util.UnitConversion
+import java.time.Instant
 import java.time.LocalDate
+import java.time.ZoneId
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
 
+@OptIn(ExperimentalCoroutinesApi::class)
 class HomeViewModel(
     private val logRepository: LogRepository,
+    private val zoneId: ZoneId = ZoneId.systemDefault(),
 ) : ViewModel() {
-    private val today: LocalDate = LocalDate.now()
+    private val _selectedDate = MutableStateFlow(LocalDate.now(zoneId))
+    val selectedDate: StateFlow<LocalDate> = _selectedDate.asStateFlow()
 
-    val uiState: StateFlow<HomeUiState> = logRepository.entriesForDate(today)
-        .map { entries -> buildUiState(entries) }
+    val uiState: StateFlow<HomeUiState> = selectedDate
+        .flatMapLatest { date ->
+            logRepository.entriesForDate(date, zoneId)
+                .map { entries -> buildUiState(date, entries) }
+        }
         .stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(5_000),
             initialValue = HomeUiState(
-                date = today,
+                date = _selectedDate.value,
                 totals = MacroTotals.Zero,
                 meals = MealType.values().map { mealType ->
                     MealSectionUi(mealType = mealType, entries = emptyList(), totals = MacroTotals.Zero)
@@ -34,7 +50,44 @@ class HomeViewModel(
             ),
         )
 
-    private fun buildUiState(entries: List<MealEntryWithFood>): HomeUiState {
+    fun goToPreviousDay() {
+        _selectedDate.update { current -> current.minusDays(1) }
+    }
+
+    fun goToNextDay() {
+        _selectedDate.update { current -> current.plusDays(1) }
+    }
+
+    fun updateEntry(
+        entry: MealEntryUi,
+        quantity: Double,
+        unit: FoodUnit,
+        mealType: MealType,
+    ) {
+        if (!EntryValidation.isValidQuantity(quantity)) {
+            return
+        }
+        viewModelScope.launch {
+            logRepository.updateMealEntry(
+                MealEntry(
+                    id = entry.id,
+                    timestamp = entry.timestamp,
+                    mealType = mealType,
+                    foodItemId = entry.foodId,
+                    quantity = quantity,
+                    unit = unit,
+                ),
+            )
+        }
+    }
+
+    fun deleteEntry(entryId: String) {
+        viewModelScope.launch {
+            logRepository.deleteMealEntry(entryId)
+        }
+    }
+
+    private fun buildUiState(date: LocalDate, entries: List<MealEntryWithFood>): HomeUiState {
         val totals = MealTotalsCalculator.totalsFor(entries).totals
         val grouped = entries.groupBy { it.entry.mealType }
         val meals = MealType.values().map { mealType ->
@@ -51,6 +104,8 @@ class HomeViewModel(
                     MealEntryUi(
                         id = entryWithFood.entry.id,
                         foodId = entryWithFood.entry.foodItemId,
+                        timestamp = entryWithFood.entry.timestamp,
+                        mealType = entryWithFood.entry.mealType,
                         name = entryWithFood.food.name,
                         quantity = entryWithFood.entry.quantity,
                         unit = entryWithFood.entry.unit,
@@ -61,7 +116,7 @@ class HomeViewModel(
             )
         }
         return HomeUiState(
-            date = today,
+            date = date,
             totals = totals,
             meals = meals,
         )
@@ -83,6 +138,8 @@ data class MealSectionUi(
 data class MealEntryUi(
     val id: String,
     val foodId: String,
+    val timestamp: Instant,
+    val mealType: MealType,
     val name: String,
     val quantity: Double,
     val unit: FoodUnit,

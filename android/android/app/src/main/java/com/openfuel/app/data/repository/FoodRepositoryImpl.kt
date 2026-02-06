@@ -1,0 +1,26 @@
+package com.openfuel.app.data.repository
+
+import com.openfuel.app.data.db.FoodDao
+import com.openfuel.app.data.mappers.toDomain
+import com.openfuel.app.data.mappers.toEntity
+import com.openfuel.app.domain.model.FoodItem
+import com.openfuel.app.domain.repository.FoodRepository
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.map
+
+class FoodRepositoryImpl(
+    private val foodDao: FoodDao,
+) : FoodRepository {
+    override suspend fun upsertFood(foodItem: FoodItem) {
+        foodDao.upsertFood(foodItem.toEntity())
+    }
+
+    override suspend fun getFoodById(id: String): FoodItem? {
+        return foodDao.getFoodById(id)?.toDomain()
+    }
+
+    override fun recentFoods(limit: Int): Flow<List<FoodItem>> {
+        return foodDao.observeRecentFoods(limit)
+            .map { foods -> foods.map { it.toDomain() } }
+    }
+}

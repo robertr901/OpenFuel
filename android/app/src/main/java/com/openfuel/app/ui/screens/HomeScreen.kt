@@ -11,28 +11,44 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.Divider
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExtendedFloatingActionButton
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.openfuel.app.domain.model.FoodUnit
+import com.openfuel.app.domain.model.MealType
 import com.openfuel.app.domain.model.displayName
 import com.openfuel.app.domain.model.shortLabel
+import com.openfuel.app.domain.util.EntryValidation
+import com.openfuel.app.ui.components.MealTypeDropdown
+import com.openfuel.app.ui.components.UnitDropdown
 import com.openfuel.app.ui.theme.Dimens
 import com.openfuel.app.ui.util.formatCalories
 import com.openfuel.app.ui.util.formatMacro
@@ -40,6 +56,8 @@ import com.openfuel.app.ui.util.formatQuantity
 import com.openfuel.app.viewmodel.HomeViewModel
 import com.openfuel.app.viewmodel.MealEntryUi
 import com.openfuel.app.viewmodel.MealSectionUi
+import java.time.format.DateTimeFormatter
+import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -50,12 +68,59 @@ fun HomeScreen(
     onOpenFoodDetail: (String) -> Unit,
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    var editEntry by remember { mutableStateOf<MealEntryUi?>(null) }
+    var deleteEntry by remember { mutableStateOf<MealEntryUi?>(null) }
+
+    val formattedDate = remember(uiState.date) {
+        uiState.date.format(DateTimeFormatter.ofPattern("EEE, MMM d", Locale.getDefault()))
+    }
+
+    if (editEntry != null) {
+        EditMealEntryDialog(
+            entry = editEntry!!,
+            onDismiss = { editEntry = null },
+            onSave = { quantity, unit, mealType ->
+                viewModel.updateEntry(
+                    entry = editEntry!!,
+                    quantity = quantity,
+                    unit = unit,
+                    mealType = mealType,
+                )
+                editEntry = null
+            },
+        )
+    }
+
+    if (deleteEntry != null) {
+        DeleteMealEntryDialog(
+            entry = deleteEntry!!,
+            onDismiss = { deleteEntry = null },
+            onConfirmDelete = {
+                viewModel.deleteEntry(deleteEntry!!.id)
+                deleteEntry = null
+            },
+        )
+    }
 
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Today") },
+                navigationIcon = {
+                    IconButton(onClick = viewModel::goToPreviousDay) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = "Previous day",
+                        )
+                    }
+                },
+                title = { Text(formattedDate) },
                 actions = {
+                    IconButton(onClick = viewModel::goToNextDay) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.ArrowForward,
+                            contentDescription = "Next day",
+                        )
+                    }
                     IconButton(onClick = onOpenSettings) {
                         Icon(
                             imageVector = Icons.Default.Settings,
@@ -97,6 +162,8 @@ fun HomeScreen(
                 MealSection(
                     mealSection = meal,
                     onEntryClick = onOpenFoodDetail,
+                    onEditEntry = { editEntry = it },
+                    onDeleteEntry = { deleteEntry = it },
                 )
             }
             item {
@@ -152,6 +219,8 @@ private fun MacroRow(label: String, value: Double) {
 private fun MealSection(
     mealSection: MealSectionUi,
     onEntryClick: (String) -> Unit,
+    onEditEntry: (MealEntryUi) -> Unit,
+    onDeleteEntry: (MealEntryUi) -> Unit,
 ) {
     Column {
         Row(
@@ -181,9 +250,11 @@ private fun MealSection(
                 MealEntryRow(
                     entry = entry,
                     onClick = { onEntryClick(entry.foodId) },
+                    onEdit = { onEditEntry(entry) },
+                    onDelete = { onDeleteEntry(entry) },
                 )
                 if (index < mealSection.entries.lastIndex) {
-                    Divider(modifier = Modifier.padding(vertical = Dimens.s))
+                    HorizontalDivider(modifier = Modifier.padding(vertical = Dimens.s))
                 }
             }
         }
@@ -194,6 +265,8 @@ private fun MealSection(
 private fun MealEntryRow(
     entry: MealEntryUi,
     onClick: () -> Unit,
+    onEdit: () -> Unit,
+    onDelete: () -> Unit,
 ) {
     Row(
         modifier = Modifier
@@ -210,10 +283,104 @@ private fun MealEntryRow(
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
+            Row(horizontalArrangement = Arrangement.spacedBy(Dimens.s)) {
+                TextButton(onClick = onEdit) {
+                    Text("Edit")
+                }
+                TextButton(onClick = onDelete) {
+                    Text("Delete")
+                }
+            }
         }
         Text(
             text = "${formatCalories(entry.caloriesKcal)} kcal",
             style = MaterialTheme.typography.bodyMedium,
         )
     }
+}
+
+@Composable
+private fun EditMealEntryDialog(
+    entry: MealEntryUi,
+    onDismiss: () -> Unit,
+    onSave: (Double, FoodUnit, MealType) -> Unit,
+) {
+    var quantityInput by rememberSaveable(entry.id) { mutableStateOf(formatQuantity(entry.quantity)) }
+    var selectedUnit by rememberSaveable(entry.id) { mutableStateOf(entry.unit) }
+    var selectedMealType by rememberSaveable(entry.id) { mutableStateOf(entry.mealType) }
+
+    val quantityValue = quantityInput.toDoubleOrNull()
+    val validQuantity = quantityValue?.let { EntryValidation.isValidQuantity(it) } ?: false
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Edit meal entry") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(Dimens.s)) {
+                OutlinedTextField(
+                    value = quantityInput,
+                    onValueChange = { quantityInput = it },
+                    label = { Text("Quantity") },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                    isError = quantityInput.isNotBlank() && !validQuantity,
+                    supportingText = {
+                        if (quantityInput.isNotBlank() && !validQuantity) {
+                            Text("Quantity must be greater than 0")
+                        }
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                UnitDropdown(
+                    selected = selectedUnit,
+                    onSelected = { selectedUnit = it },
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                MealTypeDropdown(
+                    selected = selectedMealType,
+                    onSelected = { selectedMealType = it },
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
+        },
+        confirmButton = {
+            TextButton(
+                onClick = {
+                    if (quantityValue != null) {
+                        onSave(quantityValue, selectedUnit, selectedMealType)
+                    }
+                },
+                enabled = validQuantity,
+            ) {
+                Text("Save")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Cancel")
+            }
+        },
+    )
+}
+
+@Composable
+private fun DeleteMealEntryDialog(
+    entry: MealEntryUi,
+    onDismiss: () -> Unit,
+    onConfirmDelete: () -> Unit,
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Delete entry") },
+        text = { Text("Delete ${entry.name} from your log?") },
+        confirmButton = {
+            TextButton(onClick = onConfirmDelete) {
+                Text("Delete")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Cancel")
+            }
+        },
+    )
 }

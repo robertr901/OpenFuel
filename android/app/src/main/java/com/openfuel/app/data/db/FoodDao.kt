@@ -30,6 +30,20 @@ interface FoodDao {
     )
     fun observeFavoriteFoods(limit: Int): Flow<List<FoodItemEntity>>
 
+    @Query(
+        """
+        SELECT fi.* FROM food_items fi
+        INNER JOIN (
+            SELECT foodItemId, MAX(timestamp) AS lastLoggedAt
+            FROM meal_entries
+            GROUP BY foodItemId
+        ) recents ON recents.foodItemId = fi.id
+        ORDER BY recents.lastLoggedAt DESC
+        LIMIT :limit
+        """
+    )
+    fun observeRecentLoggedFoods(limit: Int): Flow<List<FoodItemEntity>>
+
     @Query("SELECT * FROM food_items ORDER BY createdAt DESC")
     fun observeAllFoods(): Flow<List<FoodItemEntity>>
 

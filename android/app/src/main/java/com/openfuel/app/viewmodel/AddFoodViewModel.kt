@@ -35,6 +35,7 @@ class AddFoodViewModel(
     private val remoteFoodDataSource: RemoteFoodDataSource,
     private val userInitiatedNetworkGuard: UserInitiatedNetworkGuard,
 ) : ViewModel() {
+    private val sectionLimit = 20
     private val searchQuery = MutableStateFlow("")
     private val onlineState = MutableStateFlow(OnlineSearchState())
 
@@ -59,10 +60,31 @@ class AddFoodViewModel(
             ),
         )
 
-    val uiState: StateFlow<AddFoodUiState> = combine(localSearchState, onlineState) { local, online ->
+    private val favoriteFoodsState: StateFlow<List<FoodItem>> = foodRepository.favoriteFoods(sectionLimit)
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5_000),
+            initialValue = emptyList(),
+        )
+
+    private val recentLoggedFoodsState: StateFlow<List<FoodItem>> = foodRepository.recentLoggedFoods(sectionLimit)
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5_000),
+            initialValue = emptyList(),
+        )
+
+    val uiState: StateFlow<AddFoodUiState> = combine(
+        localSearchState,
+        onlineState,
+        favoriteFoodsState,
+        recentLoggedFoodsState,
+    ) { local, online, favorites, recents ->
         AddFoodUiState(
             searchQuery = local.searchQuery,
             foods = local.foods,
+            favoriteFoods = favorites,
+            recentLoggedFoods = recents,
             onlineResults = online.onlineResults,
             isOnlineSearchInProgress = online.isLoading,
             onlineErrorMessage = online.errorMessage,
@@ -75,6 +97,8 @@ class AddFoodViewModel(
         initialValue = AddFoodUiState(
             searchQuery = "",
             foods = emptyList(),
+            favoriteFoods = emptyList(),
+            recentLoggedFoods = emptyList(),
             onlineResults = emptyList(),
             isOnlineSearchInProgress = false,
             onlineErrorMessage = null,
@@ -249,6 +273,8 @@ class AddFoodViewModel(
 data class AddFoodUiState(
     val searchQuery: String,
     val foods: List<FoodItem>,
+    val favoriteFoods: List<FoodItem>,
+    val recentLoggedFoods: List<FoodItem>,
     val onlineResults: List<RemoteFoodCandidate>,
     val isOnlineSearchInProgress: Boolean,
     val onlineErrorMessage: String?,

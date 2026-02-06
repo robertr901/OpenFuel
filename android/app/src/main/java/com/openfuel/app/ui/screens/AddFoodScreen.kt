@@ -106,6 +106,56 @@ fun AddFoodScreen(
                     },
                 )
             }
+            if (uiState.favoriteFoods.isNotEmpty()) {
+                item {
+                    Text(
+                        text = "Favorites",
+                        style = MaterialTheme.typography.titleMedium,
+                    )
+                }
+                items(uiState.favoriteFoods, key = { "favorite-${it.id}" }) { food ->
+                    RecentFoodRow(
+                        food = food,
+                        onLog = { mealType ->
+                            viewModel.logFood(
+                                foodId = food.id,
+                                mealType = mealType,
+                                quantity = 1.0,
+                                unit = FoodUnit.SERVING,
+                            )
+                            scope.launch {
+                                snackbarHostState.showSnackbar("Logged ${food.name}")
+                            }
+                        },
+                        onOpenDetail = { onOpenFoodDetail(food.id) },
+                    )
+                }
+            }
+            if (uiState.recentLoggedFoods.isNotEmpty()) {
+                item {
+                    Text(
+                        text = "Recent logs",
+                        style = MaterialTheme.typography.titleMedium,
+                    )
+                }
+                items(uiState.recentLoggedFoods, key = { "recent-${it.id}" }) { food ->
+                    RecentFoodRow(
+                        food = food,
+                        onLog = { mealType ->
+                            viewModel.logFood(
+                                foodId = food.id,
+                                mealType = mealType,
+                                quantity = 1.0,
+                                unit = FoodUnit.SERVING,
+                            )
+                            scope.launch {
+                                snackbarHostState.showSnackbar("Logged ${food.name}")
+                            }
+                        },
+                        onOpenDetail = { onOpenFoodDetail(food.id) },
+                    )
+                }
+            }
             item {
                 Text(
                     text = "Local foods",

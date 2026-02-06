@@ -91,6 +91,10 @@ private class FakeFoodDao : FoodDao {
         )
     }
 
+    override fun observeRecentLoggedFoods(limit: Int): Flow<List<FoodItemEntity>> {
+        return flowOf(storage.values.take(limit))
+    }
+
     override fun observeAllFoods(): Flow<List<FoodItemEntity>> {
         return flowOf(storage.values.toList())
     }

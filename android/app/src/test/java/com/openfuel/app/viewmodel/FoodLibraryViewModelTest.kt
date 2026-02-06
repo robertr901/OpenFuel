@@ -82,6 +82,10 @@ private class FakeFoodRepository : FoodRepository {
         return flowOf(foods.filter { it.isFavorite }.take(limit))
     }
 
+    override fun recentLoggedFoods(limit: Int): Flow<List<FoodItem>> {
+        return flowOf(foods.take(limit))
+    }
+
     override fun allFoods(query: String): Flow<List<FoodItem>> {
         val normalized = query.trim().lowercase()
         val filtered = if (normalized.isBlank()) {

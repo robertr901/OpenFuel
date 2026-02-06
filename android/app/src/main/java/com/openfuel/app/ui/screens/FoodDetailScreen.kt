@@ -9,7 +9,9 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -65,6 +67,9 @@ fun FoodDetailScreen(
             foodRepository.getFoodById(foodId)
         }
     }
+    var isFavorite by remember(foodState?.id, foodState?.isFavorite) {
+        mutableStateOf(foodState?.isFavorite ?: false)
+    }
 
     Scaffold(
         topBar = {
@@ -73,11 +78,48 @@ fun FoodDetailScreen(
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
                         Icon(
-                            imageVector = Icons.Default.ArrowBack,
+                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = "Navigate back",
                         )
                     }
                 },
+                actions = {
+                    if (foodState != null) {
+                        IconButton(
+                            onClick = {
+                                scope.launch {
+                                    try {
+                                        val nextFavorite = !isFavorite
+                                        foodRepository.setFavorite(foodState!!.id, nextFavorite)
+                                        isFavorite = nextFavorite
+                                        snackbarHostState.showSnackbar(
+                                            if (nextFavorite) {
+                                                "Added to favorites."
+                                            } else {
+                                                "Removed from favorites."
+                                            },
+                                        )
+                                    } catch (_: Exception) {
+                                        snackbarHostState.showSnackbar("Could not update favorite.")
+                                    }
+                                }
+                            },
+                        ) {
+                            Icon(
+                                imageVector = if (isFavorite) {
+                                    Icons.Default.Favorite
+                                } else {
+                                    Icons.Default.FavoriteBorder
+                                },
+                                contentDescription = if (isFavorite) {
+                                    "Remove from favorites"
+                                } else {
+                                    "Add to favorites"
+                                },
+                            )
+                        }
+                    }
+                }
             )
         },
         snackbarHost = { SnackbarHost(snackbarHostState) },

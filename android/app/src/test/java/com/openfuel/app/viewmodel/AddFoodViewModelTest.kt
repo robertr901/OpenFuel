@@ -79,6 +79,10 @@ private class AddFoodFakeFoodRepository : FoodRepository {
         return flowOf(emptyList())
     }
 
+    override fun recentLoggedFoods(limit: Int): Flow<List<FoodItem>> {
+        return flowOf(emptyList())
+    }
+
     override fun allFoods(query: String): Flow<List<FoodItem>> {
         return flowOf(emptyList())
     }

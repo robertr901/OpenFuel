@@ -50,6 +50,11 @@ class FoodRepositoryImpl(
             .map { foods -> foods.map { it.toDomain() } }
     }
 
+    override fun recentLoggedFoods(limit: Int): Flow<List<FoodItem>> {
+        return foodDao.observeRecentLoggedFoods(limit)
+            .map { foods -> foods.map { it.toDomain() } }
+    }
+
     override fun allFoods(query: String): Flow<List<FoodItem>> {
         val trimmedQuery = query.trim()
         return if (trimmedQuery.isBlank()) {

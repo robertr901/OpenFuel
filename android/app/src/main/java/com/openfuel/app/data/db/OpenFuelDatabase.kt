@@ -14,7 +14,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         MealEntryEntity::class,
         DailyGoalEntity::class,
     ],
-    version = 2,
+    version = 3,
     exportSchema = false,
 )
 @TypeConverters(Converters::class)
@@ -40,13 +40,27 @@ abstract class OpenFuelDatabase : RoomDatabase() {
             }
         }
 
+        val MIGRATION_2_3 = object : Migration(2, 3) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    "ALTER TABLE food_items ADD COLUMN barcode TEXT",
+                )
+                db.execSQL(
+                    "ALTER TABLE food_items ADD COLUMN isFavorite INTEGER NOT NULL DEFAULT 0",
+                )
+                db.execSQL(
+                    "CREATE UNIQUE INDEX IF NOT EXISTS index_food_items_barcode ON food_items(barcode)",
+                )
+            }
+        }
+
         fun build(context: Context): OpenFuelDatabase {
             return Room.databaseBuilder(
                 context.applicationContext,
                 OpenFuelDatabase::class.java,
                 DB_NAME,
             )
-                .addMigrations(MIGRATION_1_2)
+                .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
                 .fallbackToDestructiveMigrationOnDowngrade()
                 .build()
         }

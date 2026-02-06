@@ -70,6 +70,18 @@ private class FakeFoodRepository : FoodRepository {
         return foods.firstOrNull { it.id == id }
     }
 
+    override suspend fun getFoodByBarcode(barcode: String): FoodItem? {
+        return foods.firstOrNull { it.barcode == barcode }
+    }
+
+    override suspend fun setFavorite(foodId: String, isFavorite: Boolean) {
+        // no-op for tests
+    }
+
+    override fun favoriteFoods(limit: Int): Flow<List<FoodItem>> {
+        return flowOf(foods.filter { it.isFavorite }.take(limit))
+    }
+
     override fun allFoods(query: String): Flow<List<FoodItem>> {
         val normalized = query.trim().lowercase()
         val filtered = if (normalized.isBlank()) {

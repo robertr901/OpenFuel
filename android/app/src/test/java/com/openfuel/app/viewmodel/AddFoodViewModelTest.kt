@@ -67,6 +67,18 @@ private class AddFoodFakeFoodRepository : FoodRepository {
         return null
     }
 
+    override suspend fun getFoodByBarcode(barcode: String): FoodItem? {
+        return null
+    }
+
+    override suspend fun setFavorite(foodId: String, isFavorite: Boolean) {
+        // no-op
+    }
+
+    override fun favoriteFoods(limit: Int): Flow<List<FoodItem>> {
+        return flowOf(emptyList())
+    }
+
     override fun allFoods(query: String): Flow<List<FoodItem>> {
         return flowOf(emptyList())
     }

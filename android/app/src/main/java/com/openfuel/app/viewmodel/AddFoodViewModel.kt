@@ -274,10 +274,12 @@ private fun RemoteFoodCandidate.toLocalFoodItem(): FoodItem {
         id = UUID.randomUUID().toString(),
         name = name,
         brand = brand,
+        barcode = barcode,
         caloriesKcal = caloriesKcalPer100g?.coerceAtLeast(0.0) ?: 0.0,
         proteinG = proteinGPer100g?.coerceAtLeast(0.0) ?: 0.0,
         carbsG = carbsGPer100g?.coerceAtLeast(0.0) ?: 0.0,
         fatG = fatGPer100g?.coerceAtLeast(0.0) ?: 0.0,
+        isFavorite = false,
         createdAt = Instant.now(),
     )
 }

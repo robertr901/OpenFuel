@@ -12,11 +12,42 @@ class FoodRepositoryImpl(
     private val foodDao: FoodDao,
 ) : FoodRepository {
     override suspend fun upsertFood(foodItem: FoodItem) {
-        foodDao.upsertFood(foodItem.toEntity())
+        val normalizedBarcode = foodItem.barcode?.trim()?.takeIf { it.isNotBlank() }
+        val existing = normalizedBarcode?.let { barcode ->
+            foodDao.getFoodByBarcode(barcode)
+        }
+        val mergedFood = if (existing == null) {
+            foodItem.copy(barcode = normalizedBarcode)
+        } else {
+            foodItem.copy(
+                id = existing.id,
+                barcode = existing.barcode,
+                isFavorite = existing.isFavorite,
+                createdAt = existing.createdAt,
+            )
+        }
+        foodDao.upsertFood(mergedFood.toEntity())
     }
 
     override suspend fun getFoodById(id: String): FoodItem? {
         return foodDao.getFoodById(id)?.toDomain()
+    }
+
+    override suspend fun getFoodByBarcode(barcode: String): FoodItem? {
+        val normalizedBarcode = barcode.trim()
+        if (normalizedBarcode.isBlank()) {
+            return null
+        }
+        return foodDao.getFoodByBarcode(normalizedBarcode)?.toDomain()
+    }
+
+    override suspend fun setFavorite(foodId: String, isFavorite: Boolean) {
+        foodDao.updateFavorite(id = foodId, isFavorite = isFavorite)
+    }
+
+    override fun favoriteFoods(limit: Int): Flow<List<FoodItem>> {
+        return foodDao.observeFavoriteFoods(limit)
+            .map { foods -> foods.map { it.toDomain() } }
     }
 
     override fun allFoods(query: String): Flow<List<FoodItem>> {

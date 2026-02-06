@@ -14,6 +14,19 @@ interface FoodDao {
     @Query("SELECT * FROM food_items WHERE id = :id")
     suspend fun getFoodById(id: String): FoodItemEntity?
 
+    @Query("SELECT * FROM food_items ORDER BY createdAt DESC")
+    fun observeAllFoods(): Flow<List<FoodItemEntity>>
+
+    @Query(
+        """
+        SELECT * FROM food_items
+        WHERE name LIKE '%' || :escapedQuery || '%' ESCAPE '\'
+           OR IFNULL(brand, '') LIKE '%' || :escapedQuery || '%' ESCAPE '\'
+        ORDER BY createdAt DESC
+        """
+    )
+    fun observeAllFoodsBySearch(escapedQuery: String): Flow<List<FoodItemEntity>>
+
     @Query("SELECT * FROM food_items ORDER BY createdAt DESC LIMIT :limit")
     fun observeRecentFoods(limit: Int): Flow<List<FoodItemEntity>>
 

@@ -17,6 +17,9 @@ class OpenFuelViewModelFactory(
                 foodRepository = container.foodRepository,
                 logRepository = container.logRepository,
             )
+            FoodLibraryViewModel::class.java -> FoodLibraryViewModel(
+                foodRepository = container.foodRepository,
+            )
             SettingsViewModel::class.java -> SettingsViewModel(
                 settingsRepository = container.settingsRepository,
                 goalsRepository = container.goalsRepository,

@@ -1,27 +1,24 @@
 package com.openfuel.app.ui.navigation
 
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.viewmodel.compose.viewModel
-import androidx.navigation.NavHostController
 import androidx.navigation.NavType
+import androidx.navigation.NavGraph.Companion.findStartDestination
+import androidx.navigation.NavHostController
+import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.NavHost
-import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
-import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.RestaurantMenu
 import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
@@ -30,9 +27,11 @@ import androidx.compose.material3.Text
 import com.openfuel.app.OpenFuelApp
 import com.openfuel.app.ui.screens.AddFoodScreen
 import com.openfuel.app.ui.screens.FoodDetailScreen
+import com.openfuel.app.ui.screens.FoodLibraryScreen
 import com.openfuel.app.ui.screens.HomeScreen
 import com.openfuel.app.ui.screens.SettingsScreen
 import com.openfuel.app.viewmodel.AddFoodViewModel
+import com.openfuel.app.viewmodel.FoodLibraryViewModel
 import com.openfuel.app.viewmodel.HomeViewModel
 import com.openfuel.app.viewmodel.OpenFuelViewModelFactory
 import com.openfuel.app.viewmodel.SettingsViewModel
@@ -88,7 +87,7 @@ fun OpenFuelAppRoot() {
         NavHost(
             navController = navController,
             startDestination = Routes.TODAY,
-            modifier = androidx.compose.ui.Modifier.padding(padding),
+            modifier = Modifier.padding(padding),
         ) {
             composable(Routes.TODAY) {
                 val viewModel: HomeViewModel = viewModel(factory = viewModelFactory)
@@ -100,8 +99,11 @@ fun OpenFuelAppRoot() {
                 )
             }
             composable(Routes.FOODS) {
-                FoodsLibraryPlaceholderScreen(
+                val viewModel: FoodLibraryViewModel = viewModel(factory = viewModelFactory)
+                FoodLibraryScreen(
+                    viewModel = viewModel,
                     onAddFood = { navController.navigate(Routes.ADD_FOOD) },
+                    onOpenFoodDetail = { foodId -> navController.navigate(Routes.foodDetailRoute(foodId)) },
                 )
             }
             composable(Routes.ADD_FOOD) {
@@ -161,30 +163,6 @@ private fun NavHostController.navigateToTopLevel(route: String) {
         }
         launchSingleTop = true
         restoreState = true
-    }
-}
-
-@Composable
-private fun FoodsLibraryPlaceholderScreen(
-    onAddFood: () -> Unit,
-) {
-    Column(
-        modifier = androidx.compose.ui.Modifier
-            .fillMaxSize()
-            .padding(com.openfuel.app.ui.theme.Dimens.m),
-        verticalArrangement = Arrangement.spacedBy(com.openfuel.app.ui.theme.Dimens.m),
-    ) {
-        Text(
-            text = "Foods library will appear here.",
-            style = androidx.compose.material3.MaterialTheme.typography.titleMedium,
-        )
-        Text(
-            text = "Add foods from Today or use quick add first.",
-            style = androidx.compose.material3.MaterialTheme.typography.bodyMedium,
-        )
-        Button(onClick = onAddFood) {
-            Text("Add food")
-        }
     }
 }
 

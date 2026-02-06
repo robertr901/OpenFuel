@@ -6,6 +6,7 @@ import kotlinx.coroutines.flow.Flow
 interface FoodRepository {
     suspend fun upsertFood(foodItem: FoodItem)
     suspend fun getFoodById(id: String): FoodItem?
+    fun allFoods(query: String): Flow<List<FoodItem>>
     fun recentFoods(limit: Int): Flow<List<FoodItem>>
     fun searchFoods(query: String, limit: Int): Flow<List<FoodItem>>
 }

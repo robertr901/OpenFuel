@@ -22,6 +22,12 @@ class OpenFuelViewModelFactory(
             FoodLibraryViewModel::class.java -> FoodLibraryViewModel(
                 foodRepository = container.foodRepository,
             )
+            ScanBarcodeViewModel::class.java -> ScanBarcodeViewModel(
+                remoteFoodDataSource = container.remoteFoodDataSource,
+                userInitiatedNetworkGuard = container.networkGuard,
+                foodRepository = container.foodRepository,
+                logRepository = container.logRepository,
+            )
             SettingsViewModel::class.java -> SettingsViewModel(
                 settingsRepository = container.settingsRepository,
                 goalsRepository = container.goalsRepository,

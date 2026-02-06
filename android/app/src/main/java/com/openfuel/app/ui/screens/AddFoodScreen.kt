@@ -59,6 +59,7 @@ fun AddFoodScreen(
     viewModel: AddFoodViewModel,
     onNavigateBack: () -> Unit,
     onOpenFoodDetail: (String) -> Unit,
+    onScanBarcode: () -> Unit,
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
@@ -170,6 +171,12 @@ fun AddFoodScreen(
                         modifier = Modifier.weight(1f),
                     ) {
                         Text("Search online")
+                    }
+                    Button(
+                        onClick = onScanBarcode,
+                        modifier = Modifier.weight(1f),
+                    ) {
+                        Text("Scan barcode")
                     }
                 }
             }

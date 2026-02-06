@@ -29,11 +29,13 @@ import com.openfuel.app.ui.screens.AddFoodScreen
 import com.openfuel.app.ui.screens.FoodDetailScreen
 import com.openfuel.app.ui.screens.FoodLibraryScreen
 import com.openfuel.app.ui.screens.HomeScreen
+import com.openfuel.app.ui.screens.ScanBarcodeScreen
 import com.openfuel.app.ui.screens.SettingsScreen
 import com.openfuel.app.viewmodel.AddFoodViewModel
 import com.openfuel.app.viewmodel.FoodLibraryViewModel
 import com.openfuel.app.viewmodel.HomeViewModel
 import com.openfuel.app.viewmodel.OpenFuelViewModelFactory
+import com.openfuel.app.viewmodel.ScanBarcodeViewModel
 import com.openfuel.app.viewmodel.SettingsViewModel
 
 @Composable
@@ -112,6 +114,14 @@ fun OpenFuelAppRoot() {
                     viewModel = viewModel,
                     onNavigateBack = { navController.popBackStack() },
                     onOpenFoodDetail = { foodId -> navController.navigate(Routes.foodDetailRoute(foodId)) },
+                    onScanBarcode = { navController.navigate(Routes.SCAN_BARCODE) },
+                )
+            }
+            composable(Routes.SCAN_BARCODE) {
+                val viewModel: ScanBarcodeViewModel = viewModel(factory = viewModelFactory)
+                ScanBarcodeScreen(
+                    viewModel = viewModel,
+                    onNavigateBack = { navController.popBackStack() },
                 )
             }
             composable(

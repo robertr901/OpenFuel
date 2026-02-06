@@ -31,8 +31,13 @@
 - Completed: Home date navigation (previous/next day) and selected-date ViewModel state.
 - Completed: Meal-entry edit/delete flows with confirmation and immediate totals refresh.
 - Completed: Local-only Room food search with escaped `LIKE` and 300ms debounced query.
-- Completed: Daily goals editing (local persistence) and Home progress indicators.
+- Completed: Bottom-navigation app shell with top-level Today/Foods/Settings destinations and stable tab back stack behavior.
+- Completed: Foods Library tab with local-only Room-backed list and search, plus detail navigation.
+- Completed: Empty-state and failure-surface polish (snackbars for entry update/delete and export failures).
+- Completed: Safer decimal parsing for user input, including comma-decimal support (`1,5`).
+- Completed: Global goals persisted in local DataStore (no server), reflected on Home progress and Settings.
 - Completed: New unit coverage for day windows, ViewModel date/update/delete flows, goal validation, and search escaping.
+- Completed: New unit coverage for decimal parsing, Foods library ViewModel search flow, and DataStore goals repository behavior.
 - Partial: quick add presets/ranking are still basic; no ranking model yet.
 
 ## Milestone 2 — Insights & personalization
@@ -61,4 +66,5 @@
 - Cloud sync and multi-device support.
 - Public food database integration.
 - Advanced quick-add presets and ranking heuristics.
+- Per-day goal overrides (goals are intentionally global in this phase).
 - Instrumentation coverage for Compose dialogs/interactions (unit coverage added, UI tests deferred).

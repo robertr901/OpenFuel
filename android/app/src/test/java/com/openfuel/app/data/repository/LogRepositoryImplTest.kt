@@ -40,10 +40,29 @@ class LogRepositoryImplTest {
             dates,
         )
     }
+
+    @Test
+    fun loggedDates_usesSqlAggregatedDates_forSystemZone() = runTest {
+        val dao = FakeMealEntryDao()
+        val repository = LogRepositoryImpl(dao)
+
+        dao.loggedDateStrings.value = listOf("2026-03-04", "2026-03-03")
+
+        val dates = repository.loggedDates(ZoneId.systemDefault()).first()
+
+        assertEquals(
+            listOf(
+                LocalDate.parse("2026-03-04"),
+                LocalDate.parse("2026-03-03"),
+            ),
+            dates,
+        )
+    }
 }
 
 private class FakeMealEntryDao : MealEntryDao {
     val timestamps = MutableStateFlow<List<Instant>>(emptyList())
+    val loggedDateStrings = MutableStateFlow<List<String>>(emptyList())
 
     override suspend fun upsertEntry(entry: MealEntryEntity) {
         // no-op
@@ -69,6 +88,10 @@ private class FakeMealEntryDao : MealEntryDao {
 
     override fun observeEntryTimestampsDesc(): Flow<List<Instant>> {
         return timestamps
+    }
+
+    override fun observeLoggedLocalDatesDesc(): Flow<List<String>> {
+        return loggedDateStrings
     }
 
     override suspend fun getAllEntries(): List<MealEntryEntity> {

@@ -45,6 +45,10 @@ class LogRepositoryImpl(
     }
 
     override fun loggedDates(zoneId: ZoneId): Flow<List<LocalDate>> {
+        if (zoneId == ZoneId.systemDefault()) {
+            return mealEntryDao.observeLoggedLocalDatesDesc()
+                .map { dates -> dates.map { LocalDate.parse(it) } }
+        }
         return mealEntryDao.observeEntryTimestampsDesc()
             .map { timestamps ->
                 timestamps

@@ -6,6 +6,8 @@ import com.openfuel.app.domain.model.DailyGoal
 import com.openfuel.app.domain.repository.GoalsRepository
 import com.openfuel.app.domain.repository.SettingsRepository
 import com.openfuel.app.domain.service.EntitlementService
+import com.openfuel.app.domain.service.FoodCatalogProviderDescriptor
+import com.openfuel.app.domain.service.FoodCatalogProviderRegistry
 import com.openfuel.app.domain.util.GoalValidation
 import com.openfuel.app.export.ExportManager
 import java.io.File
@@ -23,6 +25,7 @@ class SettingsViewModel(
     private val entitlementService: EntitlementService,
     private val goalsRepository: GoalsRepository,
     private val exportManager: ExportManager,
+    private val foodCatalogProviderRegistry: FoodCatalogProviderRegistry,
     private val clock: Clock = Clock.systemDefaultZone(),
 ) : ViewModel() {
     private val exportState = MutableStateFlow<ExportState>(ExportState.Idle)
@@ -39,6 +42,7 @@ class SettingsViewModel(
             showDebugProToggle = entitlementState.canToggleDebugOverride,
             showSecurityWarning = entitlementState.canToggleDebugOverride &&
                 (entitlementState.securityPosture.isEmulator || entitlementState.securityPosture.hasTestKeys),
+            providerDiagnostics = foodCatalogProviderRegistry.providerDiagnostics(),
             exportState = exportStateValue,
             dailyGoal = dailyGoal,
         )
@@ -50,6 +54,7 @@ class SettingsViewModel(
             isPro = false,
             showDebugProToggle = false,
             showSecurityWarning = false,
+            providerDiagnostics = emptyList(),
             exportState = ExportState.Idle,
             dailyGoal = null,
         ),
@@ -130,6 +135,7 @@ data class SettingsUiState(
     val isPro: Boolean,
     val showDebugProToggle: Boolean,
     val showSecurityWarning: Boolean,
+    val providerDiagnostics: List<FoodCatalogProviderDescriptor>,
     val exportState: ExportState,
     val dailyGoal: DailyGoal?,
 )

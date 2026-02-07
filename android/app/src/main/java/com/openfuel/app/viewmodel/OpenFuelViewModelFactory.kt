@@ -23,7 +23,7 @@ class OpenFuelViewModelFactory(
                 foodRepository = container.foodRepository,
                 logRepository = container.logRepository,
                 settingsRepository = container.settingsRepository,
-                foodCatalogProvider = container.foodCatalogProvider,
+                foodCatalogProvider = container.activeFoodCatalogProvider,
                 userInitiatedNetworkGuard = container.networkGuard,
             )
             FoodLibraryViewModel::class.java -> FoodLibraryViewModel(
@@ -50,6 +50,7 @@ class OpenFuelViewModelFactory(
                 entitlementService = container.entitlementService,
                 goalsRepository = container.goalsRepository,
                 exportManager = container.exportManager,
+                foodCatalogProviderRegistry = container.foodCatalogProviderRegistry,
             )
             else -> throw IllegalArgumentException("Unknown ViewModel class: ${modelClass.name}")
         } as T

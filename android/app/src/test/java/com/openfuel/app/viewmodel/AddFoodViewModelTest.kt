@@ -25,6 +25,8 @@ import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 
@@ -82,6 +84,61 @@ class AddFoodViewModelTest {
             "Online search is turned off. Enable it in Settings to continue.",
             viewModel.uiState.value.onlineErrorMessage,
         )
+        assertFalse(viewModel.uiState.value.hasSearchedOnline)
+        collectJob.cancel()
+    }
+
+    @Test
+    fun searchOnline_whenNoResults_marksAttemptWithoutError() = runTest {
+        val remoteDataSource = FakeRemoteFoodDataSource(results = emptyList())
+        val viewModel = AddFoodViewModel(
+            foodRepository = AddFoodFakeFoodRepository(),
+            logRepository = AddFoodFakeLogRepository(),
+            settingsRepository = FakeSettingsRepository(enabled = true),
+            remoteFoodDataSource = remoteDataSource,
+            userInitiatedNetworkGuard = UserInitiatedNetworkGuard(),
+        )
+        val collectJob = launch { viewModel.uiState.collect { } }
+
+        viewModel.updateSearchQuery("coke zero")
+        advanceTimeBy(300)
+        advanceUntilIdle()
+        viewModel.searchOnline()
+        advanceUntilIdle()
+
+        assertTrue(viewModel.uiState.value.hasSearchedOnline)
+        assertTrue(viewModel.uiState.value.onlineResults.isEmpty())
+        assertEquals(null, viewModel.uiState.value.onlineErrorMessage)
+        collectJob.cancel()
+    }
+
+    @Test
+    fun updateSearchQuery_clearsPreviousOnlineResultsAndAttemptState() = runTest {
+        val remoteDataSource = FakeRemoteFoodDataSource()
+        val viewModel = AddFoodViewModel(
+            foodRepository = AddFoodFakeFoodRepository(),
+            logRepository = AddFoodFakeLogRepository(),
+            settingsRepository = FakeSettingsRepository(enabled = true),
+            remoteFoodDataSource = remoteDataSource,
+            userInitiatedNetworkGuard = UserInitiatedNetworkGuard(),
+        )
+        val collectJob = launch { viewModel.uiState.collect { } }
+
+        viewModel.updateSearchQuery("oat")
+        advanceTimeBy(300)
+        advanceUntilIdle()
+        viewModel.searchOnline()
+        advanceUntilIdle()
+        assertTrue(viewModel.uiState.value.onlineResults.isNotEmpty())
+        assertTrue(viewModel.uiState.value.hasSearchedOnline)
+
+        viewModel.updateSearchQuery("banana")
+        advanceTimeBy(300)
+        advanceUntilIdle()
+
+        assertTrue(viewModel.uiState.value.onlineResults.isEmpty())
+        assertFalse(viewModel.uiState.value.hasSearchedOnline)
+        assertEquals(null, viewModel.uiState.value.onlineErrorMessage)
         collectJob.cancel()
     }
 }
@@ -168,7 +225,22 @@ private class FakeSettingsRepository(
     }
 }
 
-private class FakeRemoteFoodDataSource : RemoteFoodDataSource {
+private class FakeRemoteFoodDataSource(
+    private val results: List<RemoteFoodCandidate> = listOf(
+        RemoteFoodCandidate(
+            source = RemoteFoodSource.OPEN_FOOD_FACTS,
+            sourceId = "123",
+            barcode = "123",
+            name = "Oatmeal",
+            brand = "OpenFoodFacts",
+            caloriesKcalPer100g = 370.0,
+            proteinGPer100g = 13.0,
+            carbsGPer100g = 67.0,
+            fatGPer100g = 7.0,
+            servingSize = "40 g",
+        ),
+    ),
+) : RemoteFoodDataSource {
     var searchCalls: Int = 0
 
     override suspend fun searchByText(
@@ -176,20 +248,7 @@ private class FakeRemoteFoodDataSource : RemoteFoodDataSource {
         token: UserInitiatedNetworkToken,
     ): List<RemoteFoodCandidate> {
         searchCalls += 1
-        return listOf(
-            RemoteFoodCandidate(
-                source = RemoteFoodSource.OPEN_FOOD_FACTS,
-                sourceId = "123",
-                barcode = "123",
-                name = "Oatmeal",
-                brand = "OpenFoodFacts",
-                caloriesKcalPer100g = 370.0,
-                proteinGPer100g = 13.0,
-                carbsGPer100g = 67.0,
-                fatGPer100g = 7.0,
-                servingSize = "40 g",
-            ),
-        )
+        return results
     }
 
     override suspend fun lookupByBarcode(

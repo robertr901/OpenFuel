@@ -254,7 +254,9 @@ fun AddFoodScreen(
                                 viewModel.updateSearchQuery(it)
                             },
                             label = { Text("Search online foods") },
-                            modifier = Modifier.fillMaxWidth(),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .testTag("add_food_online_query_input"),
                         )
                     }
                     if (!uiState.onlineLookupEnabled) {
@@ -275,12 +277,16 @@ fun AddFoodScreen(
                                 text = "Search online",
                                 onClick = { viewModel.searchOnline() },
                                 enabled = searchInput.isNotBlank() && !uiState.isOnlineSearchInProgress,
-                                modifier = Modifier.weight(1f),
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .testTag("add_food_online_search_button"),
                             )
                             OFSecondaryButton(
                                 text = "Scan barcode",
                                 onClick = onScanBarcode,
-                                modifier = Modifier.weight(1f),
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .testTag("add_food_online_scan_button"),
                             )
                         }
                     }
@@ -290,7 +296,9 @@ fun AddFoodScreen(
                                 modifier = Modifier.fillMaxWidth(),
                                 horizontalArrangement = Arrangement.Center,
                             ) {
-                                CircularProgressIndicator()
+                                CircularProgressIndicator(
+                                    modifier = Modifier.testTag("add_food_online_loading_indicator"),
+                                )
                             }
                         }
                     }
@@ -303,11 +311,29 @@ fun AddFoodScreen(
                             )
                         }
                     }
-                    if (uiState.onlineResults.isEmpty() && searchInput.isNotBlank() && !uiState.isOnlineSearchInProgress) {
+                    if (
+                        searchInput.isNotBlank() &&
+                        !uiState.hasSearchedOnline &&
+                        !uiState.isOnlineSearchInProgress &&
+                        uiState.onlineErrorMessage == null
+                    ) {
                         item {
                             OFEmptyState(
-                                title = "No online results yet",
-                                body = "Tap Search online to fetch matching foods.",
+                                title = "Ready to search",
+                                body = "Tap Search online to fetch matching foods from Open Food Facts.",
+                            )
+                        }
+                    }
+                    if (
+                        uiState.hasSearchedOnline &&
+                        uiState.onlineResults.isEmpty() &&
+                        !uiState.isOnlineSearchInProgress &&
+                        uiState.onlineErrorMessage == null
+                    ) {
+                        item {
+                            OFEmptyState(
+                                title = "No online matches found",
+                                body = "No results for \"$searchInput\". Try a brand name or shorter query.",
                             )
                         }
                     }
@@ -327,14 +353,15 @@ fun AddFoodScreen(
         }
     }
 
-    if (uiState.selectedOnlineFood != null) {
+    val selectedOnlineFood = uiState.selectedOnlineFood
+    if (selectedOnlineFood != null) {
         OnlineFoodPreviewDialog(
-            food = uiState.selectedOnlineFood!!,
+            food = selectedOnlineFood,
             onDismiss = { viewModel.closeOnlineFoodPreview() },
-            onSave = { viewModel.saveOnlineFood(uiState.selectedOnlineFood!!) },
+            onSave = { viewModel.saveOnlineFood(selectedOnlineFood) },
             onSaveAndLog = { quantity, unit, mealType ->
                 viewModel.saveAndLogOnlineFood(
-                    food = uiState.selectedOnlineFood!!,
+                    food = selectedOnlineFood,
                     quantity = quantity,
                     unit = unit,
                     mealType = mealType,
@@ -353,11 +380,11 @@ private data class QuickAddInput(
     val mealType: MealType,
 )
 
-private enum class AddFoodSection(val title: String) {
-    RECENTS("Recents"),
-    FAVORITES("Favourites"),
-    LOCAL("Local"),
-    ONLINE("Online"),
+private enum class AddFoodSection(val title: String, val testTag: String) {
+    RECENTS("Recents", "add_food_section_recents"),
+    FAVORITES("Favourites", "add_food_section_favourites"),
+    LOCAL("Local", "add_food_section_local"),
+    ONLINE("Online", "add_food_section_online"),
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -377,6 +404,7 @@ private fun AddFoodSectionSelector(
                     index = index,
                     count = AddFoodSection.entries.size,
                 ),
+                modifier = Modifier.testTag(section.testTag),
                 label = { Text(section.title) },
             )
         }

@@ -36,7 +36,14 @@ fun HistoryScreen(
     Scaffold(
         modifier = Modifier.testTag("screen_history"),
         topBar = {
-            TopAppBar(title = { Text("History") })
+            TopAppBar(
+                title = {
+                    Text(
+                        text = "History",
+                        style = MaterialTheme.typography.titleLarge,
+                    )
+                },
+            )
         },
     ) { padding ->
         if (uiState.isEmpty) {

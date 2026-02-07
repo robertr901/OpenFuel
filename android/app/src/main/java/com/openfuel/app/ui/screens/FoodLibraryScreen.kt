@@ -48,7 +48,14 @@ fun FoodLibraryScreen(
     Scaffold(
         modifier = Modifier.testTag("screen_foods"),
         topBar = {
-            TopAppBar(title = { Text("Foods") })
+            TopAppBar(
+                title = {
+                    Text(
+                        text = "Foods",
+                        style = MaterialTheme.typography.titleLarge,
+                    )
+                },
+            )
         },
         floatingActionButton = {
             ExtendedFloatingActionButton(

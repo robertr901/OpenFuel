@@ -157,7 +157,7 @@ fun SettingsScreen(
                     onCheckedChange = { viewModel.setOnlineLookupEnabled(it) },
                 )
             }
-            if (BuildConfig.DEBUG) {
+            if (uiState.showDebugProToggle) {
                 HorizontalDivider()
                 Text(
                     text = "Developer",

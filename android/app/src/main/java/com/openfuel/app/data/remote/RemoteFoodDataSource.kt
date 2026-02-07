@@ -9,6 +9,10 @@ import retrofit2.converter.gson.GsonConverterFactory
 import retrofit2.http.GET
 import retrofit2.http.Path
 import retrofit2.http.Query
+import java.util.Locale
+
+private const val OPEN_FOOD_FACTS_SEARCH_FIELDS =
+    "code,_id,id,product_name,product_name_en,generic_name,brands,serving_size,nutriments"
 
 interface RemoteFoodDataSource {
     suspend fun searchByText(
@@ -22,7 +26,7 @@ interface RemoteFoodDataSource {
     ): RemoteFoodCandidate?
 }
 
-class OpenFoodFactsRemoteFoodDataSource private constructor(
+class OpenFoodFactsRemoteFoodDataSource internal constructor(
     private val api: OpenFoodFactsApi,
     private val userInitiatedNetworkGuard: UserInitiatedNetworkGuard,
     private val pageSize: Int = 20,
@@ -84,13 +88,14 @@ class OpenFoodFactsRemoteFoodDataSource private constructor(
     }
 }
 
-private interface OpenFoodFactsApi {
+internal interface OpenFoodFactsApi {
     @GET("cgi/search.pl")
     suspend fun searchFoods(
         @Query("search_terms") query: String,
         @Query("search_simple") searchSimple: Int = 1,
         @Query("action") action: String = "process",
         @Query("json") json: Int = 1,
+        @Query("fields") fields: String = OPEN_FOOD_FACTS_SEARCH_FIELDS,
         @Query("page_size") pageSize: Int,
     ): OpenFoodFactsSearchResponse
 
@@ -100,22 +105,22 @@ private interface OpenFoodFactsApi {
     ): OpenFoodFactsLookupResponse
 }
 
-private data class OpenFoodFactsSearchResponse(
+internal data class OpenFoodFactsSearchResponse(
     @SerializedName("products")
     val products: List<OpenFoodFactsProductDto>?,
 )
 
-private data class OpenFoodFactsLookupResponse(
+internal data class OpenFoodFactsLookupResponse(
     @SerializedName("status")
     val status: Int,
     @SerializedName("product")
     val product: OpenFoodFactsProductDto?,
 )
 
-private data class OpenFoodFactsProductDto(
+internal data class OpenFoodFactsProductDto(
     @SerializedName("code")
     val code: String?,
-    @SerializedName("_id")
+    @SerializedName(value = "_id", alternate = ["id"])
     val id: String?,
     @SerializedName("product_name")
     val productName: String?,
@@ -131,7 +136,7 @@ private data class OpenFoodFactsProductDto(
     val nutriments: OpenFoodFactsNutrimentsDto?,
 )
 
-private data class OpenFoodFactsNutrimentsDto(
+internal data class OpenFoodFactsNutrimentsDto(
     @SerializedName("energy-kcal_100g")
     val energyKcal100g: Double?,
     @SerializedName("energy-kcal")
@@ -152,10 +157,15 @@ private data class OpenFoodFactsNutrimentsDto(
 
 private fun OpenFoodFactsProductDto.toRemoteFoodCandidate(): RemoteFoodCandidate? {
     val resolvedName = productName.orIfBlank(productNameEn).orIfBlank(genericName)
-    val resolvedCode = code.orIfBlank(id)
-    if (resolvedName.isNullOrBlank() || resolvedCode.isNullOrBlank()) {
+    if (resolvedName.isNullOrBlank()) {
         return null
     }
+    val resolvedCode = code.orIfBlank(id)
+        ?: buildDerivedSourceId(
+            name = resolvedName,
+            brand = brands,
+            servingSize = servingSize,
+        )
     return RemoteFoodCandidate(
         source = RemoteFoodSource.OPEN_FOOD_FACTS,
         sourceId = resolvedCode,
@@ -172,4 +182,17 @@ private fun OpenFoodFactsProductDto.toRemoteFoodCandidate(): RemoteFoodCandidate
 
 private fun String?.orIfBlank(fallback: String?): String? {
     return if (this.isNullOrBlank()) fallback else this
+}
+
+private fun buildDerivedSourceId(
+    name: String,
+    brand: String?,
+    servingSize: String?,
+): String {
+    val normalized = listOf(name, brand.orEmpty(), servingSize.orEmpty())
+        .joinToString(separator = "|")
+        .trim()
+        .lowercase(Locale.ROOT)
+    val hash = normalized.hashCode().toUInt().toString(16)
+    return "derived-$hash"
 }

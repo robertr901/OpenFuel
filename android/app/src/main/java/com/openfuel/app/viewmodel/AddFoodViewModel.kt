@@ -101,6 +101,7 @@ class AddFoodViewModel(
             favoriteFoods = favorites,
             recentLoggedFoods = recents,
             onlineLookupEnabled = onlineLookupEnabled,
+            hasSearchedOnline = online.hasSearchedOnline,
             onlineResults = online.onlineResults,
             isOnlineSearchInProgress = online.isLoading,
             onlineErrorMessage = online.errorMessage,
@@ -116,6 +117,7 @@ class AddFoodViewModel(
             favoriteFoods = emptyList(),
             recentLoggedFoods = emptyList(),
             onlineLookupEnabled = true,
+            hasSearchedOnline = false,
             onlineResults = emptyList(),
             isOnlineSearchInProgress = false,
             onlineErrorMessage = null,
@@ -126,12 +128,21 @@ class AddFoodViewModel(
 
     fun updateSearchQuery(query: String) {
         searchQuery.update { query }
+        onlineState.update { current ->
+            current.copy(
+                hasSearchedOnline = false,
+                onlineResults = emptyList(),
+                errorMessage = null,
+                selectedOnlineFood = null,
+            )
+        }
     }
 
     fun searchOnline() {
         if (!onlineLookupEnabledState.value) {
             onlineState.update { current ->
                 current.copy(
+                    hasSearchedOnline = false,
                     isLoading = false,
                     onlineResults = emptyList(),
                     errorMessage = "Online search is turned off. Enable it in Settings to continue.",
@@ -143,6 +154,7 @@ class AddFoodViewModel(
         if (query.isBlank()) {
             onlineState.update { current ->
                 current.copy(
+                    hasSearchedOnline = false,
                     isLoading = false,
                     onlineResults = emptyList(),
                     errorMessage = "Enter a search term to look up online.",
@@ -154,6 +166,7 @@ class AddFoodViewModel(
         viewModelScope.launch {
             onlineState.update { current ->
                 current.copy(
+                    hasSearchedOnline = true,
                     isLoading = true,
                     errorMessage = null,
                 )
@@ -163,6 +176,7 @@ class AddFoodViewModel(
                 val results = remoteFoodDataSource.searchByText(query, token)
                 onlineState.update { current ->
                     current.copy(
+                        hasSearchedOnline = true,
                         isLoading = false,
                         onlineResults = results,
                         errorMessage = null,
@@ -171,6 +185,7 @@ class AddFoodViewModel(
             } catch (_: Exception) {
                 onlineState.update { current ->
                     current.copy(
+                        hasSearchedOnline = true,
                         isLoading = false,
                         onlineResults = emptyList(),
                         errorMessage = "Online search failed. Check connection and try again.",
@@ -307,6 +322,7 @@ data class AddFoodUiState(
     val favoriteFoods: List<FoodItem>,
     val recentLoggedFoods: List<FoodItem>,
     val onlineLookupEnabled: Boolean,
+    val hasSearchedOnline: Boolean,
     val onlineResults: List<RemoteFoodCandidate>,
     val isOnlineSearchInProgress: Boolean,
     val onlineErrorMessage: String?,
@@ -320,6 +336,7 @@ private data class LocalSearchState(
 )
 
 private data class OnlineSearchState(
+    val hasSearchedOnline: Boolean = false,
     val onlineResults: List<RemoteFoodCandidate> = emptyList(),
     val isLoading: Boolean = false,
     val errorMessage: String? = null,

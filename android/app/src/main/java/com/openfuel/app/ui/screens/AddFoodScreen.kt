@@ -104,6 +104,7 @@ fun AddFoodScreen(
     ) { padding ->
         LazyColumn(
             modifier = Modifier
+                .testTag("add_food_unified_results_list")
                 .padding(padding)
                 .padding(horizontal = Dimens.m),
             verticalArrangement = Arrangement.spacedBy(Dimens.l),

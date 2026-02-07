@@ -21,4 +21,3 @@ dependencyResolutionManagement {
 
 rootProject.name = "OpenFuel"
 include(":app")
-include(":app")

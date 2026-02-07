@@ -9,7 +9,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavType
-import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
@@ -106,7 +105,7 @@ fun OpenFuelAppRoot() {
     ) { padding ->
         NavHost(
             navController = navController,
-            startDestination = Routes.TODAY,
+            startDestination = Routes.TODAY_ROUTE,
             modifier = Modifier.padding(padding),
         ) {
             composable(
@@ -211,8 +210,11 @@ private fun OpenFuelBottomNavigation(
 
 private fun NavHostController.navigateToTopLevel(route: String) {
     navigate(route) {
-        popUpTo(graph.findStartDestination().id) {
-            saveState = true
+        val popUpToId = graph.startDestinationId
+        if (popUpToId != 0) {
+            popUpTo(popUpToId) {
+                saveState = true
+            }
         }
         launchSingleTop = true
         restoreState = true

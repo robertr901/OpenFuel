@@ -32,4 +32,13 @@ class LogRepositoryImpl(
         return mealEntryDao.observeEntriesForDay(window.startInclusive, window.endExclusive)
             .map { entries -> entries.map { it.toDomain() } }
     }
+
+    override fun loggedDates(zoneId: ZoneId): Flow<List<LocalDate>> {
+        return mealEntryDao.observeEntryTimestampsDesc()
+            .map { timestamps ->
+                timestamps
+                    .map { instant -> instant.atZone(zoneId).toLocalDate() }
+                    .distinct()
+            }
+    }
 }

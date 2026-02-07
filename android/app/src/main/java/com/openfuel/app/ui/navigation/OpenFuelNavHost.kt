@@ -2,6 +2,7 @@ package com.openfuel.app.ui.navigation
 
 import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
@@ -16,6 +17,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.RestaurantMenu
 import androidx.compose.material.icons.filled.Settings
@@ -28,11 +30,13 @@ import com.openfuel.app.OpenFuelApp
 import com.openfuel.app.ui.screens.AddFoodScreen
 import com.openfuel.app.ui.screens.FoodDetailScreen
 import com.openfuel.app.ui.screens.FoodLibraryScreen
+import com.openfuel.app.ui.screens.HistoryScreen
 import com.openfuel.app.ui.screens.HomeScreen
 import com.openfuel.app.ui.screens.ScanBarcodeScreen
 import com.openfuel.app.ui.screens.SettingsScreen
 import com.openfuel.app.viewmodel.AddFoodViewModel
 import com.openfuel.app.viewmodel.FoodLibraryViewModel
+import com.openfuel.app.viewmodel.HistoryViewModel
 import com.openfuel.app.viewmodel.HomeViewModel
 import com.openfuel.app.viewmodel.OpenFuelViewModelFactory
 import com.openfuel.app.viewmodel.ScanBarcodeViewModel
@@ -53,6 +57,11 @@ fun OpenFuelAppRoot() {
                 icon = { Icon(Icons.Default.Home, contentDescription = "Today tab") },
             ),
             TopLevelDestination(
+                route = Routes.HISTORY,
+                label = "History",
+                icon = { Icon(Icons.Default.History, contentDescription = "History tab") },
+            ),
+            TopLevelDestination(
                 route = Routes.FOODS,
                 label = "Foods",
                 icon = {
@@ -70,14 +79,15 @@ fun OpenFuelAppRoot() {
         )
     }
     val navBackStackEntry by navController.currentBackStackEntryAsState()
-    val currentRoute = navBackStackEntry?.destination?.route
-    val showBottomBar = currentRoute in Routes.topLevelRoutes
+    val destinationRoute = navBackStackEntry?.destination?.route
+    val currentTopLevelRoute = destinationRoute?.routeBase()
+    val showBottomBar = currentTopLevelRoute in Routes.topLevelRoutes
 
     Scaffold(
         bottomBar = {
             if (showBottomBar) {
                 OpenFuelBottomNavigation(
-                    currentRoute = currentRoute,
+                    currentRoute = currentTopLevelRoute,
                     destinations = topLevelDestinations,
                     onDestinationSelected = { route ->
                         navController.navigateToTopLevel(route)
@@ -91,13 +101,34 @@ fun OpenFuelAppRoot() {
             startDestination = Routes.TODAY,
             modifier = Modifier.padding(padding),
         ) {
-            composable(Routes.TODAY) {
+            composable(
+                route = Routes.TODAY_ROUTE,
+                arguments = listOf(
+                    navArgument(Routes.SELECTED_DATE_ARG) {
+                        type = NavType.StringType
+                        nullable = true
+                        defaultValue = null
+                    },
+                ),
+            ) { entry ->
                 val viewModel: HomeViewModel = viewModel(factory = viewModelFactory)
+                LaunchedEffect(entry.arguments?.getString(Routes.SELECTED_DATE_ARG)) {
+                    viewModel.applyNavigationDate(entry.arguments?.getString(Routes.SELECTED_DATE_ARG))
+                }
                 HomeScreen(
                     viewModel = viewModel,
                     onAddFood = { navController.navigate(Routes.ADD_FOOD) },
                     onOpenSettings = { navController.navigateToTopLevel(Routes.SETTINGS) },
                     onOpenFoodDetail = { foodId -> navController.navigate(Routes.foodDetailRoute(foodId)) },
+                )
+            }
+            composable(Routes.HISTORY) {
+                val viewModel: HistoryViewModel = viewModel(factory = viewModelFactory)
+                HistoryScreen(
+                    viewModel = viewModel,
+                    onSelectDay = { date ->
+                        navController.navigateToTopLevel(Routes.todayRoute(date.toString()))
+                    },
                 )
             }
             composable(Routes.FOODS) {
@@ -174,6 +205,10 @@ private fun NavHostController.navigateToTopLevel(route: String) {
         launchSingleTop = true
         restoreState = true
     }
+}
+
+private fun String.routeBase(): String {
+    return substringBefore('?').substringBefore('/')
 }
 
 private data class TopLevelDestination(

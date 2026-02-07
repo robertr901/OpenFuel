@@ -14,4 +14,7 @@ interface LogRepository {
         date: LocalDate,
         zoneId: ZoneId = ZoneId.systemDefault(),
     ): Flow<List<MealEntryWithFood>>
+    fun loggedDates(
+        zoneId: ZoneId = ZoneId.systemDefault(),
+    ): Flow<List<LocalDate>>
 }

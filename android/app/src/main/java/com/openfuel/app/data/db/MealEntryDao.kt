@@ -29,6 +29,9 @@ interface MealEntryDao {
         end: Instant,
     ): Flow<List<MealEntryWithFoodEntity>>
 
+    @Query("SELECT timestamp FROM meal_entries ORDER BY timestamp DESC")
+    fun observeEntryTimestampsDesc(): Flow<List<Instant>>
+
     @Query("SELECT * FROM meal_entries ORDER BY timestamp DESC")
     suspend fun getAllEntries(): List<MealEntryEntity>
 }

@@ -1,5 +1,6 @@
 package com.openfuel.app.viewmodel
 
+import androidx.lifecycle.SavedStateHandle
 import com.openfuel.app.MainDispatcherRule
 import com.openfuel.app.domain.model.FoodUnit
 import com.openfuel.app.domain.model.MealEntry
@@ -31,7 +32,12 @@ class HomeViewModelTest {
     @Test
     fun goToPreviousAndNextDay_updatesSelectedDate() = runTest {
         val repository = FakeLogRepository()
-        val viewModel = HomeViewModel(repository, FakeGoalsRepository(), ZoneId.of("UTC"))
+        val viewModel = HomeViewModel(
+            logRepository = repository,
+            goalsRepository = FakeGoalsRepository(),
+            savedStateHandle = SavedStateHandle(),
+            zoneId = ZoneId.of("UTC"),
+        )
 
         val startDate = viewModel.selectedDate.value
         viewModel.goToPreviousDay()
@@ -44,7 +50,12 @@ class HomeViewModelTest {
     @Test
     fun selectedDateChange_requestsNewDateEntries() = runTest {
         val repository = FakeLogRepository()
-        val viewModel = HomeViewModel(repository, FakeGoalsRepository(), ZoneId.of("UTC"))
+        val viewModel = HomeViewModel(
+            logRepository = repository,
+            goalsRepository = FakeGoalsRepository(),
+            savedStateHandle = SavedStateHandle(),
+            zoneId = ZoneId.of("UTC"),
+        )
         val collectJob = launch { viewModel.uiState.collect { } }
 
         advanceUntilIdle()
@@ -61,7 +72,12 @@ class HomeViewModelTest {
     @Test
     fun updateEntry_withInvalidQuantity_skipsRepositoryUpdate() = runTest {
         val repository = FakeLogRepository()
-        val viewModel = HomeViewModel(repository, FakeGoalsRepository(), ZoneId.of("UTC"))
+        val viewModel = HomeViewModel(
+            logRepository = repository,
+            goalsRepository = FakeGoalsRepository(),
+            savedStateHandle = SavedStateHandle(),
+            zoneId = ZoneId.of("UTC"),
+        )
 
         viewModel.updateEntry(
             entry = sampleUiEntry(),
@@ -77,7 +93,12 @@ class HomeViewModelTest {
     @Test
     fun updateAndDeleteEntry_callRepositoryWithExpectedValues() = runTest {
         val repository = FakeLogRepository()
-        val viewModel = HomeViewModel(repository, FakeGoalsRepository(), ZoneId.of("UTC"))
+        val viewModel = HomeViewModel(
+            logRepository = repository,
+            goalsRepository = FakeGoalsRepository(),
+            savedStateHandle = SavedStateHandle(),
+            zoneId = ZoneId.of("UTC"),
+        )
         val entry = sampleUiEntry()
 
         viewModel.updateEntry(
@@ -99,7 +120,12 @@ class HomeViewModelTest {
     @Test
     fun deleteEntry_whenRepositoryFails_exposesMessage() = runTest {
         val repository = FakeLogRepository(throwOnDelete = true)
-        val viewModel = HomeViewModel(repository, FakeGoalsRepository(), ZoneId.of("UTC"))
+        val viewModel = HomeViewModel(
+            logRepository = repository,
+            goalsRepository = FakeGoalsRepository(),
+            savedStateHandle = SavedStateHandle(),
+            zoneId = ZoneId.of("UTC"),
+        )
         val collectJob = launch { viewModel.uiState.collect { } }
 
         viewModel.deleteEntry("entry-1")
@@ -113,6 +139,19 @@ class HomeViewModelTest {
         advanceUntilIdle()
         assertNull(viewModel.uiState.value.message)
         collectJob.cancel()
+    }
+
+    @Test
+    fun savedStateHandleDate_isRestoredAtStartup() = runTest {
+        val savedStateHandle = SavedStateHandle(mapOf("selectedDate" to "2026-02-05"))
+        val viewModel = HomeViewModel(
+            logRepository = FakeLogRepository(),
+            goalsRepository = FakeGoalsRepository(),
+            savedStateHandle = savedStateHandle,
+            zoneId = ZoneId.of("UTC"),
+        )
+
+        assertEquals(LocalDate.parse("2026-02-05"), viewModel.selectedDate.value)
     }
 
     private fun sampleUiEntry(): MealEntryUi {
@@ -153,6 +192,10 @@ private class FakeLogRepository(
 
     override fun entriesForDate(date: LocalDate, zoneId: ZoneId): Flow<List<MealEntryWithFood>> {
         requestedDates += date
+        return flowOf(emptyList())
+    }
+
+    override fun loggedDates(zoneId: ZoneId): Flow<List<LocalDate>> {
         return flowOf(emptyList())
     }
 }

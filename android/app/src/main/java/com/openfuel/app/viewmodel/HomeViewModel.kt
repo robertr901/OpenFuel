@@ -1,6 +1,7 @@
 package com.openfuel.app.viewmodel
 
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.viewModelScope
 import com.openfuel.app.domain.model.FoodUnit
 import com.openfuel.app.domain.model.MacroTotals
@@ -31,9 +32,13 @@ import kotlinx.coroutines.launch
 class HomeViewModel(
     private val logRepository: LogRepository,
     private val goalsRepository: GoalsRepository,
+    private val savedStateHandle: SavedStateHandle,
     private val zoneId: ZoneId = ZoneId.systemDefault(),
 ) : ViewModel() {
-    private val _selectedDate = MutableStateFlow(LocalDate.now(zoneId))
+    private val _selectedDate = MutableStateFlow(
+        parseDate(savedStateHandle.get<String>(SELECTED_DATE_KEY))
+            ?: LocalDate.now(zoneId),
+    )
     val selectedDate: StateFlow<LocalDate> = _selectedDate.asStateFlow()
     private val message = MutableStateFlow<String?>(null)
 
@@ -69,11 +74,16 @@ class HomeViewModel(
     )
 
     fun goToPreviousDay() {
-        _selectedDate.update { current -> current.minusDays(1) }
+        selectDate(_selectedDate.value.minusDays(1))
     }
 
     fun goToNextDay() {
-        _selectedDate.update { current -> current.plusDays(1) }
+        selectDate(_selectedDate.value.plusDays(1))
+    }
+
+    fun applyNavigationDate(rawDate: String?) {
+        val parsedDate = parseDate(rawDate) ?: return
+        selectDate(parsedDate)
     }
 
     fun updateEntry(
@@ -117,6 +127,14 @@ class HomeViewModel(
         message.value = null
     }
 
+    private fun selectDate(date: LocalDate) {
+        if (_selectedDate.value == date) {
+            return
+        }
+        _selectedDate.value = date
+        savedStateHandle[SELECTED_DATE_KEY] = date.toString()
+    }
+
     private fun buildUiState(
         date: LocalDate,
         entries: List<MealEntryWithFood>,
@@ -156,6 +174,15 @@ class HomeViewModel(
             meals = meals,
             message = null,
         )
+    }
+
+    private companion object {
+        private const val SELECTED_DATE_KEY = "selectedDate"
+
+        private fun parseDate(rawDate: String?): LocalDate? {
+            if (rawDate.isNullOrBlank()) return null
+            return runCatching { LocalDate.parse(rawDate) }.getOrNull()
+        }
     }
 }
 

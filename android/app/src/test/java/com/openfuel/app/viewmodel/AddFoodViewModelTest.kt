@@ -112,6 +112,10 @@ private class AddFoodFakeLogRepository : LogRepository {
     override fun entriesForDate(date: LocalDate, zoneId: ZoneId): Flow<List<MealEntryWithFood>> {
         return flowOf(emptyList())
     }
+
+    override fun loggedDates(zoneId: ZoneId): Flow<List<LocalDate>> {
+        return flowOf(emptyList())
+    }
 }
 
 private class FakeRemoteFoodDataSource : RemoteFoodDataSource {

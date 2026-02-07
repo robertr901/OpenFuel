@@ -42,6 +42,7 @@ import com.openfuel.app.ui.screens.ScanBarcodeScreen
 import com.openfuel.app.ui.screens.SettingsScreen
 import com.openfuel.app.viewmodel.AddFoodViewModel
 import com.openfuel.app.viewmodel.FoodLibraryViewModel
+import com.openfuel.app.viewmodel.FoodDetailViewModel
 import com.openfuel.app.viewmodel.HistoryViewModel
 import com.openfuel.app.viewmodel.HomeViewModel
 import com.openfuel.app.viewmodel.InsightsViewModel
@@ -179,12 +180,10 @@ fun OpenFuelAppRoot() {
             composable(
                 route = "${Routes.FOOD_DETAIL}/{foodId}",
                 arguments = listOf(navArgument("foodId") { type = NavType.StringType }),
-            ) { entry ->
-                val foodId = entry.arguments?.getString("foodId")
+            ) {
+                val viewModel: FoodDetailViewModel = viewModel(factory = viewModelFactory)
                 FoodDetailScreen(
-                    foodId = foodId,
-                    foodRepository = container.foodRepository,
-                    logRepository = container.logRepository,
+                    viewModel = viewModel,
                     onNavigateBack = { navController.popBackStack() },
                 )
             }

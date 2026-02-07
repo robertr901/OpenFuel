@@ -29,6 +29,11 @@ class OpenFuelViewModelFactory(
             FoodLibraryViewModel::class.java -> FoodLibraryViewModel(
                 foodRepository = container.foodRepository,
             )
+            FoodDetailViewModel::class.java -> FoodDetailViewModel(
+                foodRepository = container.foodRepository,
+                logRepository = container.logRepository,
+                savedStateHandle = extras.createSavedStateHandle(),
+            )
             InsightsViewModel::class.java -> InsightsViewModel(
                 entitlementsRepository = container.entitlementsRepository,
                 logRepository = container.logRepository,

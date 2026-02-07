@@ -6,10 +6,12 @@ import com.openfuel.app.data.db.OpenFuelDatabase
 import com.openfuel.app.data.remote.OpenFoodFactsRemoteFoodDataSource
 import com.openfuel.app.data.remote.RemoteFoodDataSource
 import com.openfuel.app.data.remote.UserInitiatedNetworkGuard
+import com.openfuel.app.data.repository.EntitlementsRepositoryImpl
 import com.openfuel.app.data.repository.FoodRepositoryImpl
 import com.openfuel.app.data.repository.GoalsRepositoryImpl
 import com.openfuel.app.data.repository.LogRepositoryImpl
 import com.openfuel.app.data.repository.SettingsRepositoryImpl
+import com.openfuel.app.domain.repository.EntitlementsRepository
 import com.openfuel.app.domain.repository.FoodRepository
 import com.openfuel.app.domain.repository.GoalsRepository
 import com.openfuel.app.domain.repository.LogRepository
@@ -31,6 +33,7 @@ class AppContainer(context: Context) {
     val logRepository: LogRepository = LogRepositoryImpl(database.mealEntryDao())
     val goalsRepository: GoalsRepository = GoalsRepositoryImpl(context.settingsDataStore)
     val settingsRepository: SettingsRepository = SettingsRepositoryImpl(context.settingsDataStore)
+    val entitlementsRepository: EntitlementsRepository = EntitlementsRepositoryImpl(context.settingsDataStore)
     val remoteFoodDataSource: RemoteFoodDataSource = OpenFoodFactsRemoteFoodDataSource.create(
         okHttpClient = onlineHttpClient,
         userInitiatedNetworkGuard = userInitiatedNetworkGuard,

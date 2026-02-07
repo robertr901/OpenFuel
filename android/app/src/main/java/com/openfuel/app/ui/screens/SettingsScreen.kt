@@ -149,6 +149,32 @@ fun SettingsScreen(
                     onCheckedChange = { viewModel.setOnlineLookupEnabled(it) },
                 )
             }
+            if (BuildConfig.DEBUG) {
+                HorizontalDivider()
+                Text(
+                    text = "Developer",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
+                )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Column {
+                        Text(text = "Enable Pro (debug)", style = MaterialTheme.typography.bodyLarge)
+                        Text(
+                            text = "Debug-only entitlement override.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                    Switch(
+                        checked = uiState.isPro,
+                        onCheckedChange = { viewModel.setProEnabled(it) },
+                    )
+                }
+            }
             HorizontalDivider()
             Text(
                 text = "Goals",
@@ -207,6 +233,25 @@ fun SettingsScreen(
                         Text("Export data")
                     }
                 }
+            }
+            HorizontalDivider()
+            Text(
+                text = "Advanced Export (Pro)",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
+            )
+            if (uiState.isPro) {
+                Text(
+                    text = "Advanced export is enabled for this build and is coming in a follow-up phase.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            } else {
+                Text(
+                    text = "Upgrade to Pro to unlock advanced export formats.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
             }
             Spacer(modifier = Modifier.height(Dimens.xl))
         }

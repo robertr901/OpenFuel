@@ -38,6 +38,7 @@ class OpenFuelViewModelFactory(
             )
             SettingsViewModel::class.java -> SettingsViewModel(
                 settingsRepository = container.settingsRepository,
+                entitlementsRepository = container.entitlementsRepository,
                 goalsRepository = container.goalsRepository,
                 exportManager = container.exportManager,
             )

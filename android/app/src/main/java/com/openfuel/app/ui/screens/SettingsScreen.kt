@@ -10,41 +10,61 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.ui.Alignment
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Divider
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.remember
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.core.content.FileProvider
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.openfuel.app.BuildConfig
+import com.openfuel.app.domain.model.DailyGoal
+import com.openfuel.app.domain.util.GoalValidation
 import com.openfuel.app.ui.theme.Dimens
+import com.openfuel.app.ui.util.formatMacro
+import com.openfuel.app.ui.util.parseDecimalInput
 import com.openfuel.app.viewmodel.ExportState
+import com.openfuel.app.viewmodel.GoalSaveResult
 import com.openfuel.app.viewmodel.SettingsViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(
     viewModel: SettingsViewModel,
-    onNavigateBack: () -> Unit,
+    onNavigateBack: (() -> Unit)?,
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val context = LocalContext.current
+    val snackbarHostState = remember { SnackbarHostState() }
+    var showGoalsDialog by rememberSaveable { mutableStateOf(false) }
 
     LaunchedEffect(uiState.exportState) {
         val exportState = uiState.exportState
@@ -62,7 +82,19 @@ fun SettingsScreen(
             }
             context.startActivity(Intent.createChooser(intent, "Share export"))
             viewModel.consumeExport()
+        } else if (exportState is ExportState.Error) {
+            snackbarHostState.showSnackbar(exportState.message)
         }
+    }
+
+    if (showGoalsDialog) {
+        GoalsDialog(
+            currentGoal = uiState.dailyGoal,
+            onDismiss = { showGoalsDialog = false },
+            onSave = { calories, protein, carbs, fat ->
+                viewModel.saveGoals(calories, protein, carbs, fat)
+            },
+        )
     }
 
     Scaffold(
@@ -70,15 +102,18 @@ fun SettingsScreen(
             TopAppBar(
                 title = { Text("Settings") },
                 navigationIcon = {
-                    IconButton(onClick = onNavigateBack) {
-                        Icon(
-                            imageVector = Icons.Default.ArrowBack,
-                            contentDescription = "Navigate back",
-                        )
+                    if (onNavigateBack != null) {
+                        IconButton(onClick = onNavigateBack) {
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                                contentDescription = "Navigate back",
+                            )
+                        }
                     }
                 },
             )
         },
+        snackbarHost = { SnackbarHost(snackbarHostState) },
     ) { padding ->
         Column(
             modifier = Modifier
@@ -97,7 +132,7 @@ fun SettingsScreen(
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
-            Divider()
+            HorizontalDivider()
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -106,7 +141,7 @@ fun SettingsScreen(
                 Column {
                     Text(text = "Online food lookup", style = MaterialTheme.typography.bodyLarge)
                     Text(
-                        text = "Disabled by default. Enable if you want online search.",
+                        text = "Enabled by default. Turn off anytime for fully offline use.",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -116,7 +151,48 @@ fun SettingsScreen(
                     onCheckedChange = { viewModel.setOnlineLookupEnabled(it) },
                 )
             }
-            Divider()
+            if (BuildConfig.DEBUG) {
+                HorizontalDivider()
+                Text(
+                    text = "Developer",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
+                )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Column {
+                        Text(text = "Enable Pro (debug)", style = MaterialTheme.typography.bodyLarge)
+                        Text(
+                            text = "Debug-only entitlement override.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                    Switch(
+                        checked = uiState.isPro,
+                        onCheckedChange = { viewModel.setProEnabled(it) },
+                    )
+                }
+            }
+            HorizontalDivider()
+            Text(
+                text = "Goals",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
+            )
+            Text(
+                text = "Optional targets stored locally on this device and applied to all days.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            GoalSummary(goal = uiState.dailyGoal)
+            Button(onClick = { showGoalsDialog = true }) {
+                Text("Edit goals")
+            }
+            HorizontalDivider()
             Text(
                 text = "Export",
                 style = MaterialTheme.typography.titleMedium,
@@ -160,7 +236,185 @@ fun SettingsScreen(
                     }
                 }
             }
+            HorizontalDivider()
+            Text(
+                text = "Advanced Export (Pro)",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
+            )
+            if (uiState.isPro) {
+                Text(
+                    text = "Advanced export is enabled for this build and is coming in a follow-up phase.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            } else {
+                Text(
+                    text = "Upgrade to Pro to unlock advanced export formats.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
             Spacer(modifier = Modifier.height(Dimens.xl))
         }
     }
+}
+
+@Composable
+private fun GoalSummary(goal: DailyGoal?) {
+    val caloriesTarget = goal?.caloriesKcalTarget ?: 0.0
+    val proteinTarget = goal?.proteinGTarget ?: 0.0
+    val carbsTarget = goal?.carbsGTarget ?: 0.0
+    val fatTarget = goal?.fatGTarget ?: 0.0
+
+    if (
+        caloriesTarget <= 0.0 &&
+        proteinTarget <= 0.0 &&
+        carbsTarget <= 0.0 &&
+        fatTarget <= 0.0
+    ) {
+        Text(
+        text = "No goals set.",
+        style = MaterialTheme.typography.bodyMedium,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        return
+    }
+
+    Column(verticalArrangement = Arrangement.spacedBy(Dimens.xs)) {
+        if (caloriesTarget > 0.0) {
+            Text(
+                text = "Calories: ${formatMacro(caloriesTarget)} kcal",
+                style = MaterialTheme.typography.bodyMedium,
+            )
+        }
+        if (proteinTarget > 0.0) {
+            Text(
+                text = "Protein: ${formatMacro(proteinTarget)} g",
+                style = MaterialTheme.typography.bodyMedium,
+            )
+        }
+        if (carbsTarget > 0.0) {
+            Text(
+                text = "Carbs: ${formatMacro(carbsTarget)} g",
+                style = MaterialTheme.typography.bodyMedium,
+            )
+        }
+        if (fatTarget > 0.0) {
+            Text(
+                text = "Fat: ${formatMacro(fatTarget)} g",
+                style = MaterialTheme.typography.bodyMedium,
+            )
+        }
+    }
+}
+
+@Composable
+private fun GoalsDialog(
+    currentGoal: DailyGoal?,
+    onDismiss: () -> Unit,
+    onSave: (Double?, Double?, Double?, Double?) -> GoalSaveResult,
+) {
+    var caloriesInput by rememberSaveable { mutableStateOf(valueToInput(currentGoal?.caloriesKcalTarget ?: 0.0)) }
+    var proteinInput by rememberSaveable { mutableStateOf(valueToInput(currentGoal?.proteinGTarget ?: 0.0)) }
+    var carbsInput by rememberSaveable { mutableStateOf(valueToInput(currentGoal?.carbsGTarget ?: 0.0)) }
+    var fatInput by rememberSaveable { mutableStateOf(valueToInput(currentGoal?.fatGTarget ?: 0.0)) }
+    var errorMessage by rememberSaveable { mutableStateOf<String?>(null) }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Edit goals") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(Dimens.s)) {
+                OutlinedTextField(
+                    value = caloriesInput,
+                    onValueChange = { caloriesInput = it },
+                    label = { Text("Calories (optional)") },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                OutlinedTextField(
+                    value = proteinInput,
+                    onValueChange = { proteinInput = it },
+                    label = { Text("Protein g (optional)") },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                OutlinedTextField(
+                    value = carbsInput,
+                    onValueChange = { carbsInput = it },
+                    label = { Text("Carbs g (optional)") },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                OutlinedTextField(
+                    value = fatInput,
+                    onValueChange = { fatInput = it },
+                    label = { Text("Fat g (optional)") },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                if (errorMessage != null) {
+                    Text(
+                        text = errorMessage ?: "",
+                        color = MaterialTheme.colorScheme.error,
+                        style = MaterialTheme.typography.bodySmall,
+                    )
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(
+                onClick = {
+                    val calories = parseOptionalDouble(caloriesInput)
+                    val protein = parseOptionalDouble(proteinInput)
+                    val carbs = parseOptionalDouble(carbsInput)
+                    val fat = parseOptionalDouble(fatInput)
+
+                    val parseError = when {
+                        caloriesInput.isNotBlank() && calories == null -> "Enter a valid calories value."
+                        proteinInput.isNotBlank() && protein == null -> "Enter a valid protein value."
+                        carbsInput.isNotBlank() && carbs == null -> "Enter a valid carbs value."
+                        fatInput.isNotBlank() && fat == null -> "Enter a valid fat value."
+                        calories != null && !GoalValidation.isValidCalories(calories) -> "Calories must be between 0 and 10000."
+                        protein != null && !GoalValidation.isValidMacro(protein) -> "Protein must be between 0 and 1000g."
+                        carbs != null && !GoalValidation.isValidMacro(carbs) -> "Carbs must be between 0 and 1000g."
+                        fat != null && !GoalValidation.isValidMacro(fat) -> "Fat must be between 0 and 1000g."
+                        else -> null
+                    }
+
+                    if (parseError != null) {
+                        errorMessage = parseError
+                        return@TextButton
+                    }
+
+                    when (val result = onSave(calories, protein, carbs, fat)) {
+                        is GoalSaveResult.Error -> {
+                            errorMessage = result.message
+                        }
+                        GoalSaveResult.Success -> {
+                            onDismiss()
+                        }
+                    }
+                },
+            ) {
+                Text("Save")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Cancel")
+            }
+        },
+    )
+}
+
+private fun parseOptionalDouble(raw: String): Double? {
+    val value = raw.trim()
+    if (value.isEmpty()) return null
+    return parseDecimalInput(value)
+}
+
+private fun valueToInput(value: Double): String {
+    return if (value <= 0.0) "" else formatMacro(value)
 }

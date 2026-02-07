@@ -9,7 +9,9 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -43,6 +45,7 @@ import com.openfuel.app.ui.components.UnitDropdown
 import com.openfuel.app.ui.theme.Dimens
 import com.openfuel.app.ui.util.formatCalories
 import com.openfuel.app.ui.util.formatMacro
+import com.openfuel.app.ui.util.parseDecimalInput
 import kotlinx.coroutines.launch
 import java.time.Instant
 import java.util.UUID
@@ -64,6 +67,12 @@ fun FoodDetailScreen(
             foodRepository.getFoodById(foodId)
         }
     }
+    var isFavorite by remember(foodState?.id, foodState?.isFavorite) {
+        mutableStateOf(foodState?.isFavorite ?: false)
+    }
+    var isReportedIncorrect by remember(foodState?.id, foodState?.isReportedIncorrect) {
+        mutableStateOf(foodState?.isReportedIncorrect ?: false)
+    }
 
     Scaffold(
         topBar = {
@@ -72,11 +81,48 @@ fun FoodDetailScreen(
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
                         Icon(
-                            imageVector = Icons.Default.ArrowBack,
+                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = "Navigate back",
                         )
                     }
                 },
+                actions = {
+                    if (foodState != null) {
+                        IconButton(
+                            onClick = {
+                                scope.launch {
+                                    try {
+                                        val nextFavorite = !isFavorite
+                                        foodRepository.setFavorite(foodState!!.id, nextFavorite)
+                                        isFavorite = nextFavorite
+                                        snackbarHostState.showSnackbar(
+                                            if (nextFavorite) {
+                                                "Added to favorites."
+                                            } else {
+                                                "Removed from favorites."
+                                            },
+                                        )
+                                    } catch (_: Exception) {
+                                        snackbarHostState.showSnackbar("Could not update favorite.")
+                                    }
+                                }
+                            },
+                        ) {
+                            Icon(
+                                imageVector = if (isFavorite) {
+                                    Icons.Default.Favorite
+                                } else {
+                                    Icons.Default.FavoriteBorder
+                                },
+                                contentDescription = if (isFavorite) {
+                                    "Remove from favorites"
+                                } else {
+                                    "Add to favorites"
+                                },
+                            )
+                        }
+                    }
+                }
             )
         },
         snackbarHost = { SnackbarHost(snackbarHostState) },
@@ -118,6 +164,26 @@ fun FoodDetailScreen(
                         snackbarHostState.showSnackbar("Logged ${foodState!!.name}")
                     }
                 },
+                isReportedIncorrect = isReportedIncorrect,
+                showReportIncorrect = foodState!!.barcode != null,
+                onToggleReportIncorrect = {
+                    scope.launch {
+                        try {
+                            val nextValue = !isReportedIncorrect
+                            foodRepository.setReportedIncorrect(foodState!!.id, nextValue)
+                            isReportedIncorrect = nextValue
+                            snackbarHostState.showSnackbar(
+                                if (nextValue) {
+                                    "Marked as incorrect on this device."
+                                } else {
+                                    "Incorrect flag removed."
+                                },
+                            )
+                        } catch (_: Exception) {
+                            snackbarHostState.showSnackbar("Could not update report flag.")
+                        }
+                    }
+                },
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(padding)
@@ -131,6 +197,9 @@ fun FoodDetailScreen(
 private fun FoodDetailContent(
     food: FoodItem,
     onLog: (Double, FoodUnit, MealType) -> Unit,
+    isReportedIncorrect: Boolean,
+    showReportIncorrect: Boolean,
+    onToggleReportIncorrect: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     var quantity by rememberSaveable { mutableStateOf("1") }
@@ -175,13 +244,27 @@ private fun FoodDetailContent(
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
+        if (showReportIncorrect) {
+            Button(
+                onClick = onToggleReportIncorrect,
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Text(
+                    if (isReportedIncorrect) {
+                        "Remove incorrect report"
+                    } else {
+                        "Report incorrect food"
+                    },
+                )
+            }
+        }
         Row(
             horizontalArrangement = Arrangement.spacedBy(Dimens.s),
             modifier = Modifier.fillMaxWidth(),
         ) {
             Button(
                 onClick = {
-                    val value = quantity.toDoubleOrNull() ?: 0.0
+                    val value = parseDecimalInput(quantity) ?: 0.0
                     onLog(value, unit, mealType)
                 },
                 modifier = Modifier.fillMaxWidth(),

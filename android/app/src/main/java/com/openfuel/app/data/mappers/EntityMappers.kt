@@ -13,10 +13,13 @@ fun FoodItemEntity.toDomain(): FoodItem = FoodItem(
     id = id,
     name = name,
     brand = brand,
+    barcode = barcode,
     caloriesKcal = caloriesKcal,
     proteinG = proteinG,
     carbsG = carbsG,
     fatG = fatG,
+    isFavorite = isFavorite,
+    isReportedIncorrect = isReportedIncorrect,
     createdAt = createdAt,
 )
 
@@ -24,10 +27,13 @@ fun FoodItem.toEntity(): FoodItemEntity = FoodItemEntity(
     id = id,
     name = name,
     brand = brand,
+    barcode = barcode,
     caloriesKcal = caloriesKcal,
     proteinG = proteinG,
     carbsG = carbsG,
     fatG = fatG,
+    isFavorite = isFavorite,
+    isReportedIncorrect = isReportedIncorrect,
     createdAt = createdAt,
 )
 

@@ -6,6 +6,7 @@ import com.openfuel.app.data.mappers.toEntity
 import com.openfuel.app.domain.model.MealEntry
 import com.openfuel.app.domain.model.MealEntryWithFood
 import com.openfuel.app.domain.repository.LogRepository
+import com.openfuel.app.domain.util.DayWindowCalculator
 import java.time.LocalDate
 import java.time.ZoneId
 import kotlinx.coroutines.flow.Flow
@@ -15,14 +16,40 @@ class LogRepositoryImpl(
     private val mealEntryDao: MealEntryDao,
 ) : LogRepository {
     override suspend fun logMealEntry(entry: MealEntry) {
-        mealEntryDao.insertEntry(entry.toEntity())
+        mealEntryDao.upsertEntry(entry.toEntity())
     }
 
-    override fun entriesForDate(date: LocalDate): Flow<List<MealEntryWithFood>> {
-        val zone = ZoneId.systemDefault()
-        val start = date.atStartOfDay(zone).toInstant()
-        val end = date.plusDays(1).atStartOfDay(zone).toInstant()
-        return mealEntryDao.observeEntriesForDay(start, end)
+    override suspend fun updateMealEntry(entry: MealEntry) {
+        mealEntryDao.upsertEntry(entry.toEntity())
+    }
+
+    override suspend fun deleteMealEntry(id: String) {
+        mealEntryDao.deleteById(id)
+    }
+
+    override fun entriesForDate(date: LocalDate, zoneId: ZoneId): Flow<List<MealEntryWithFood>> {
+        val window = DayWindowCalculator.windowFor(date, zoneId)
+        return mealEntryDao.observeEntriesForDay(window.startInclusive, window.endExclusive)
             .map { entries -> entries.map { it.toDomain() } }
+    }
+
+    override fun entriesInRange(
+        startDate: LocalDate,
+        endDateInclusive: LocalDate,
+        zoneId: ZoneId,
+    ): Flow<List<MealEntryWithFood>> {
+        val startInstant = startDate.atStartOfDay(zoneId).toInstant()
+        val endExclusive = endDateInclusive.plusDays(1).atStartOfDay(zoneId).toInstant()
+        return mealEntryDao.observeEntriesBetween(startInstant, endExclusive)
+            .map { entries -> entries.map { it.toDomain() } }
+    }
+
+    override fun loggedDates(zoneId: ZoneId): Flow<List<LocalDate>> {
+        return mealEntryDao.observeEntryTimestampsDesc()
+            .map { timestamps ->
+                timestamps
+                    .map { instant -> instant.atZone(zoneId).toLocalDate() }
+                    .distinct()
+            }
     }
 }

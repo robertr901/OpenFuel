@@ -11,23 +11,28 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SegmentedButton
+import androidx.compose.material3.SegmentedButtonDefaults
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -40,10 +45,13 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.openfuel.app.domain.model.FoodItem
 import com.openfuel.app.domain.model.FoodUnit
 import com.openfuel.app.domain.model.MealType
+import com.openfuel.app.domain.model.RemoteFoodCandidate
 import com.openfuel.app.ui.components.MealTypeDropdown
+import com.openfuel.app.ui.components.UnitDropdown
 import com.openfuel.app.ui.theme.Dimens
 import com.openfuel.app.ui.util.formatCalories
 import com.openfuel.app.ui.util.formatMacro
+import com.openfuel.app.ui.util.parseDecimalInput
 import com.openfuel.app.viewmodel.AddFoodViewModel
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
@@ -54,20 +62,18 @@ fun AddFoodScreen(
     viewModel: AddFoodViewModel,
     onNavigateBack: () -> Unit,
     onOpenFoodDetail: (String) -> Unit,
+    onScanBarcode: () -> Unit,
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
-    var searchQuery by rememberSaveable { mutableStateOf("") }
-    val filteredFoods = remember(uiState.recentFoods, searchQuery) {
-        if (searchQuery.isBlank()) {
-            uiState.recentFoods
-        } else {
-            uiState.recentFoods.filter { food ->
-                food.name.contains(searchQuery, ignoreCase = true) ||
-                    (food.brand?.contains(searchQuery, ignoreCase = true) == true)
-            }
-        }
+    var searchInput by rememberSaveable { mutableStateOf(uiState.searchQuery) }
+    var selectedSection by rememberSaveable { mutableStateOf(AddFoodSection.RECENTS) }
+
+    LaunchedEffect(uiState.message) {
+        val message = uiState.message ?: return@LaunchedEffect
+        snackbarHostState.showSnackbar(message)
+        viewModel.consumeMessage()
     }
 
     Scaffold(
@@ -77,7 +83,7 @@ fun AddFoodScreen(
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
                         Icon(
-                            imageVector = Icons.Default.ArrowBack,
+                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = "Navigate back",
                         )
                     }
@@ -105,54 +111,231 @@ fun AddFoodScreen(
                 )
             }
             item {
-                Text(
-                    text = "Search / select food",
-                    style = MaterialTheme.typography.titleMedium,
+                AddFoodSectionSelector(
+                    selectedSection = selectedSection,
+                    onSelected = { selectedSection = it },
                 )
             }
-            item {
-                OutlinedTextField(
-                    value = searchQuery,
-                    onValueChange = { searchQuery = it },
-                    label = { Text("Search foods") },
-                    modifier = Modifier.fillMaxWidth(),
-                )
-            }
-            if (filteredFoods.isEmpty()) {
-                item {
-                    Text(
-                        text = if (searchQuery.isBlank()) {
-                            "No recent foods yet"
-                        } else {
-                            "No foods match your search"
-                        },
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-            } else {
-                items(filteredFoods, key = { it.id }) { food ->
-                    RecentFoodRow(
-                        food = food,
-                        onLog = { mealType ->
-                            viewModel.logFood(
-                                foodId = food.id,
-                                mealType = mealType,
-                                quantity = 1.0,
-                                unit = FoodUnit.SERVING,
+            when (selectedSection) {
+                AddFoodSection.RECENTS -> {
+                    item {
+                        Text(
+                            text = "Recent logs",
+                            style = MaterialTheme.typography.titleMedium,
+                        )
+                    }
+                    if (uiState.recentLoggedFoods.isEmpty()) {
+                        item {
+                            Text(
+                                text = "No recent foods yet. Log a meal to build your recents.",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
-                            scope.launch {
-                                snackbarHostState.showSnackbar("Logged ${food.name}")
+                        }
+                    } else {
+                        items(uiState.recentLoggedFoods, key = { "recent-${it.id}" }) { food ->
+                            RecentFoodRow(
+                                food = food,
+                                onLog = { mealType ->
+                                    logFoodFromRow(
+                                        viewModel = viewModel,
+                                        scope = scope,
+                                        snackbarHostState = snackbarHostState,
+                                        food = food,
+                                        mealType = mealType,
+                                    )
+                                },
+                                onOpenDetail = { onOpenFoodDetail(food.id) },
+                            )
+                        }
+                    }
+                }
+                AddFoodSection.FAVORITES -> {
+                    item {
+                        Text(
+                            text = "Favorites",
+                            style = MaterialTheme.typography.titleMedium,
+                        )
+                    }
+                    if (uiState.favoriteFoods.isEmpty()) {
+                        item {
+                            Text(
+                                text = "No favorites yet. Star foods in details to pin them here.",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                    } else {
+                        items(uiState.favoriteFoods, key = { "favorite-${it.id}" }) { food ->
+                            RecentFoodRow(
+                                food = food,
+                                onLog = { mealType ->
+                                    logFoodFromRow(
+                                        viewModel = viewModel,
+                                        scope = scope,
+                                        snackbarHostState = snackbarHostState,
+                                        food = food,
+                                        mealType = mealType,
+                                    )
+                                },
+                                onOpenDetail = { onOpenFoodDetail(food.id) },
+                            )
+                        }
+                    }
+                }
+                AddFoodSection.LOCAL -> {
+                    item {
+                        Text(
+                            text = "Local foods",
+                            style = MaterialTheme.typography.titleMedium,
+                        )
+                    }
+                    item {
+                        OutlinedTextField(
+                            value = searchInput,
+                            onValueChange = {
+                                searchInput = it
+                                viewModel.updateSearchQuery(it)
+                            },
+                            label = { Text("Search local foods") },
+                            modifier = Modifier.fillMaxWidth(),
+                        )
+                    }
+                    if (uiState.foods.isEmpty()) {
+                        item {
+                            Text(
+                                text = if (searchInput.isBlank()) {
+                                    "No local foods yet."
+                                } else {
+                                    "No local foods match your search."
+                                },
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                    } else {
+                        items(uiState.foods, key = { it.id }) { food ->
+                            RecentFoodRow(
+                                food = food,
+                                onLog = { mealType ->
+                                    logFoodFromRow(
+                                        viewModel = viewModel,
+                                        scope = scope,
+                                        snackbarHostState = snackbarHostState,
+                                        food = food,
+                                        mealType = mealType,
+                                    )
+                                },
+                                onOpenDetail = { onOpenFoodDetail(food.id) },
+                            )
+                        }
+                    }
+                }
+                AddFoodSection.ONLINE -> {
+                    item {
+                        Text(
+                            text = "Online search",
+                            style = MaterialTheme.typography.titleMedium,
+                        )
+                    }
+                    item {
+                        OutlinedTextField(
+                            value = searchInput,
+                            onValueChange = {
+                                searchInput = it
+                                viewModel.updateSearchQuery(it)
+                            },
+                            label = { Text("Search online foods") },
+                            modifier = Modifier.fillMaxWidth(),
+                        )
+                    }
+                    if (!uiState.onlineLookupEnabled) {
+                        item {
+                            Text(
+                                text = "Online search is off. You can enable it in Settings any time.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                    }
+                    item {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(Dimens.s),
+                        ) {
+                            Button(
+                                onClick = { viewModel.searchOnline() },
+                                enabled = searchInput.isNotBlank() && !uiState.isOnlineSearchInProgress,
+                                modifier = Modifier.weight(1f),
+                            ) {
+                                Text("Search online")
                             }
-                        },
-                        onOpenDetail = { onOpenFoodDetail(food.id) },
-                    )
+                            Button(
+                                onClick = onScanBarcode,
+                                modifier = Modifier.weight(1f),
+                            ) {
+                                Text("Scan barcode")
+                            }
+                        }
+                    }
+                    if (uiState.isOnlineSearchInProgress) {
+                        item {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.Center,
+                            ) {
+                                CircularProgressIndicator()
+                            }
+                        }
+                    }
+                    if (uiState.onlineErrorMessage != null) {
+                        item {
+                            Text(
+                                text = uiState.onlineErrorMessage ?: "",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.error,
+                            )
+                        }
+                    }
+                    if (uiState.onlineResults.isEmpty() && searchInput.isNotBlank() && !uiState.isOnlineSearchInProgress) {
+                        item {
+                            Text(
+                                text = "Tap Search online to fetch matching foods.",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                    }
+                    if (uiState.onlineResults.isNotEmpty()) {
+                        items(uiState.onlineResults, key = { "${it.source}:${it.sourceId}" }) { food ->
+                            OnlineResultRow(
+                                food = food,
+                                onOpenPreview = { viewModel.openOnlineFoodPreview(food) },
+                            )
+                        }
+                    }
                 }
             }
             item {
                 Spacer(modifier = Modifier.height(Dimens.xl))
             }
         }
+    }
+
+    if (uiState.selectedOnlineFood != null) {
+        OnlineFoodPreviewDialog(
+            food = uiState.selectedOnlineFood!!,
+            onDismiss = { viewModel.closeOnlineFoodPreview() },
+            onSave = { viewModel.saveOnlineFood(uiState.selectedOnlineFood!!) },
+            onSaveAndLog = { quantity, unit, mealType ->
+                viewModel.saveAndLogOnlineFood(
+                    food = uiState.selectedOnlineFood!!,
+                    quantity = quantity,
+                    unit = unit,
+                    mealType = mealType,
+                )
+            },
+        )
     }
 }
 
@@ -164,6 +347,36 @@ private data class QuickAddInput(
     val fat: String,
     val mealType: MealType,
 )
+
+private enum class AddFoodSection(val title: String) {
+    RECENTS("Recents"),
+    FAVORITES("Favourites"),
+    LOCAL("Local"),
+    ONLINE("Online"),
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun AddFoodSectionSelector(
+    selectedSection: AddFoodSection,
+    onSelected: (AddFoodSection) -> Unit,
+) {
+    SingleChoiceSegmentedButtonRow(
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        AddFoodSection.entries.forEachIndexed { index, section ->
+            SegmentedButton(
+                selected = section == selectedSection,
+                onClick = { onSelected(section) },
+                shape = SegmentedButtonDefaults.itemShape(
+                    index = index,
+                    count = AddFoodSection.entries.size,
+                ),
+                label = { Text(section.title) },
+            )
+        }
+    }
+}
 
 @Composable
 private fun QuickAddCard(
@@ -265,14 +478,24 @@ private fun handleQuickAdd(
     scope: CoroutineScope,
     snackbarHostState: SnackbarHostState,
 ) {
-    val caloriesValue = input.calories.toDoubleOrNull()
+    val maxCalories = 10_000.0
+    val maxMacro = 1_000.0
+    val caloriesValue = parseDecimalInput(input.calories)
     if (caloriesValue == null) {
         scope.launch { snackbarHostState.showSnackbar("Enter calories") }
         return
     }
-    val proteinValue = input.protein.toDoubleOrNull() ?: 0.0
-    val carbsValue = input.carbs.toDoubleOrNull() ?: 0.0
-    val fatValue = input.fat.toDoubleOrNull() ?: 0.0
+    val proteinValue = parseDecimalInput(input.protein) ?: 0.0
+    val carbsValue = parseDecimalInput(input.carbs) ?: 0.0
+    val fatValue = parseDecimalInput(input.fat) ?: 0.0
+    if (caloriesValue !in 0.0..maxCalories) {
+        scope.launch { snackbarHostState.showSnackbar("Calories must be between 0 and 10000.") }
+        return
+    }
+    if (proteinValue !in 0.0..maxMacro || carbsValue !in 0.0..maxMacro || fatValue !in 0.0..maxMacro) {
+        scope.launch { snackbarHostState.showSnackbar("Macros must be between 0 and 1000 g.") }
+        return
+    }
     viewModel.quickAdd(
         name = input.name,
         caloriesKcal = caloriesValue,
@@ -282,6 +505,24 @@ private fun handleQuickAdd(
         mealType = input.mealType,
     )
     scope.launch { snackbarHostState.showSnackbar("Quick add logged") }
+}
+
+private fun logFoodFromRow(
+    viewModel: AddFoodViewModel,
+    scope: CoroutineScope,
+    snackbarHostState: SnackbarHostState,
+    food: FoodItem,
+    mealType: MealType,
+) {
+    viewModel.logFood(
+        foodId = food.id,
+        mealType = mealType,
+        quantity = 1.0,
+        unit = FoodUnit.SERVING,
+    )
+    scope.launch {
+        snackbarHostState.showSnackbar("Logged ${food.name}")
+    }
 }
 
 @Composable
@@ -336,4 +577,151 @@ private fun RecentFoodRow(
             }
         }
     }
+}
+
+@Composable
+private fun OnlineResultRow(
+    food: RemoteFoodCandidate,
+    onOpenPreview: () -> Unit,
+) {
+    Card(modifier = Modifier.fillMaxWidth()) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(Dimens.m),
+            verticalArrangement = Arrangement.spacedBy(Dimens.s),
+        ) {
+            Text(
+                text = food.name,
+                style = MaterialTheme.typography.titleMedium,
+            )
+            if (!food.brand.isNullOrBlank()) {
+                Text(
+                    text = food.brand.orEmpty(),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            Text(
+                text = "${formatCalories(food.caloriesKcalPer100g ?: 0.0)} kcal · ${formatMacro(food.proteinGPer100g ?: 0.0)}p ${formatMacro(food.carbsGPer100g ?: 0.0)}c ${formatMacro(food.fatGPer100g ?: 0.0)}f per 100g",
+                style = MaterialTheme.typography.bodySmall,
+            )
+            Button(
+                onClick = onOpenPreview,
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Text("Preview")
+            }
+        }
+    }
+}
+
+@Composable
+private fun OnlineFoodPreviewDialog(
+    food: RemoteFoodCandidate,
+    onDismiss: () -> Unit,
+    onSave: () -> Unit,
+    onSaveAndLog: (Double, FoodUnit, MealType) -> Unit,
+) {
+    var quantityInput by rememberSaveable(food.sourceId) { mutableStateOf("1") }
+    var selectedUnit by rememberSaveable(food.sourceId) { mutableStateOf(FoodUnit.SERVING) }
+    var selectedMealType by rememberSaveable(food.sourceId) { mutableStateOf(MealType.BREAKFAST) }
+
+    androidx.compose.material3.AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Online food preview") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(Dimens.s)) {
+                Text(
+                    text = food.name,
+                    style = MaterialTheme.typography.titleMedium,
+                )
+                if (!food.brand.isNullOrBlank()) {
+                    Text(
+                        text = food.brand.orEmpty(),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                Text(
+                    text = "Per 100 g",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Text(
+                    text = "Calories: ${formatCalories(food.caloriesKcalPer100g ?: 0.0)} kcal",
+                    style = MaterialTheme.typography.bodySmall,
+                )
+                Text(
+                    text = "Protein: ${formatMacro(food.proteinGPer100g ?: 0.0)} g",
+                    style = MaterialTheme.typography.bodySmall,
+                )
+                Text(
+                    text = "Carbs: ${formatMacro(food.carbsGPer100g ?: 0.0)} g",
+                    style = MaterialTheme.typography.bodySmall,
+                )
+                Text(
+                    text = "Fat: ${formatMacro(food.fatGPer100g ?: 0.0)} g",
+                    style = MaterialTheme.typography.bodySmall,
+                )
+                if (!food.servingSize.isNullOrBlank()) {
+                    Text(
+                        text = "Serving info: ${food.servingSize}",
+                        style = MaterialTheme.typography.bodySmall,
+                    )
+                } else {
+                    Text(
+                        text = "Serving info unavailable. Values are shown per 100 g.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                OutlinedTextField(
+                    value = quantityInput,
+                    onValueChange = { quantityInput = it },
+                    label = { Text("Quantity") },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                UnitDropdown(
+                    selected = selectedUnit,
+                    onSelected = { selectedUnit = it },
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                MealTypeDropdown(
+                    selected = selectedMealType,
+                    onSelected = { selectedMealType = it },
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
+        },
+        confirmButton = {
+            Row(horizontalArrangement = Arrangement.spacedBy(Dimens.s)) {
+                Button(
+                    onClick = {
+                        onSave()
+                        onDismiss()
+                    },
+                ) {
+                    Text("Save to foods")
+                }
+                Button(
+                    onClick = {
+                        val quantity = parseDecimalInput(quantityInput)
+                        if (quantity != null) {
+                            onSaveAndLog(quantity, selectedUnit, selectedMealType)
+                            onDismiss()
+                        }
+                    },
+                ) {
+                    Text("Log now")
+                }
+            }
+        },
+        dismissButton = {
+            Button(onClick = onDismiss) {
+                Text("Cancel")
+            }
+        },
+    )
 }

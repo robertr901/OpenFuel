@@ -8,9 +8,10 @@ object UnitConversion {
     private const val DEFAULT_SERVING_GRAMS = 100.0
 
     fun servingsFrom(quantity: Double, unit: FoodUnit, defaultServingGrams: Double = DEFAULT_SERVING_GRAMS): Double {
+        val safeQuantity = EntryValidation.nonNegative(quantity)
         return when (unit) {
-            FoodUnit.SERVING -> quantity
-            FoodUnit.GRAM -> quantity / defaultServingGrams
+            FoodUnit.SERVING -> safeQuantity
+            FoodUnit.GRAM -> safeQuantity / defaultServingGrams
         }
     }
 
@@ -21,11 +22,15 @@ object UnitConversion {
         defaultServingGrams: Double = DEFAULT_SERVING_GRAMS,
     ): MacroTotals {
         val servings = servingsFrom(quantity, unit, defaultServingGrams)
+        val calories = EntryValidation.nonNegative(foodItem.caloriesKcal)
+        val protein = EntryValidation.nonNegative(foodItem.proteinG)
+        val carbs = EntryValidation.nonNegative(foodItem.carbsG)
+        val fat = EntryValidation.nonNegative(foodItem.fatG)
         return MacroTotals(
-            caloriesKcal = foodItem.caloriesKcal * servings,
-            proteinG = foodItem.proteinG * servings,
-            carbsG = foodItem.carbsG * servings,
-            fatG = foodItem.fatG * servings,
+            caloriesKcal = calories * servings,
+            proteinG = protein * servings,
+            carbsG = carbs * servings,
+            fatG = fat * servings,
         )
     }
 }

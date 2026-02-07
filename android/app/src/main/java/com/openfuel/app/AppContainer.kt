@@ -35,7 +35,10 @@ class AppContainer(context: Context) {
         .build()
 
     val foodRepository: FoodRepository = FoodRepositoryImpl(database.foodDao())
-    val logRepository: LogRepository = LogRepositoryImpl(database.mealEntryDao())
+    val logRepository: LogRepository = LogRepositoryImpl(
+        mealEntryDao = database.mealEntryDao(),
+        foodDao = database.foodDao(),
+    )
     val goalsRepository: GoalsRepository = GoalsRepositoryImpl(context.settingsDataStore)
     val settingsRepository: SettingsRepository = SettingsRepositoryImpl(context.settingsDataStore)
     val entitlementsRepository: EntitlementsRepository = EntitlementsRepositoryImpl(context.settingsDataStore)

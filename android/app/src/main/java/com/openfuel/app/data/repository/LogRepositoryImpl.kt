@@ -1,5 +1,6 @@
 package com.openfuel.app.data.repository
 
+import com.openfuel.app.data.db.FoodDao
 import com.openfuel.app.data.db.MealEntryDao
 import com.openfuel.app.data.mappers.toDomain
 import com.openfuel.app.data.mappers.toEntity
@@ -14,12 +15,15 @@ import kotlinx.coroutines.flow.map
 
 class LogRepositoryImpl(
     private val mealEntryDao: MealEntryDao,
+    private val foodDao: FoodDao? = null,
 ) : LogRepository {
     override suspend fun logMealEntry(entry: MealEntry) {
+        if (!hasFoodReference(entry.foodItemId)) return
         mealEntryDao.upsertEntry(entry.toEntity())
     }
 
     override suspend fun updateMealEntry(entry: MealEntry) {
+        if (!hasFoodReference(entry.foodItemId)) return
         mealEntryDao.upsertEntry(entry.toEntity())
     }
 
@@ -55,5 +59,10 @@ class LogRepositoryImpl(
                     .map { instant -> instant.atZone(zoneId).toLocalDate() }
                     .distinct()
             }
+    }
+
+    private suspend fun hasFoodReference(foodId: String): Boolean {
+        val dao = foodDao ?: return true
+        return dao.getFoodById(foodId) != null
     }
 }

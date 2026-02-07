@@ -1,8 +1,13 @@
 package com.openfuel.app.data.repository
 
+import com.openfuel.app.data.db.FoodDao
+import com.openfuel.app.data.db.FoodItemEntity
 import com.openfuel.app.data.db.MealEntryDao
 import com.openfuel.app.data.db.MealEntryEntity
 import com.openfuel.app.data.db.MealEntryWithFoodEntity
+import com.openfuel.app.domain.model.FoodUnit
+import com.openfuel.app.domain.model.MealEntry
+import com.openfuel.app.domain.model.MealType
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
@@ -58,14 +63,48 @@ class LogRepositoryImplTest {
             dates,
         )
     }
+
+    @Test
+    fun logMealEntry_skipsInsert_whenFoodReferenceMissing() = runTest {
+        val mealEntryDao = FakeMealEntryDao()
+        val foodDao = LogRepositoryFakeFoodDao(foodIds = emptySet())
+        val repository = LogRepositoryImpl(mealEntryDao, foodDao)
+
+        repository.logMealEntry(sampleMealEntry(foodItemId = "missing-food"))
+
+        assertEquals(null, mealEntryDao.lastUpsertedEntry)
+    }
+
+    @Test
+    fun logMealEntry_inserts_whenFoodReferenceExists() = runTest {
+        val mealEntryDao = FakeMealEntryDao()
+        val foodDao = LogRepositoryFakeFoodDao(foodIds = setOf("food-1"))
+        val repository = LogRepositoryImpl(mealEntryDao, foodDao)
+
+        repository.logMealEntry(sampleMealEntry(foodItemId = "food-1"))
+
+        assertEquals("food-1", mealEntryDao.lastUpsertedEntry?.foodItemId)
+    }
+
+    private fun sampleMealEntry(foodItemId: String): MealEntry {
+        return MealEntry(
+            id = "entry-1",
+            timestamp = Instant.parse("2026-03-04T08:00:00Z"),
+            mealType = MealType.BREAKFAST,
+            foodItemId = foodItemId,
+            quantity = 1.0,
+            unit = FoodUnit.SERVING,
+        )
+    }
 }
 
 private class FakeMealEntryDao : MealEntryDao {
     val timestamps = MutableStateFlow<List<Instant>>(emptyList())
     val loggedDateStrings = MutableStateFlow<List<String>>(emptyList())
+    var lastUpsertedEntry: MealEntryEntity? = null
 
     override suspend fun upsertEntry(entry: MealEntryEntity) {
-        // no-op
+        lastUpsertedEntry = entry
     }
 
     override suspend fun deleteById(id: String) {
@@ -97,4 +136,59 @@ private class FakeMealEntryDao : MealEntryDao {
     override suspend fun getAllEntries(): List<MealEntryEntity> {
         return emptyList()
     }
+}
+
+private class LogRepositoryFakeFoodDao(
+    private val foodIds: Set<String>,
+) : FoodDao {
+    override suspend fun upsertFood(foodItem: FoodItemEntity) = Unit
+
+    override suspend fun getFoodById(id: String): FoodItemEntity? {
+        if (id !in foodIds) return null
+        return FoodItemEntity(
+            id = id,
+            name = "Test Food",
+            brand = null,
+            caloriesKcal = 100.0,
+            proteinG = 1.0,
+            carbsG = 1.0,
+            fatG = 1.0,
+            createdAt = Instant.parse("2026-03-01T00:00:00Z"),
+        )
+    }
+
+    override suspend fun getFoodByBarcode(barcode: String): FoodItemEntity? = null
+
+    override suspend fun updateFavorite(id: String, isFavorite: Boolean) = Unit
+
+    override suspend fun updateReportedIncorrect(id: String, isReportedIncorrect: Boolean) = Unit
+
+    override fun observeFavoriteFoods(limit: Int): Flow<List<FoodItemEntity>> {
+        return flowOf(emptyList())
+    }
+
+    override fun observeRecentLoggedFoods(limit: Int): Flow<List<FoodItemEntity>> {
+        return flowOf(emptyList())
+    }
+
+    override fun observeAllFoods(): Flow<List<FoodItemEntity>> {
+        return flowOf(emptyList())
+    }
+
+    override fun observeAllFoodsBySearch(escapedQuery: String): Flow<List<FoodItemEntity>> {
+        return flowOf(emptyList())
+    }
+
+    override fun observeRecentFoods(limit: Int): Flow<List<FoodItemEntity>> {
+        return flowOf(emptyList())
+    }
+
+    override fun observeFoodsBySearch(
+        escapedQuery: String,
+        limit: Int,
+    ): Flow<List<FoodItemEntity>> {
+        return flowOf(emptyList())
+    }
+
+    override suspend fun getAllFoods(): List<FoodItemEntity> = emptyList()
 }

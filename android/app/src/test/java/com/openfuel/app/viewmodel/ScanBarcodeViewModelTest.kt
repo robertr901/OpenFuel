@@ -11,6 +11,7 @@ import com.openfuel.app.domain.model.RemoteFoodCandidate
 import com.openfuel.app.domain.model.RemoteFoodSource
 import com.openfuel.app.domain.repository.FoodRepository
 import com.openfuel.app.domain.repository.LogRepository
+import com.openfuel.app.domain.repository.SettingsRepository
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
@@ -39,8 +40,10 @@ class ScanBarcodeViewModelTest {
             userInitiatedNetworkGuard = UserInitiatedNetworkGuard(),
             foodRepository = ScanFakeFoodRepository(),
             logRepository = ScanFakeLogRepository(),
+            settingsRepository = FakeScanSettingsRepository(enabled = true),
         )
         val collectJob = launch { viewModel.uiState.collect { } }
+        advanceUntilIdle()
 
         viewModel.onBarcodeDetected("123456")
         advanceUntilIdle()
@@ -60,6 +63,7 @@ class ScanBarcodeViewModelTest {
             userInitiatedNetworkGuard = UserInitiatedNetworkGuard(),
             foodRepository = ScanFakeFoodRepository(),
             logRepository = ScanFakeLogRepository(),
+            settingsRepository = FakeScanSettingsRepository(enabled = true),
         )
         val collectJob = launch { viewModel.uiState.collect { } }
 
@@ -68,6 +72,30 @@ class ScanBarcodeViewModelTest {
 
         assertEquals("No matching food found for barcode.", viewModel.uiState.value.errorMessage)
         assertNull(viewModel.uiState.value.previewFood)
+        collectJob.cancel()
+    }
+
+    @Test
+    fun onBarcodeDetected_whenOnlineDisabled_skipsLookupAndShowsMessage() = runTest {
+        val remoteDataSource = ScanFakeRemoteFoodDataSource()
+        val viewModel = ScanBarcodeViewModel(
+            remoteFoodDataSource = remoteDataSource,
+            userInitiatedNetworkGuard = UserInitiatedNetworkGuard(),
+            foodRepository = ScanFakeFoodRepository(),
+            logRepository = ScanFakeLogRepository(),
+            settingsRepository = FakeScanSettingsRepository(enabled = false),
+        )
+        val collectJob = launch { viewModel.uiState.collect { } }
+        advanceUntilIdle()
+
+        viewModel.onBarcodeDetected("123456")
+        advanceUntilIdle()
+
+        assertEquals(0, remoteDataSource.lookupCalls)
+        assertEquals(
+            "Online search is turned off. Enable it in Settings to use barcode lookup.",
+            viewModel.uiState.value.message,
+        )
         collectJob.cancel()
     }
 }
@@ -164,5 +192,15 @@ private class ScanFakeLogRepository : LogRepository {
 
     override fun loggedDates(zoneId: ZoneId): Flow<List<LocalDate>> {
         return flowOf(emptyList())
+    }
+}
+
+private class FakeScanSettingsRepository(
+    enabled: Boolean,
+) : SettingsRepository {
+    override val onlineLookupEnabled: Flow<Boolean> = flowOf(enabled)
+
+    override suspend fun setOnlineLookupEnabled(enabled: Boolean) {
+        // no-op
     }
 }

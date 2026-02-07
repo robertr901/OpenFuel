@@ -12,7 +12,7 @@ class SettingsRepositoryImpl(
     private val dataStore: DataStore<Preferences>,
 ) : SettingsRepository {
     override val onlineLookupEnabled: Flow<Boolean> = dataStore.data
-        .map { preferences -> preferences[SettingsKeys.ONLINE_LOOKUP_ENABLED] ?: false }
+        .map { preferences -> preferences[SettingsKeys.ONLINE_LOOKUP_ENABLED] ?: true }
 
     override suspend fun setOnlineLookupEnabled(enabled: Boolean) {
         dataStore.edit { preferences ->

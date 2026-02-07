@@ -13,6 +13,7 @@ import com.openfuel.app.domain.model.RemoteFoodCandidate
 import com.openfuel.app.domain.model.RemoteFoodSource
 import com.openfuel.app.domain.repository.FoodRepository
 import com.openfuel.app.domain.repository.LogRepository
+import com.openfuel.app.domain.repository.SettingsRepository
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
@@ -38,6 +39,7 @@ class AddFoodViewModelTest {
         val viewModel = AddFoodViewModel(
             foodRepository = AddFoodFakeFoodRepository(),
             logRepository = AddFoodFakeLogRepository(),
+            settingsRepository = FakeSettingsRepository(enabled = true),
             remoteFoodDataSource = remoteDataSource,
             userInitiatedNetworkGuard = UserInitiatedNetworkGuard(),
         )
@@ -54,6 +56,32 @@ class AddFoodViewModelTest {
 
         assertEquals(1, remoteDataSource.searchCalls)
         assertEquals(1, viewModel.uiState.value.onlineResults.size)
+        collectJob.cancel()
+    }
+
+    @Test
+    fun searchOnline_whenDisabled_skipsNetworkCallAndShowsMessage() = runTest {
+        val remoteDataSource = FakeRemoteFoodDataSource()
+        val viewModel = AddFoodViewModel(
+            foodRepository = AddFoodFakeFoodRepository(),
+            logRepository = AddFoodFakeLogRepository(),
+            settingsRepository = FakeSettingsRepository(enabled = false),
+            remoteFoodDataSource = remoteDataSource,
+            userInitiatedNetworkGuard = UserInitiatedNetworkGuard(),
+        )
+        val collectJob = launch { viewModel.uiState.collect { } }
+
+        viewModel.updateSearchQuery("oat")
+        advanceTimeBy(300)
+        advanceUntilIdle()
+        viewModel.searchOnline()
+        advanceUntilIdle()
+
+        assertEquals(0, remoteDataSource.searchCalls)
+        assertEquals(
+            "Online search is turned off. Enable it in Settings to continue.",
+            viewModel.uiState.value.onlineErrorMessage,
+        )
         collectJob.cancel()
     }
 }
@@ -115,6 +143,16 @@ private class AddFoodFakeLogRepository : LogRepository {
 
     override fun loggedDates(zoneId: ZoneId): Flow<List<LocalDate>> {
         return flowOf(emptyList())
+    }
+}
+
+private class FakeSettingsRepository(
+    enabled: Boolean,
+) : SettingsRepository {
+    override val onlineLookupEnabled: Flow<Boolean> = flowOf(enabled)
+
+    override suspend fun setOnlineLookupEnabled(enabled: Boolean) {
+        // no-op
     }
 }
 

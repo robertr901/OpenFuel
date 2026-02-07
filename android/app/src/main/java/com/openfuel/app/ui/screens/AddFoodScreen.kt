@@ -210,6 +210,15 @@ fun AddFoodScreen(
                     style = MaterialTheme.typography.titleMedium,
                 )
             }
+            if (!uiState.onlineLookupEnabled) {
+                item {
+                    Text(
+                        text = "Online search is off. You can enable it in Settings any time.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
             item {
                 Row(
                     modifier = Modifier.fillMaxWidth(),

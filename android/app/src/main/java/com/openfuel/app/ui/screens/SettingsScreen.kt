@@ -139,7 +139,7 @@ fun SettingsScreen(
                 Column {
                     Text(text = "Online food lookup", style = MaterialTheme.typography.bodyLarge)
                     Text(
-                        text = "Disabled by default. Enable if you want online search.",
+                        text = "Enabled by default. Turn off anytime for fully offline use.",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )

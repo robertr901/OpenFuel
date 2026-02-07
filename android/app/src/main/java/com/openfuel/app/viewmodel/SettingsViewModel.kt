@@ -39,7 +39,7 @@ class SettingsViewModel(
         scope = viewModelScope,
         started = SharingStarted.WhileSubscribed(5_000),
         initialValue = SettingsUiState(
-            onlineLookupEnabled = false,
+            onlineLookupEnabled = true,
             exportState = ExportState.Idle,
             dailyGoal = null,
         ),

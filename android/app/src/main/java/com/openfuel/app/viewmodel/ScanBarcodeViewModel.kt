@@ -11,12 +11,14 @@ import com.openfuel.app.domain.model.MealType
 import com.openfuel.app.domain.model.RemoteFoodCandidate
 import com.openfuel.app.domain.repository.FoodRepository
 import com.openfuel.app.domain.repository.LogRepository
+import com.openfuel.app.domain.repository.SettingsRepository
 import com.openfuel.app.domain.util.EntryValidation
 import java.time.Instant
 import java.util.UUID
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
@@ -25,11 +27,26 @@ class ScanBarcodeViewModel(
     private val userInitiatedNetworkGuard: UserInitiatedNetworkGuard,
     private val foodRepository: FoodRepository,
     private val logRepository: LogRepository,
+    settingsRepository: SettingsRepository,
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(ScanBarcodeUiState())
     val uiState: StateFlow<ScanBarcodeUiState> = _uiState.asStateFlow()
 
+    init {
+        viewModelScope.launch {
+            settingsRepository.onlineLookupEnabled.collect { enabled ->
+                _uiState.update { current -> current.copy(onlineLookupEnabled = enabled) }
+            }
+        }
+    }
+
     fun onBarcodeDetected(barcode: String) {
+        if (!uiState.value.onlineLookupEnabled) {
+            _uiState.update { current ->
+                current.copy(message = "Online search is turned off. Enable it in Settings to use barcode lookup.")
+            }
+            return
+        }
         val normalizedBarcode = barcode.trim()
         if (normalizedBarcode.isBlank() || _uiState.value.isLookingUp) {
             return
@@ -41,6 +58,12 @@ class ScanBarcodeViewModel(
     }
 
     fun retryLookup() {
+        if (!uiState.value.onlineLookupEnabled) {
+            _uiState.update { current ->
+                current.copy(message = "Online search is turned off. Enable it in Settings to use barcode lookup.")
+            }
+            return
+        }
         val barcode = _uiState.value.lastBarcode ?: return
         lookupBarcode(
             barcode = barcode,
@@ -171,6 +194,7 @@ class ScanBarcodeViewModel(
 data class ScanBarcodeUiState(
     val lastBarcode: String? = null,
     val isLookingUp: Boolean = false,
+    val onlineLookupEnabled: Boolean = true,
     val previewFood: RemoteFoodCandidate? = null,
     val errorMessage: String? = null,
     val message: String? = null,

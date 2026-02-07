@@ -138,12 +138,23 @@ fun ScanBarcodeScreen(
                 }
             } else {
                 BarcodeCameraPreview(
-                    isScanningEnabled = !uiState.isLookingUp && uiState.previewFood == null,
+                    isScanningEnabled = uiState.onlineLookupEnabled && !uiState.isLookingUp && uiState.previewFood == null,
                     onBarcodeScanned = viewModel::onBarcodeDetected,
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(320.dp),
                 )
+            }
+
+            if (!uiState.onlineLookupEnabled) {
+                Card(modifier = Modifier.fillMaxWidth()) {
+                    Text(
+                        text = "Online search is off. Enable it in Settings to use barcode lookup.",
+                        modifier = Modifier.padding(Dimens.m),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
             }
 
             if (uiState.isLookingUp) {

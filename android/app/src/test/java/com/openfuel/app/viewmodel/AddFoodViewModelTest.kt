@@ -1,7 +1,6 @@
 package com.openfuel.app.viewmodel
 
 import com.openfuel.app.MainDispatcherRule
-import com.openfuel.app.data.remote.RemoteFoodDataSource
 import com.openfuel.app.data.remote.UserInitiatedNetworkGuard
 import com.openfuel.app.data.remote.UserInitiatedNetworkToken
 import com.openfuel.app.domain.model.FoodItem
@@ -14,6 +13,7 @@ import com.openfuel.app.domain.model.RemoteFoodSource
 import com.openfuel.app.domain.repository.FoodRepository
 import com.openfuel.app.domain.repository.LogRepository
 import com.openfuel.app.domain.repository.SettingsRepository
+import com.openfuel.app.domain.service.FoodCatalogProvider
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
@@ -42,7 +42,7 @@ class AddFoodViewModelTest {
             foodRepository = AddFoodFakeFoodRepository(),
             logRepository = AddFoodFakeLogRepository(),
             settingsRepository = FakeSettingsRepository(enabled = true),
-            remoteFoodDataSource = remoteDataSource,
+            foodCatalogProvider = remoteDataSource,
             userInitiatedNetworkGuard = UserInitiatedNetworkGuard(),
         )
         val collectJob = launch { viewModel.uiState.collect { } }
@@ -68,7 +68,7 @@ class AddFoodViewModelTest {
             foodRepository = AddFoodFakeFoodRepository(),
             logRepository = AddFoodFakeLogRepository(),
             settingsRepository = FakeSettingsRepository(enabled = false),
-            remoteFoodDataSource = remoteDataSource,
+            foodCatalogProvider = remoteDataSource,
             userInitiatedNetworkGuard = UserInitiatedNetworkGuard(),
         )
         val collectJob = launch { viewModel.uiState.collect { } }
@@ -95,7 +95,7 @@ class AddFoodViewModelTest {
             foodRepository = AddFoodFakeFoodRepository(),
             logRepository = AddFoodFakeLogRepository(),
             settingsRepository = FakeSettingsRepository(enabled = true),
-            remoteFoodDataSource = remoteDataSource,
+            foodCatalogProvider = remoteDataSource,
             userInitiatedNetworkGuard = UserInitiatedNetworkGuard(),
         )
         val collectJob = launch { viewModel.uiState.collect { } }
@@ -119,7 +119,7 @@ class AddFoodViewModelTest {
             foodRepository = AddFoodFakeFoodRepository(),
             logRepository = AddFoodFakeLogRepository(),
             settingsRepository = FakeSettingsRepository(enabled = true),
-            remoteFoodDataSource = remoteDataSource,
+            foodCatalogProvider = remoteDataSource,
             userInitiatedNetworkGuard = UserInitiatedNetworkGuard(),
         )
         val collectJob = launch { viewModel.uiState.collect { } }
@@ -240,10 +240,10 @@ private class FakeRemoteFoodDataSource(
             servingSize = "40 g",
         ),
     ),
-) : RemoteFoodDataSource {
+) : FoodCatalogProvider {
     var searchCalls: Int = 0
 
-    override suspend fun searchByText(
+    override suspend fun search(
         query: String,
         token: UserInitiatedNetworkToken,
     ): List<RemoteFoodCandidate> {
@@ -251,7 +251,7 @@ private class FakeRemoteFoodDataSource(
         return results
     }
 
-    override suspend fun lookupByBarcode(
+    override suspend fun lookupBarcode(
         barcode: String,
         token: UserInitiatedNetworkToken,
     ): RemoteFoodCandidate? {

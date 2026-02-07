@@ -5,6 +5,7 @@ import com.openfuel.app.data.entitlement.DebugEntitlementService
 import com.openfuel.app.data.entitlement.PlaceholderPlayBillingEntitlementService
 import com.openfuel.app.data.datastore.settingsDataStore
 import com.openfuel.app.data.db.OpenFuelDatabase
+import com.openfuel.app.data.remote.OpenFoodFactsCatalogProvider
 import com.openfuel.app.data.remote.OpenFoodFactsRemoteFoodDataSource
 import com.openfuel.app.data.remote.RemoteFoodDataSource
 import com.openfuel.app.data.remote.UserInitiatedNetworkGuard
@@ -21,6 +22,7 @@ import com.openfuel.app.domain.repository.LogRepository
 import com.openfuel.app.domain.repository.SettingsRepository
 import com.openfuel.app.domain.security.SecurityPostureProvider
 import com.openfuel.app.domain.service.EntitlementService
+import com.openfuel.app.domain.service.FoodCatalogProvider
 import com.openfuel.app.export.ExportManager
 import okhttp3.OkHttpClient
 import java.util.concurrent.TimeUnit
@@ -51,6 +53,9 @@ class AppContainer(context: Context) {
     val remoteFoodDataSource: RemoteFoodDataSource = OpenFoodFactsRemoteFoodDataSource.create(
         okHttpClient = onlineHttpClient,
         userInitiatedNetworkGuard = userInitiatedNetworkGuard,
+    )
+    val foodCatalogProvider: FoodCatalogProvider = OpenFoodFactsCatalogProvider(
+        remoteFoodDataSource = remoteFoodDataSource,
     )
     val networkGuard: UserInitiatedNetworkGuard = userInitiatedNetworkGuard
 

@@ -2,7 +2,6 @@ package com.openfuel.app.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.openfuel.app.data.remote.RemoteFoodDataSource
 import com.openfuel.app.data.remote.UserInitiatedNetworkGuard
 import com.openfuel.app.domain.model.FoodItem
 import com.openfuel.app.domain.model.FoodUnit
@@ -12,6 +11,7 @@ import com.openfuel.app.domain.model.RemoteFoodCandidate
 import com.openfuel.app.domain.repository.FoodRepository
 import com.openfuel.app.domain.repository.LogRepository
 import com.openfuel.app.domain.repository.SettingsRepository
+import com.openfuel.app.domain.service.FoodCatalogProvider
 import com.openfuel.app.domain.util.EntryValidation
 import java.time.Instant
 import java.util.UUID
@@ -34,7 +34,7 @@ class AddFoodViewModel(
     private val foodRepository: FoodRepository,
     private val logRepository: LogRepository,
     settingsRepository: SettingsRepository,
-    private val remoteFoodDataSource: RemoteFoodDataSource,
+    private val foodCatalogProvider: FoodCatalogProvider,
     private val userInitiatedNetworkGuard: UserInitiatedNetworkGuard,
 ) : ViewModel() {
     private companion object {
@@ -173,7 +173,7 @@ class AddFoodViewModel(
             }
             try {
                 val token = userInitiatedNetworkGuard.issueToken("add_food_search_online")
-                val results = remoteFoodDataSource.searchByText(query, token)
+                val results = foodCatalogProvider.search(query, token)
                 onlineState.update { current ->
                     current.copy(
                         hasSearchedOnline = true,

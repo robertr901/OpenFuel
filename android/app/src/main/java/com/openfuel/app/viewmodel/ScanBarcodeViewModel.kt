@@ -201,15 +201,17 @@ data class ScanBarcodeUiState(
 )
 
 private fun RemoteFoodCandidate.toLocalFoodItem(): FoodItem {
+    val maxCalories = 10_000.0
+    val maxMacro = 1_000.0
     return FoodItem(
         id = UUID.randomUUID().toString(),
         name = name,
         brand = brand,
         barcode = barcode,
-        caloriesKcal = caloriesKcalPer100g?.coerceAtLeast(0.0) ?: 0.0,
-        proteinG = proteinGPer100g?.coerceAtLeast(0.0) ?: 0.0,
-        carbsG = carbsGPer100g?.coerceAtLeast(0.0) ?: 0.0,
-        fatG = fatGPer100g?.coerceAtLeast(0.0) ?: 0.0,
+        caloriesKcal = caloriesKcalPer100g?.coerceIn(0.0, maxCalories) ?: 0.0,
+        proteinG = proteinGPer100g?.coerceIn(0.0, maxMacro) ?: 0.0,
+        carbsG = carbsGPer100g?.coerceIn(0.0, maxMacro) ?: 0.0,
+        fatG = fatGPer100g?.coerceIn(0.0, maxMacro) ?: 0.0,
         isFavorite = false,
         createdAt = Instant.now(),
     )

@@ -37,6 +37,11 @@ class AddFoodViewModel(
     private val remoteFoodDataSource: RemoteFoodDataSource,
     private val userInitiatedNetworkGuard: UserInitiatedNetworkGuard,
 ) : ViewModel() {
+    private companion object {
+        private const val MAX_CALORIES_KCAL = 10_000.0
+        private const val MAX_MACRO_GRAMS = 1_000.0
+    }
+
     private val sectionLimit = 20
     private val searchQuery = MutableStateFlow("")
     private val onlineState = MutableStateFlow(OnlineSearchState())
@@ -268,14 +273,18 @@ class AddFoodViewModel(
         mealType: MealType,
     ) {
         viewModelScope.launch {
+            val safeCalories = caloriesKcal.coerceIn(0.0, MAX_CALORIES_KCAL)
+            val safeProtein = proteinG.coerceIn(0.0, MAX_MACRO_GRAMS)
+            val safeCarbs = carbsG.coerceIn(0.0, MAX_MACRO_GRAMS)
+            val safeFat = fatG.coerceIn(0.0, MAX_MACRO_GRAMS)
             val food = FoodItem(
                 id = UUID.randomUUID().toString(),
                 name = name.ifBlank { "Quick Add" },
                 brand = null,
-                caloriesKcal = caloriesKcal,
-                proteinG = proteinG,
-                carbsG = carbsG,
-                fatG = fatG,
+                caloriesKcal = safeCalories,
+                proteinG = safeProtein,
+                carbsG = safeCarbs,
+                fatG = safeFat,
                 createdAt = Instant.now(),
             )
             foodRepository.upsertFood(food)
@@ -319,15 +328,17 @@ private data class OnlineSearchState(
 )
 
 private fun RemoteFoodCandidate.toLocalFoodItem(): FoodItem {
+    val maxCalories = 10_000.0
+    val maxMacro = 1_000.0
     return FoodItem(
         id = UUID.randomUUID().toString(),
         name = name,
         brand = brand,
         barcode = barcode,
-        caloriesKcal = caloriesKcalPer100g?.coerceAtLeast(0.0) ?: 0.0,
-        proteinG = proteinGPer100g?.coerceAtLeast(0.0) ?: 0.0,
-        carbsG = carbsGPer100g?.coerceAtLeast(0.0) ?: 0.0,
-        fatG = fatGPer100g?.coerceAtLeast(0.0) ?: 0.0,
+        caloriesKcal = caloriesKcalPer100g?.coerceIn(0.0, maxCalories) ?: 0.0,
+        proteinG = proteinGPer100g?.coerceIn(0.0, maxMacro) ?: 0.0,
+        carbsG = carbsGPer100g?.coerceIn(0.0, maxMacro) ?: 0.0,
+        fatG = fatGPer100g?.coerceIn(0.0, maxMacro) ?: 0.0,
         isFavorite = false,
         createdAt = Instant.now(),
     )

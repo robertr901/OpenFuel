@@ -12,5 +12,6 @@ data class FoodItem(
     val carbsG: Double,
     val fatG: Double,
     val isFavorite: Boolean = false,
+    val isReportedIncorrect: Boolean = false,
     val createdAt: Instant,
 )

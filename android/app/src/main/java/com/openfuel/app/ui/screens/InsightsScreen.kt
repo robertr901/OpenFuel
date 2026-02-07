@@ -62,6 +62,16 @@ fun InsightsScreen(
                 text = "Consistency score: ${uiState.snapshot.consistencyScore}/100",
                 style = MaterialTheme.typography.titleLarge,
             )
+            if (uiState.snapshot.last30Days.loggedDays == 0) {
+                Card(modifier = Modifier.fillMaxWidth()) {
+                    Text(
+                        text = "No logged days yet. Start logging meals to unlock trends.",
+                        modifier = Modifier.padding(Dimens.m),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
             InsightWindowCard(window = uiState.snapshot.last7Days)
             InsightWindowCard(window = uiState.snapshot.last30Days)
         }

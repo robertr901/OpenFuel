@@ -60,6 +60,29 @@ class FoodRepositoryImplTest {
         assertEquals("12345", merged?.barcode)
         assertEquals(Instant.parse("2024-01-01T00:00:00Z"), merged?.createdAt)
     }
+
+    @Test
+    fun setReportedIncorrect_updatesLocalFlag() = runTest {
+        val fakeDao = FakeFoodDao()
+        val repository = FoodRepositoryImpl(fakeDao)
+        fakeDao.upsertFood(
+            FoodItemEntity(
+                id = "food-1",
+                name = "Imported",
+                brand = "Brand",
+                barcode = "999",
+                caloriesKcal = 100.0,
+                proteinG = 10.0,
+                carbsG = 10.0,
+                fatG = 10.0,
+                createdAt = Instant.parse("2024-01-01T00:00:00Z"),
+            ),
+        )
+
+        repository.setReportedIncorrect("food-1", true)
+
+        assertEquals(true, fakeDao.getFoodById("food-1")?.isReportedIncorrect)
+    }
 }
 
 private class FakeFoodDao : FoodDao {
@@ -80,6 +103,11 @@ private class FakeFoodDao : FoodDao {
     override suspend fun updateFavorite(id: String, isFavorite: Boolean) {
         val current = storage[id] ?: return
         storage[id] = current.copy(isFavorite = isFavorite)
+    }
+
+    override suspend fun updateReportedIncorrect(id: String, isReportedIncorrect: Boolean) {
+        val current = storage[id] ?: return
+        storage[id] = current.copy(isReportedIncorrect = isReportedIncorrect)
     }
 
     override fun observeFavoriteFoods(limit: Int): Flow<List<FoodItemEntity>> {

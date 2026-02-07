@@ -50,6 +50,11 @@
 - Trends work offline with deterministic calculations.
 - Personalization settings are local-only and exportable.
 
+**Progress update (this worktree)**
+- Completed: Pro-gated Insights tab with local-only 7-day and 30-day trend summaries.
+- Completed: Local consistency score heuristic with pure domain calculator and unit tests.
+- Completed: Local entitlements repository (`isPro`) backed by DataStore with debug-only override switch in Settings.
+
 ## Milestone 3 — Optional online enhancements (opt-in)
 **Scope**
 - User-initiated online food lookup and barcode lookup.
@@ -67,6 +72,9 @@
 - Completed: Barcode scan screen with ML Kit + CameraX, plus lookup retry/error handling.
 - Completed: Food model and Room migration for barcode uniqueness and favorites persistence.
 - Completed: Add Food now surfaces favorites and recent logged foods for faster capture loops.
+- Completed: Online search now defaults ON with user override in Settings, and online actions are blocked cleanly when disabled.
+- Completed: Add Food fast-capture segmented modes (`Recents`, `Favourites`, `Local`, `Online`) and richer online preview sheet.
+- Completed: Local "Report incorrect food" flag for imported foods (device-local only).
 
 ## Deferred from this worktree
 - Photo-based logging.
@@ -74,4 +82,6 @@
 - Additional online providers beyond OpenFoodFacts.
 - Advanced quick-add presets and ranking heuristics.
 - Per-day goal overrides (goals are intentionally global in this phase).
-- Instrumentation coverage for camera scanning and Compose scanner interactions (unit coverage added, UI tests deferred).
+- Billing integration for live Pro purchase entitlements (debug/local flag currently used).
+- Advanced export payload formats (UI gate added; implementation deferred).
+- Instrumentation coverage for camera scanning and Compose scanner interactions (Room DAO instrumentation test added; scanner UI tests deferred).

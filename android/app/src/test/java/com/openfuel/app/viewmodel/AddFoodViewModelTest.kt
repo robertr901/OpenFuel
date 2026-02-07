@@ -103,6 +103,10 @@ private class AddFoodFakeFoodRepository : FoodRepository {
         // no-op
     }
 
+    override suspend fun setReportedIncorrect(foodId: String, isReportedIncorrect: Boolean) {
+        // no-op
+    }
+
     override fun favoriteFoods(limit: Int): Flow<List<FoodItem>> {
         return flowOf(emptyList())
     }

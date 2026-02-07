@@ -20,6 +20,9 @@ interface FoodDao {
     @Query("UPDATE food_items SET isFavorite = :isFavorite WHERE id = :id")
     suspend fun updateFavorite(id: String, isFavorite: Boolean)
 
+    @Query("UPDATE food_items SET isReportedIncorrect = :isReportedIncorrect WHERE id = :id")
+    suspend fun updateReportedIncorrect(id: String, isReportedIncorrect: Boolean)
+
     @Query(
         """
         SELECT * FROM food_items

@@ -19,6 +19,7 @@ fun FoodItemEntity.toDomain(): FoodItem = FoodItem(
     carbsG = carbsG,
     fatG = fatG,
     isFavorite = isFavorite,
+    isReportedIncorrect = isReportedIncorrect,
     createdAt = createdAt,
 )
 
@@ -32,6 +33,7 @@ fun FoodItem.toEntity(): FoodItemEntity = FoodItemEntity(
     carbsG = carbsG,
     fatG = fatG,
     isFavorite = isFavorite,
+    isReportedIncorrect = isReportedIncorrect,
     createdAt = createdAt,
 )
 

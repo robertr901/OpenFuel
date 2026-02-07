@@ -23,6 +23,7 @@ class FoodRepositoryImpl(
                 id = existing.id,
                 barcode = existing.barcode,
                 isFavorite = existing.isFavorite,
+                isReportedIncorrect = existing.isReportedIncorrect,
                 createdAt = existing.createdAt,
             )
         }
@@ -43,6 +44,13 @@ class FoodRepositoryImpl(
 
     override suspend fun setFavorite(foodId: String, isFavorite: Boolean) {
         foodDao.updateFavorite(id = foodId, isFavorite = isFavorite)
+    }
+
+    override suspend fun setReportedIncorrect(foodId: String, isReportedIncorrect: Boolean) {
+        foodDao.updateReportedIncorrect(
+            id = foodId,
+            isReportedIncorrect = isReportedIncorrect,
+        )
     }
 
     override fun favoriteFoods(limit: Int): Flow<List<FoodItem>> {

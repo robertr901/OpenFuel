@@ -478,6 +478,8 @@ private fun handleQuickAdd(
     scope: CoroutineScope,
     snackbarHostState: SnackbarHostState,
 ) {
+    val maxCalories = 10_000.0
+    val maxMacro = 1_000.0
     val caloriesValue = parseDecimalInput(input.calories)
     if (caloriesValue == null) {
         scope.launch { snackbarHostState.showSnackbar("Enter calories") }
@@ -486,6 +488,14 @@ private fun handleQuickAdd(
     val proteinValue = parseDecimalInput(input.protein) ?: 0.0
     val carbsValue = parseDecimalInput(input.carbs) ?: 0.0
     val fatValue = parseDecimalInput(input.fat) ?: 0.0
+    if (caloriesValue !in 0.0..maxCalories) {
+        scope.launch { snackbarHostState.showSnackbar("Calories must be between 0 and 10000.") }
+        return
+    }
+    if (proteinValue !in 0.0..maxMacro || carbsValue !in 0.0..maxMacro || fatValue !in 0.0..maxMacro) {
+        scope.launch { snackbarHostState.showSnackbar("Macros must be between 0 and 1000 g.") }
+        return
+    }
     viewModel.quickAdd(
         name = input.name,
         caloriesKcal = caloriesValue,

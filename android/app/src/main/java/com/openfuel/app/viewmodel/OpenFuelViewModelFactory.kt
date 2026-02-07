@@ -29,8 +29,13 @@ class OpenFuelViewModelFactory(
             FoodLibraryViewModel::class.java -> FoodLibraryViewModel(
                 foodRepository = container.foodRepository,
             )
+            FoodDetailViewModel::class.java -> FoodDetailViewModel(
+                foodRepository = container.foodRepository,
+                logRepository = container.logRepository,
+                savedStateHandle = extras.createSavedStateHandle(),
+            )
             InsightsViewModel::class.java -> InsightsViewModel(
-                entitlementsRepository = container.entitlementsRepository,
+                entitlementService = container.entitlementService,
                 logRepository = container.logRepository,
             )
             ScanBarcodeViewModel::class.java -> ScanBarcodeViewModel(
@@ -42,7 +47,7 @@ class OpenFuelViewModelFactory(
             )
             SettingsViewModel::class.java -> SettingsViewModel(
                 settingsRepository = container.settingsRepository,
-                entitlementsRepository = container.entitlementsRepository,
+                entitlementService = container.entitlementService,
                 goalsRepository = container.goalsRepository,
                 exportManager = container.exportManager,
             )

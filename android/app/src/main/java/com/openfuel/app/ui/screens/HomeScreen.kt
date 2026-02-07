@@ -54,6 +54,11 @@ import com.openfuel.app.domain.model.MealType
 import com.openfuel.app.domain.model.displayName
 import com.openfuel.app.domain.model.shortLabel
 import com.openfuel.app.domain.util.EntryValidation
+import com.openfuel.app.ui.components.OFCard
+import com.openfuel.app.ui.components.OFEmptyState
+import com.openfuel.app.ui.components.OFMetricRow
+import com.openfuel.app.ui.components.OFSectionHeader
+import com.openfuel.app.ui.components.OFStatPill
 import com.openfuel.app.ui.components.MealTypeDropdown
 import com.openfuel.app.ui.components.UnitDropdown
 import com.openfuel.app.ui.theme.Dimens
@@ -129,7 +134,12 @@ fun HomeScreen(
                         )
                     }
                 },
-                title = { Text(formattedDate) },
+                title = {
+                    Text(
+                        text = formattedDate,
+                        style = MaterialTheme.typography.titleLarge,
+                    )
+                },
                 actions = {
                     IconButton(onClick = viewModel::goToNextDay) {
                         Icon(
@@ -156,6 +166,7 @@ fun HomeScreen(
                     )
                 },
                 onClick = onAddFood,
+                modifier = Modifier.testTag("home_add_food_fab"),
             )
         },
         snackbarHost = { SnackbarHost(snackbarHostState) },
@@ -198,26 +209,12 @@ fun HomeScreen(
 
 @Composable
 private fun EmptyDayState() {
-    Card(
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+    OFEmptyState(
+        title = "No meals logged yet",
+        body = "Tap Add food to start logging this day and build your streak.",
         modifier = Modifier.fillMaxWidth(),
-    ) {
-        Column(
-            modifier = Modifier.padding(Dimens.m),
-            verticalArrangement = Arrangement.spacedBy(Dimens.xs),
-        ) {
-            Text(
-                text = "No meals logged yet",
-                style = MaterialTheme.typography.titleSmall,
-                fontWeight = FontWeight.SemiBold,
-            )
-            Text(
-                text = "Tap Add food to start logging for this day.",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
-    }
+        icon = Icons.Default.Add,
+    )
 }
 
 @Composable
@@ -228,63 +225,60 @@ private fun TotalsCard(
     fat: Double,
     goal: DailyGoal?,
 ) {
-    Card(
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
-        modifier = Modifier.fillMaxWidth(),
-    ) {
-        Column(modifier = Modifier.padding(Dimens.m)) {
-            Text(
-                text = "Daily totals",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.SemiBold,
-            )
-            Spacer(modifier = Modifier.height(Dimens.s))
-            Text(
-                text = "${formatCalories(calories)} kcal",
-                style = MaterialTheme.typography.headlineSmall,
-                fontWeight = FontWeight.Bold,
-            )
-            Spacer(modifier = Modifier.height(Dimens.s))
-            MacroRow(label = "Protein", value = protein)
-            MacroRow(label = "Carbs", value = carbs)
-            MacroRow(label = "Fat", value = fat)
-            if (goal != null) {
-                if (goal.caloriesKcalTarget > 0.0) {
-                    Spacer(modifier = Modifier.height(Dimens.s))
-                    GoalProgressRow(
-                        label = "Calories",
-                        consumed = calories,
-                        target = goal.caloriesKcalTarget,
-                        unit = "kcal",
-                    )
-                }
-                if (goal.proteinGTarget > 0.0) {
-                    Spacer(modifier = Modifier.height(Dimens.s))
-                    GoalProgressRow(
-                        label = "Protein",
-                        consumed = protein,
-                        target = goal.proteinGTarget,
-                        unit = "g",
-                    )
-                }
-                if (goal.carbsGTarget > 0.0) {
-                    Spacer(modifier = Modifier.height(Dimens.s))
-                    GoalProgressRow(
-                        label = "Carbs",
-                        consumed = carbs,
-                        target = goal.carbsGTarget,
-                        unit = "g",
-                    )
-                }
-                if (goal.fatGTarget > 0.0) {
-                    Spacer(modifier = Modifier.height(Dimens.s))
-                    GoalProgressRow(
-                        label = "Fat",
-                        consumed = fat,
-                        target = goal.fatGTarget,
-                        unit = "g",
-                    )
-                }
+    OFCard(modifier = Modifier.fillMaxWidth()) {
+        OFSectionHeader(
+            title = "Daily totals",
+            subtitle = "Clear progress at a glance.",
+        )
+        Text(
+            text = "${formatCalories(calories)} kcal",
+            style = MaterialTheme.typography.headlineMedium,
+            fontWeight = FontWeight.SemiBold,
+        )
+        Row(horizontalArrangement = Arrangement.spacedBy(Dimens.s)) {
+            OFStatPill(text = "P ${formatMacro(protein)}g")
+            OFStatPill(text = "C ${formatMacro(carbs)}g")
+            OFStatPill(text = "F ${formatMacro(fat)}g")
+        }
+        OFMetricRow(label = "Protein", value = "${formatMacro(protein)} g")
+        OFMetricRow(label = "Carbs", value = "${formatMacro(carbs)} g")
+        OFMetricRow(label = "Fat", value = "${formatMacro(fat)} g")
+        if (goal != null) {
+            if (goal.caloriesKcalTarget > 0.0) {
+                Spacer(modifier = Modifier.height(Dimens.s))
+                GoalProgressRow(
+                    label = "Calories",
+                    consumed = calories,
+                    target = goal.caloriesKcalTarget,
+                    unit = "kcal",
+                )
+            }
+            if (goal.proteinGTarget > 0.0) {
+                Spacer(modifier = Modifier.height(Dimens.s))
+                GoalProgressRow(
+                    label = "Protein",
+                    consumed = protein,
+                    target = goal.proteinGTarget,
+                    unit = "g",
+                )
+            }
+            if (goal.carbsGTarget > 0.0) {
+                Spacer(modifier = Modifier.height(Dimens.s))
+                GoalProgressRow(
+                    label = "Carbs",
+                    consumed = carbs,
+                    target = goal.carbsGTarget,
+                    unit = "g",
+                )
+            }
+            if (goal.fatGTarget > 0.0) {
+                Spacer(modifier = Modifier.height(Dimens.s))
+                GoalProgressRow(
+                    label = "Fat",
+                    consumed = fat,
+                    target = goal.fatGTarget,
+                    unit = "g",
+                )
             }
         }
     }
@@ -331,21 +325,10 @@ private fun MealSection(
     onDeleteEntry: (MealEntryUi) -> Unit,
 ) {
     Column {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Text(
-                text = mealSection.mealType.displayName(),
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.SemiBold,
-            )
-            Text(
-                text = "${formatCalories(mealSection.totals.caloriesKcal)} kcal",
-                style = MaterialTheme.typography.bodyMedium,
-            )
-        }
+        OFSectionHeader(
+            title = mealSection.mealType.displayName(),
+            subtitle = "${formatCalories(mealSection.totals.caloriesKcal)} kcal",
+        )
         Spacer(modifier = Modifier.height(Dimens.s))
         if (mealSection.entries.isEmpty()) {
             Text(
@@ -386,11 +369,7 @@ private fun MealEntryRow(
     ) {
         Column(modifier = Modifier.weight(1f)) {
             Text(text = entry.name, style = MaterialTheme.typography.bodyLarge)
-            Text(
-                text = "${formatQuantity(entry.quantity)} ${entry.unit.shortLabel()}",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
+            OFStatPill(text = "${formatQuantity(entry.quantity)} ${entry.unit.shortLabel()}")
             Row(horizontalArrangement = Arrangement.spacedBy(Dimens.s)) {
                 TextButton(onClick = onEdit) {
                     Text("Edit")

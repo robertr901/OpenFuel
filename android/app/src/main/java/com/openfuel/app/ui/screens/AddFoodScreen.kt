@@ -40,12 +40,18 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.openfuel.app.domain.model.FoodItem
 import com.openfuel.app.domain.model.FoodUnit
 import com.openfuel.app.domain.model.MealType
 import com.openfuel.app.domain.model.RemoteFoodCandidate
+import com.openfuel.app.ui.components.OFCard
+import com.openfuel.app.ui.components.OFEmptyState
+import com.openfuel.app.ui.components.OFPrimaryButton
+import com.openfuel.app.ui.components.OFSecondaryButton
+import com.openfuel.app.ui.components.OFSectionHeader
 import com.openfuel.app.ui.components.MealTypeDropdown
 import com.openfuel.app.ui.components.UnitDropdown
 import com.openfuel.app.ui.theme.Dimens
@@ -77,6 +83,7 @@ fun AddFoodScreen(
     }
 
     Scaffold(
+        modifier = Modifier.testTag("screen_add_food"),
         topBar = {
             TopAppBar(
                 title = { Text("Add food") },
@@ -119,17 +126,16 @@ fun AddFoodScreen(
             when (selectedSection) {
                 AddFoodSection.RECENTS -> {
                     item {
-                        Text(
-                            text = "Recent logs",
-                            style = MaterialTheme.typography.titleMedium,
+                        OFSectionHeader(
+                            title = "Recent logs",
+                            subtitle = "Fastest way to repeat your usual foods.",
                         )
                     }
                     if (uiState.recentLoggedFoods.isEmpty()) {
                         item {
-                            Text(
-                                text = "No recent foods yet. Log a meal to build your recents.",
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            OFEmptyState(
+                                title = "No recent foods yet",
+                                body = "Log a meal once and it will appear here for quick reuse.",
                             )
                         }
                     } else {
@@ -152,17 +158,16 @@ fun AddFoodScreen(
                 }
                 AddFoodSection.FAVORITES -> {
                     item {
-                        Text(
-                            text = "Favorites",
-                            style = MaterialTheme.typography.titleMedium,
+                        OFSectionHeader(
+                            title = "Favorites",
+                            subtitle = "Pin foods you log often.",
                         )
                     }
                     if (uiState.favoriteFoods.isEmpty()) {
                         item {
-                            Text(
-                                text = "No favorites yet. Star foods in details to pin them here.",
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            OFEmptyState(
+                                title = "No favorites yet",
+                                body = "Star foods in details and they will show up here.",
                             )
                         }
                     } else {
@@ -185,9 +190,9 @@ fun AddFoodScreen(
                 }
                 AddFoodSection.LOCAL -> {
                     item {
-                        Text(
-                            text = "Local foods",
-                            style = MaterialTheme.typography.titleMedium,
+                        OFSectionHeader(
+                            title = "Local foods",
+                            subtitle = "Search everything stored on this device.",
                         )
                     }
                     item {
@@ -203,14 +208,17 @@ fun AddFoodScreen(
                     }
                     if (uiState.foods.isEmpty()) {
                         item {
-                            Text(
-                                text = if (searchInput.isBlank()) {
-                                    "No local foods yet."
+                            OFEmptyState(
+                                title = if (searchInput.isBlank()) {
+                                    "No local foods yet"
                                 } else {
-                                    "No local foods match your search."
+                                    "No local matches"
                                 },
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                body = if (searchInput.isBlank()) {
+                                    "Use Quick add, Online, or Scan barcode to start your library."
+                                } else {
+                                    "Try a broader search phrase."
+                                },
                             )
                         }
                     } else {
@@ -233,9 +241,9 @@ fun AddFoodScreen(
                 }
                 AddFoodSection.ONLINE -> {
                     item {
-                        Text(
-                            text = "Online search",
-                            style = MaterialTheme.typography.titleMedium,
+                        OFSectionHeader(
+                            title = "Online search",
+                            subtitle = "Explicitly fetch foods from Open Food Facts.",
                         )
                     }
                     item {
@@ -263,19 +271,17 @@ fun AddFoodScreen(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.spacedBy(Dimens.s),
                         ) {
-                            Button(
+                            OFPrimaryButton(
+                                text = "Search online",
                                 onClick = { viewModel.searchOnline() },
                                 enabled = searchInput.isNotBlank() && !uiState.isOnlineSearchInProgress,
                                 modifier = Modifier.weight(1f),
-                            ) {
-                                Text("Search online")
-                            }
-                            Button(
+                            )
+                            OFSecondaryButton(
+                                text = "Scan barcode",
                                 onClick = onScanBarcode,
                                 modifier = Modifier.weight(1f),
-                            ) {
-                                Text("Scan barcode")
-                            }
+                            )
                         }
                     }
                     if (uiState.isOnlineSearchInProgress) {
@@ -299,10 +305,9 @@ fun AddFoodScreen(
                     }
                     if (uiState.onlineResults.isEmpty() && searchInput.isNotBlank() && !uiState.isOnlineSearchInProgress) {
                         item {
-                            Text(
-                                text = "Tap Search online to fetch matching foods.",
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            OFEmptyState(
+                                title = "No online results yet",
+                                body = "Tap Search online to fetch matching foods.",
                             )
                         }
                     }
@@ -389,31 +394,31 @@ private fun QuickAddCard(
     var fat by rememberSaveable { mutableStateOf("") }
     var mealType by rememberSaveable { mutableStateOf(MealType.BREAKFAST) }
 
-    Card(
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
-    ) {
+    OFCard {
+        OFSectionHeader(
+            title = "Quick add",
+            subtitle = "Fast manual entry for one-off meals.",
+        )
         Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(Dimens.m),
+            modifier = Modifier.fillMaxWidth(),
             verticalArrangement = Arrangement.spacedBy(Dimens.s),
         ) {
-            Text(
-                text = "Quick add",
-                style = MaterialTheme.typography.titleMedium,
-            )
             OutlinedTextField(
                 value = name,
                 onValueChange = { name = it },
                 label = { Text("Food name") },
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .testTag("add_food_quick_name_input"),
             )
             OutlinedTextField(
                 value = calories,
                 onValueChange = { calories = it },
                 label = { Text("Calories (kcal)") },
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .testTag("add_food_quick_calories_input"),
             )
             Row(
                 horizontalArrangement = Arrangement.spacedBy(Dimens.s),
@@ -424,21 +429,27 @@ private fun QuickAddCard(
                     onValueChange = { protein = it },
                     label = { Text("Protein (g)") },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                    modifier = Modifier.weight(1f),
+                    modifier = Modifier
+                        .weight(1f)
+                        .testTag("add_food_quick_protein_input"),
                 )
                 OutlinedTextField(
                     value = carbs,
                     onValueChange = { carbs = it },
                     label = { Text("Carbs (g)") },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                    modifier = Modifier.weight(1f),
+                    modifier = Modifier
+                        .weight(1f)
+                        .testTag("add_food_quick_carbs_input"),
                 )
                 OutlinedTextField(
                     value = fat,
                     onValueChange = { fat = it },
                     label = { Text("Fat (g)") },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                    modifier = Modifier.weight(1f),
+                    modifier = Modifier
+                        .weight(1f)
+                        .testTag("add_food_quick_fat_input"),
                 )
             }
             MealTypeDropdown(
@@ -446,7 +457,8 @@ private fun QuickAddCard(
                 onSelected = { mealType = it },
                 modifier = Modifier.fillMaxWidth(),
             )
-            Button(
+            OFPrimaryButton(
+                text = "Log quick add",
                 onClick = {
                     onQuickAdd(
                         QuickAddInput(
@@ -459,15 +471,10 @@ private fun QuickAddCard(
                         ),
                     )
                 },
-                modifier = Modifier.fillMaxWidth(),
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Add,
-                    contentDescription = "Log quick add",
-                )
-                Spacer(modifier = Modifier.width(Dimens.s))
-                Text("Log quick add")
-            }
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .testTag("add_food_quick_log_button"),
+            )
         }
     }
 }
@@ -532,13 +539,9 @@ private fun RecentFoodRow(
     onOpenDetail: () -> Unit,
 ) {
     var selectedMeal by remember { mutableStateOf(MealType.BREAKFAST) }
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-    ) {
+    OFCard(modifier = Modifier.fillMaxWidth()) {
         Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(Dimens.m),
+            modifier = Modifier.fillMaxWidth(),
             verticalArrangement = Arrangement.spacedBy(Dimens.s),
         ) {
             Text(text = food.name, style = MaterialTheme.typography.titleMedium)
@@ -562,18 +565,16 @@ private fun RecentFoodRow(
                 horizontalArrangement = Arrangement.spacedBy(Dimens.s),
                 modifier = Modifier.fillMaxWidth(),
             ) {
-                Button(
+                OFPrimaryButton(
+                    text = "Log",
                     onClick = { onLog(selectedMeal) },
                     modifier = Modifier.weight(1f),
-                ) {
-                    Text("Log")
-                }
-                Button(
+                )
+                OFSecondaryButton(
+                    text = "Details",
                     onClick = onOpenDetail,
                     modifier = Modifier.weight(1f),
-                ) {
-                    Text("Details")
-                }
+                )
             }
         }
     }
@@ -584,11 +585,9 @@ private fun OnlineResultRow(
     food: RemoteFoodCandidate,
     onOpenPreview: () -> Unit,
 ) {
-    Card(modifier = Modifier.fillMaxWidth()) {
+    OFCard(modifier = Modifier.fillMaxWidth()) {
         Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(Dimens.m),
+            modifier = Modifier.fillMaxWidth(),
             verticalArrangement = Arrangement.spacedBy(Dimens.s),
         ) {
             Text(
@@ -606,12 +605,11 @@ private fun OnlineResultRow(
                 text = "${formatCalories(food.caloriesKcalPer100g ?: 0.0)} kcal · ${formatMacro(food.proteinGPer100g ?: 0.0)}p ${formatMacro(food.carbsGPer100g ?: 0.0)}c ${formatMacro(food.fatGPer100g ?: 0.0)}f per 100g",
                 style = MaterialTheme.typography.bodySmall,
             )
-            Button(
+            OFSecondaryButton(
+                text = "Preview",
                 onClick = onOpenPreview,
                 modifier = Modifier.fillMaxWidth(),
-            ) {
-                Text("Preview")
-            }
+            )
         }
     }
 }

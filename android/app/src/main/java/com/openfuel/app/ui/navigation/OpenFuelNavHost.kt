@@ -1,6 +1,7 @@
 package com.openfuel.app.ui.navigation
 
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -25,9 +26,12 @@ import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Icon
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.NavigationBarItemDefaults
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import com.openfuel.app.OpenFuelApp
+import com.openfuel.app.ui.theme.Dimens
 import com.openfuel.app.ui.screens.AddFoodScreen
 import com.openfuel.app.ui.screens.FoodDetailScreen
 import com.openfuel.app.ui.screens.FoodLibraryScreen
@@ -38,6 +42,7 @@ import com.openfuel.app.ui.screens.ScanBarcodeScreen
 import com.openfuel.app.ui.screens.SettingsScreen
 import com.openfuel.app.viewmodel.AddFoodViewModel
 import com.openfuel.app.viewmodel.FoodLibraryViewModel
+import com.openfuel.app.viewmodel.FoodDetailViewModel
 import com.openfuel.app.viewmodel.HistoryViewModel
 import com.openfuel.app.viewmodel.HomeViewModel
 import com.openfuel.app.viewmodel.InsightsViewModel
@@ -175,12 +180,10 @@ fun OpenFuelAppRoot() {
             composable(
                 route = "${Routes.FOOD_DETAIL}/{foodId}",
                 arguments = listOf(navArgument("foodId") { type = NavType.StringType }),
-            ) { entry ->
-                val foodId = entry.arguments?.getString("foodId")
+            ) {
+                val viewModel: FoodDetailViewModel = viewModel(factory = viewModelFactory)
                 FoodDetailScreen(
-                    foodId = foodId,
-                    foodRepository = container.foodRepository,
-                    logRepository = container.logRepository,
+                    viewModel = viewModel,
                     onNavigateBack = { navController.popBackStack() },
                 )
             }
@@ -201,15 +204,36 @@ private fun OpenFuelBottomNavigation(
     destinations: List<TopLevelDestination>,
     onDestinationSelected: (String) -> Unit,
 ) {
-    NavigationBar {
+    NavigationBar(
+        containerColor = MaterialTheme.colorScheme.surface,
+        tonalElevation = Dimens.xs,
+    ) {
         destinations.forEach { destination ->
             NavigationBarItem(
                 selected = currentRoute == destination.route,
                 onClick = { onDestinationSelected(destination.route) },
                 modifier = Modifier.testTag(destination.testTag),
-                icon = destination.icon,
-                label = { Text(destination.label) },
+                icon = {
+                    androidx.compose.material3.ProvideTextStyle(MaterialTheme.typography.labelLarge) {
+                        androidx.compose.foundation.layout.Box(modifier = Modifier.size(Dimens.iconM)) {
+                            destination.icon()
+                        }
+                    }
+                },
+                label = {
+                    Text(
+                        text = destination.label,
+                        style = MaterialTheme.typography.labelMedium,
+                    )
+                },
                 alwaysShowLabel = true,
+                colors = NavigationBarItemDefaults.colors(
+                    selectedIconColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                    selectedTextColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                    indicatorColor = MaterialTheme.colorScheme.secondaryContainer,
+                    unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                    unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                ),
             )
         }
     }

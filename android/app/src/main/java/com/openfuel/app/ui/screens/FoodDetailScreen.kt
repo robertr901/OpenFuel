@@ -25,53 +25,38 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.openfuel.app.domain.model.FoodItem
 import com.openfuel.app.domain.model.FoodUnit
-import com.openfuel.app.domain.model.MealEntry
 import com.openfuel.app.domain.model.MealType
-import com.openfuel.app.domain.repository.FoodRepository
-import com.openfuel.app.domain.repository.LogRepository
 import com.openfuel.app.ui.components.MealTypeDropdown
 import com.openfuel.app.ui.components.UnitDropdown
 import com.openfuel.app.ui.theme.Dimens
 import com.openfuel.app.ui.util.formatCalories
 import com.openfuel.app.ui.util.formatMacro
 import com.openfuel.app.ui.util.parseDecimalInput
-import kotlinx.coroutines.launch
-import java.time.Instant
-import java.util.UUID
+import com.openfuel.app.viewmodel.FoodDetailViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun FoodDetailScreen(
-    foodId: String?,
-    foodRepository: FoodRepository,
-    logRepository: LogRepository,
+    viewModel: FoodDetailViewModel,
     onNavigateBack: () -> Unit,
 ) {
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
-    val scope = rememberCoroutineScope()
-    val foodState by produceState<FoodItem?>(initialValue = null, foodId) {
-        value = if (foodId.isNullOrBlank()) {
-            null
-        } else {
-            foodRepository.getFoodById(foodId)
-        }
-    }
-    var isFavorite by remember(foodState?.id, foodState?.isFavorite) {
-        mutableStateOf(foodState?.isFavorite ?: false)
-    }
-    var isReportedIncorrect by remember(foodState?.id, foodState?.isReportedIncorrect) {
-        mutableStateOf(foodState?.isReportedIncorrect ?: false)
+    LaunchedEffect(uiState.message) {
+        val message = uiState.message ?: return@LaunchedEffect
+        snackbarHostState.showSnackbar(message)
+        viewModel.consumeMessage()
     }
 
     Scaffold(
@@ -87,34 +72,17 @@ fun FoodDetailScreen(
                     }
                 },
                 actions = {
-                    if (foodState != null) {
+                    if (uiState.food != null) {
                         IconButton(
-                            onClick = {
-                                scope.launch {
-                                    try {
-                                        val nextFavorite = !isFavorite
-                                        foodRepository.setFavorite(foodState!!.id, nextFavorite)
-                                        isFavorite = nextFavorite
-                                        snackbarHostState.showSnackbar(
-                                            if (nextFavorite) {
-                                                "Added to favorites."
-                                            } else {
-                                                "Removed from favorites."
-                                            },
-                                        )
-                                    } catch (_: Exception) {
-                                        snackbarHostState.showSnackbar("Could not update favorite.")
-                                    }
-                                }
-                            },
+                            onClick = viewModel::toggleFavorite,
                         ) {
                             Icon(
-                                imageVector = if (isFavorite) {
+                                imageVector = if (uiState.food?.isFavorite == true) {
                                     Icons.Default.Favorite
                                 } else {
                                     Icons.Default.FavoriteBorder
                                 },
-                                contentDescription = if (isFavorite) {
+                                contentDescription = if (uiState.food?.isFavorite == true) {
                                     "Remove from favorites"
                                 } else {
                                     "Add to favorites"
@@ -127,7 +95,7 @@ fun FoodDetailScreen(
         },
         snackbarHost = { SnackbarHost(snackbarHostState) },
     ) { padding ->
-        if (foodState == null) {
+        if (uiState.food == null) {
             Column(
                 modifier = Modifier
                     .fillMaxSize()
@@ -144,46 +112,13 @@ fun FoodDetailScreen(
                 }
             }
         } else {
+            val food = uiState.food ?: return@Scaffold
             FoodDetailContent(
-                food = foodState!!,
-                onLog = { quantity, unit, mealType ->
-                    scope.launch {
-                        if (quantity <= 0.0) {
-                            snackbarHostState.showSnackbar("Enter a valid quantity")
-                            return@launch
-                        }
-                        val entry = MealEntry(
-                            id = UUID.randomUUID().toString(),
-                            timestamp = Instant.now(),
-                            mealType = mealType,
-                            foodItemId = foodState!!.id,
-                            quantity = quantity,
-                            unit = unit,
-                        )
-                        logRepository.logMealEntry(entry)
-                        snackbarHostState.showSnackbar("Logged ${foodState!!.name}")
-                    }
-                },
-                isReportedIncorrect = isReportedIncorrect,
-                showReportIncorrect = foodState!!.barcode != null,
-                onToggleReportIncorrect = {
-                    scope.launch {
-                        try {
-                            val nextValue = !isReportedIncorrect
-                            foodRepository.setReportedIncorrect(foodState!!.id, nextValue)
-                            isReportedIncorrect = nextValue
-                            snackbarHostState.showSnackbar(
-                                if (nextValue) {
-                                    "Marked as incorrect on this device."
-                                } else {
-                                    "Incorrect flag removed."
-                                },
-                            )
-                        } catch (_: Exception) {
-                            snackbarHostState.showSnackbar("Could not update report flag.")
-                        }
-                    }
-                },
+                food = food,
+                onLog = viewModel::logFood,
+                isReportedIncorrect = food.isReportedIncorrect,
+                showReportIncorrect = food.barcode != null,
+                onToggleReportIncorrect = viewModel::toggleReportedIncorrect,
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(padding)

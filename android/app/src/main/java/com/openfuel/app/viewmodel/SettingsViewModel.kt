@@ -3,9 +3,9 @@ package com.openfuel.app.viewmodel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.openfuel.app.domain.model.DailyGoal
-import com.openfuel.app.domain.repository.EntitlementsRepository
 import com.openfuel.app.domain.repository.GoalsRepository
 import com.openfuel.app.domain.repository.SettingsRepository
+import com.openfuel.app.domain.service.EntitlementService
 import com.openfuel.app.domain.util.GoalValidation
 import com.openfuel.app.export.ExportManager
 import java.io.File
@@ -20,7 +20,7 @@ import kotlinx.coroutines.launch
 
 class SettingsViewModel(
     private val settingsRepository: SettingsRepository,
-    private val entitlementsRepository: EntitlementsRepository,
+    private val entitlementService: EntitlementService,
     private val goalsRepository: GoalsRepository,
     private val exportManager: ExportManager,
     private val clock: Clock = Clock.systemDefaultZone(),
@@ -29,13 +29,16 @@ class SettingsViewModel(
 
     val uiState: StateFlow<SettingsUiState> = combine(
         settingsRepository.onlineLookupEnabled,
-        entitlementsRepository.isPro,
+        entitlementService.getEntitlementState(),
         exportState,
         goalsRepository.goalForDate(today()),
-    ) { onlineLookupEnabled, isPro, exportStateValue, dailyGoal ->
+    ) { onlineLookupEnabled, entitlementState, exportStateValue, dailyGoal ->
         SettingsUiState(
             onlineLookupEnabled = onlineLookupEnabled,
-            isPro = isPro,
+            isPro = entitlementState.isPro,
+            showDebugProToggle = entitlementState.canToggleDebugOverride,
+            showSecurityWarning = entitlementState.canToggleDebugOverride &&
+                (entitlementState.securityPosture.isEmulator || entitlementState.securityPosture.hasTestKeys),
             exportState = exportStateValue,
             dailyGoal = dailyGoal,
         )
@@ -45,10 +48,18 @@ class SettingsViewModel(
         initialValue = SettingsUiState(
             onlineLookupEnabled = true,
             isPro = false,
+            showDebugProToggle = false,
+            showSecurityWarning = false,
             exportState = ExportState.Idle,
             dailyGoal = null,
         ),
     )
+
+    init {
+        viewModelScope.launch {
+            entitlementService.refreshEntitlements()
+        }
+    }
 
     fun setOnlineLookupEnabled(enabled: Boolean) {
         viewModelScope.launch {
@@ -58,7 +69,7 @@ class SettingsViewModel(
 
     fun setProEnabled(enabled: Boolean) {
         viewModelScope.launch {
-            entitlementsRepository.setIsPro(enabled)
+            entitlementService.setDebugProOverride(enabled)
         }
     }
 
@@ -117,6 +128,8 @@ class SettingsViewModel(
 data class SettingsUiState(
     val onlineLookupEnabled: Boolean,
     val isPro: Boolean,
+    val showDebugProToggle: Boolean,
+    val showSecurityWarning: Boolean,
     val exportState: ExportState,
     val dailyGoal: DailyGoal?,
 )

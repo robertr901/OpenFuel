@@ -45,6 +45,15 @@ interface MealEntryDao {
     @Query("SELECT timestamp FROM meal_entries ORDER BY timestamp DESC")
     fun observeEntryTimestampsDesc(): Flow<List<Instant>>
 
+    @Query(
+        """
+        SELECT DISTINCT date(timestamp / 1000, 'unixepoch', 'localtime')
+        FROM meal_entries
+        ORDER BY date(timestamp / 1000, 'unixepoch', 'localtime') DESC
+        """
+    )
+    fun observeLoggedLocalDatesDesc(): Flow<List<String>>
+
     @Query("SELECT * FROM meal_entries ORDER BY timestamp DESC")
     suspend fun getAllEntries(): List<MealEntryEntity>
 }

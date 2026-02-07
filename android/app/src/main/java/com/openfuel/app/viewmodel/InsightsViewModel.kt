@@ -3,8 +3,8 @@ package com.openfuel.app.viewmodel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.openfuel.app.domain.model.InsightsSnapshot
-import com.openfuel.app.domain.repository.EntitlementsRepository
 import com.openfuel.app.domain.repository.LogRepository
+import com.openfuel.app.domain.service.EntitlementService
 import com.openfuel.app.domain.util.InsightsCalculator
 import java.time.Clock
 import java.time.LocalDate
@@ -15,7 +15,7 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 
 class InsightsViewModel(
-    entitlementsRepository: EntitlementsRepository,
+    entitlementService: EntitlementService,
     logRepository: LogRepository,
     private val zoneId: ZoneId = ZoneId.systemDefault(),
     private val clock: Clock = Clock.systemDefaultZone(),
@@ -23,15 +23,15 @@ class InsightsViewModel(
     private val today: LocalDate = LocalDate.now(clock.withZone(zoneId))
 
     val uiState: StateFlow<InsightsUiState> = combine(
-        entitlementsRepository.isPro,
+        entitlementService.getEntitlementState(),
         logRepository.entriesInRange(
             startDate = today.minusDays(29),
             endDateInclusive = today,
             zoneId = zoneId,
         ),
-    ) { isPro, entries ->
+    ) { entitlementState, entries ->
         InsightsUiState(
-            isPro = isPro,
+            isPro = entitlementState.isPro,
             snapshot = InsightsCalculator.buildSnapshot(entries, today, zoneId),
         )
     }.stateIn(

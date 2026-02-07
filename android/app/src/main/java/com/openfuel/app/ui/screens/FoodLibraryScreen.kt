@@ -30,6 +30,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.openfuel.app.domain.model.FoodItem
+import com.openfuel.app.ui.components.OFCard
+import com.openfuel.app.ui.components.OFEmptyState
+import com.openfuel.app.ui.components.OFSectionHeader
 import com.openfuel.app.ui.theme.Dimens
 import com.openfuel.app.ui.util.formatCalories
 import com.openfuel.app.ui.util.formatMacro
@@ -48,7 +51,14 @@ fun FoodLibraryScreen(
     Scaffold(
         modifier = Modifier.testTag("screen_foods"),
         topBar = {
-            TopAppBar(title = { Text("Foods") })
+            TopAppBar(
+                title = {
+                    Text(
+                        text = "Foods",
+                        style = MaterialTheme.typography.titleLarge,
+                    )
+                },
+            )
         },
         floatingActionButton = {
             ExtendedFloatingActionButton(
@@ -81,14 +91,17 @@ fun FoodLibraryScreen(
             )
 
             if (uiState.foods.isEmpty()) {
-                Text(
-                    text = if (searchInput.isBlank()) {
-                        "No foods saved yet. Add a food to build your library."
+                OFEmptyState(
+                    title = if (searchInput.isBlank()) {
+                        "No foods saved yet"
                     } else {
-                        "No local foods match your search."
+                        "No local matches"
                     },
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    body = if (searchInput.isBlank()) {
+                        "Add a food to build your personal library."
+                    } else {
+                        "Try a broader search term."
+                    },
                 )
             } else {
                 LazyColumn(
@@ -113,28 +126,16 @@ private fun FoodLibraryRow(
     food: FoodItem,
     onOpenFoodDetail: () -> Unit,
 ) {
-    Card(
+    OFCard(
         modifier = Modifier
             .fillMaxWidth()
             .clickable(onClick = onOpenFoodDetail),
     ) {
         Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(Dimens.m),
+            modifier = Modifier.fillMaxWidth(),
             verticalArrangement = Arrangement.spacedBy(Dimens.xs),
         ) {
-            Text(
-                text = food.name,
-                style = MaterialTheme.typography.titleMedium,
-            )
-            if (!food.brand.isNullOrBlank()) {
-                Text(
-                    text = food.brand.orEmpty(),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
+            OFSectionHeader(title = food.name, subtitle = food.brand)
             Text(
                 text = "${formatCalories(food.caloriesKcal)} kcal - ${formatMacro(food.proteinG)}p ${formatMacro(food.carbsG)}c ${formatMacro(food.fatG)}f",
                 style = MaterialTheme.typography.bodySmall,

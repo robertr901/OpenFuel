@@ -31,7 +31,16 @@ fun InsightsScreen(
 
     Scaffold(
         modifier = Modifier.testTag("screen_insights"),
-        topBar = { TopAppBar(title = { Text("Insights") }) },
+        topBar = {
+            TopAppBar(
+                title = {
+                    Text(
+                        text = "Insights",
+                        style = MaterialTheme.typography.titleLarge,
+                    )
+                },
+            )
+        },
     ) { padding ->
         Column(
             modifier = Modifier

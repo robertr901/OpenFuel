@@ -101,7 +101,12 @@ fun SettingsScreen(
         modifier = Modifier.testTag("screen_settings"),
         topBar = {
             TopAppBar(
-                title = { Text("Settings") },
+                title = {
+                    Text(
+                        text = "Settings",
+                        style = MaterialTheme.typography.titleLarge,
+                    )
+                },
                 navigationIcon = {
                     if (onNavigateBack != null) {
                         IconButton(onClick = onNavigateBack) {
@@ -152,7 +157,7 @@ fun SettingsScreen(
                     onCheckedChange = { viewModel.setOnlineLookupEnabled(it) },
                 )
             }
-            if (BuildConfig.DEBUG) {
+            if (uiState.showDebugProToggle) {
                 HorizontalDivider()
                 Text(
                     text = "Developer",
@@ -175,6 +180,13 @@ fun SettingsScreen(
                     Switch(
                         checked = uiState.isPro,
                         onCheckedChange = { viewModel.setProEnabled(it) },
+                    )
+                }
+                if (uiState.showSecurityWarning) {
+                    Text(
+                        text = "Security note: running on emulator/test-keys. Treat Pro behavior as non-production.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.error,
                     )
                 }
             }

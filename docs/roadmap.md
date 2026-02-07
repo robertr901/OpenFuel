@@ -75,6 +75,11 @@
 - Completed: Online search now defaults ON with user override in Settings, and online actions are blocked cleanly when disabled.
 - Completed: Add Food fast-capture segmented modes (`Recents`, `Favourites`, `Local`, `Online`) and richer online preview sheet.
 - Completed: Local "Report incorrect food" flag for imported foods (device-local only).
+- Completed: Unified Add Food search UX with a single query input, explicit online action, and deterministic online state rendering (idle/loading/empty/error).
+- Completed: Search domain merge policy for local+online results, with local-first ordering and dedupe safeguards.
+- Completed: Provider abstraction with a registry scaffold (OpenFoodFacts active; USDA/Nutritionix/Edamam stubs documented and disabled).
+- Completed: Deterministic instrumentation coverage for unified search controls/filter behavior and online-disabled gating.
+- Completed: Mapping hardening for partial OpenFoodFacts payloads (stable derived IDs, sanitized nutrient values, missing-field tolerance).
 
 ## Deferred from this worktree
 - Photo-based logging.

@@ -37,6 +37,8 @@ class SettingsViewModel(
             onlineLookupEnabled = onlineLookupEnabled,
             isPro = entitlementState.isPro,
             showDebugProToggle = entitlementState.canToggleDebugOverride,
+            showSecurityWarning = entitlementState.canToggleDebugOverride &&
+                (entitlementState.securityPosture.isEmulator || entitlementState.securityPosture.hasTestKeys),
             exportState = exportStateValue,
             dailyGoal = dailyGoal,
         )
@@ -47,6 +49,7 @@ class SettingsViewModel(
             onlineLookupEnabled = true,
             isPro = false,
             showDebugProToggle = false,
+            showSecurityWarning = false,
             exportState = ExportState.Idle,
             dailyGoal = null,
         ),
@@ -126,6 +129,7 @@ data class SettingsUiState(
     val onlineLookupEnabled: Boolean,
     val isPro: Boolean,
     val showDebugProToggle: Boolean,
+    val showSecurityWarning: Boolean,
     val exportState: ExportState,
     val dailyGoal: DailyGoal?,
 )

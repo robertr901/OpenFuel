@@ -9,4 +9,5 @@ data class EntitlementState(
     val isPro: Boolean,
     val source: EntitlementSource,
     val canToggleDebugOverride: Boolean,
+    val securityPosture: SecurityPosture = SecurityPosture.secure(),
 )

@@ -8,6 +8,7 @@ import com.openfuel.app.data.db.OpenFuelDatabase
 import com.openfuel.app.data.remote.OpenFoodFactsRemoteFoodDataSource
 import com.openfuel.app.data.remote.RemoteFoodDataSource
 import com.openfuel.app.data.remote.UserInitiatedNetworkGuard
+import com.openfuel.app.data.security.LocalSecurityPostureProvider
 import com.openfuel.app.data.repository.EntitlementsRepositoryImpl
 import com.openfuel.app.data.repository.FoodRepositoryImpl
 import com.openfuel.app.data.repository.GoalsRepositoryImpl
@@ -18,6 +19,7 @@ import com.openfuel.app.domain.repository.FoodRepository
 import com.openfuel.app.domain.repository.GoalsRepository
 import com.openfuel.app.domain.repository.LogRepository
 import com.openfuel.app.domain.repository.SettingsRepository
+import com.openfuel.app.domain.security.SecurityPostureProvider
 import com.openfuel.app.domain.service.EntitlementService
 import com.openfuel.app.export.ExportManager
 import okhttp3.OkHttpClient
@@ -37,10 +39,11 @@ class AppContainer(context: Context) {
     val goalsRepository: GoalsRepository = GoalsRepositoryImpl(context.settingsDataStore)
     val settingsRepository: SettingsRepository = SettingsRepositoryImpl(context.settingsDataStore)
     val entitlementsRepository: EntitlementsRepository = EntitlementsRepositoryImpl(context.settingsDataStore)
+    val securityPostureProvider: SecurityPostureProvider = LocalSecurityPostureProvider(context)
     val entitlementService: EntitlementService = if (BuildConfig.DEBUG) {
-        DebugEntitlementService(entitlementsRepository)
+        DebugEntitlementService(entitlementsRepository, securityPostureProvider)
     } else {
-        PlaceholderPlayBillingEntitlementService()
+        PlaceholderPlayBillingEntitlementService(securityPostureProvider)
     }
     val remoteFoodDataSource: RemoteFoodDataSource = OpenFoodFactsRemoteFoodDataSource.create(
         okHttpClient = onlineHttpClient,

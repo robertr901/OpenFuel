@@ -182,6 +182,13 @@ fun SettingsScreen(
                         onCheckedChange = { viewModel.setProEnabled(it) },
                     )
                 }
+                if (uiState.showSecurityWarning) {
+                    Text(
+                        text = "Security note: running on emulator/test-keys. Treat Pro behavior as non-production.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.error,
+                    )
+                }
             }
             HorizontalDivider()
             Text(

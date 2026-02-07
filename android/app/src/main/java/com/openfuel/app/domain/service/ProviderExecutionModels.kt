@@ -22,7 +22,9 @@ enum class ProviderRequestType(
 enum class ProviderStatus {
     AVAILABLE,
     EMPTY,
+    DISABLED_BY_SOURCE_FILTER,
     DISABLED_BY_SETTINGS,
+    UNSUPPORTED_CAPABILITY,
     MISCONFIGURED,
     RATE_LIMITED,
     TIMEOUT,
@@ -99,11 +101,17 @@ data class ProviderCacheStats(
 data class ProviderExecutionReport(
     val requestType: ProviderRequestType,
     val sourceFilter: SearchSourceFilter,
-    val mergedCandidates: List<RemoteFoodCandidate>,
+    val mergedCandidates: List<ProviderMergedCandidate>,
     val providerResults: List<ProviderResult>,
     val overallElapsedMs: Long,
     val cacheStats: ProviderCacheStats = ProviderCacheStats(),
     val executedAt: Instant = Instant.now(),
+)
+
+data class ProviderMergedCandidate(
+    val providerId: String,
+    val candidate: RemoteFoodCandidate,
+    val dedupeKey: String,
 )
 
 interface ProviderExecutor {

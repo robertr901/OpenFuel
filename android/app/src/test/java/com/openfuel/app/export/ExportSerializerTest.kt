@@ -22,10 +22,13 @@ class ExportSerializerTest {
                     id = "food-1",
                     name = "Yogurt",
                     brand = "OpenFuel",
+                    barcode = "1234567890",
                     caloriesKcal = 120.0,
                     proteinG = 10.0,
                     carbsG = 14.0,
                     fatG = 3.0,
+                    isFavorite = true,
+                    isReportedIncorrect = false,
                     createdAt = Instant.parse("2024-01-01T00:00:00Z"),
                 ),
             ),
@@ -52,12 +55,15 @@ class ExportSerializerTest {
 
         val json = ExportSerializer().serialize(snapshot)
 
-        assertTrue(json.contains("\"schemaVersion\":1"))
+        assertTrue(json.contains("\"schemaVersion\":$EXPORT_SCHEMA_VERSION"))
         assertTrue(json.contains("\"appVersion\":\"1.0\""))
         assertTrue(json.contains("\"foods\""))
         assertTrue(json.contains("\"mealEntries\""))
         assertTrue(json.contains("\"dailyGoals\""))
         assertTrue(json.contains("\"food-1\""))
+        assertTrue(json.contains("\"barcode\":\"1234567890\""))
+        assertTrue(json.contains("\"isFavorite\":true"))
+        assertTrue(json.contains("\"isReportedIncorrect\":false"))
         assertTrue(json.contains("\"mealType\":\"BREAKFAST\""))
     }
 }

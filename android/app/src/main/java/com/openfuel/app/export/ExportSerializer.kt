@@ -46,6 +46,13 @@ class ExportSerializer {
                 appendJsonString(food.brand)
             }
             append(',')
+            appendKey("barcode")
+            if (food.barcode == null) {
+                append("null")
+            } else {
+                appendJsonString(food.barcode)
+            }
+            append(',')
             appendKey("calories_kcal").appendNumber(food.caloriesKcal)
             append(',')
             appendKey("protein_g").appendNumber(food.proteinG)
@@ -53,6 +60,10 @@ class ExportSerializer {
             appendKey("carbs_g").appendNumber(food.carbsG)
             append(',')
             appendKey("fat_g").appendNumber(food.fatG)
+            append(',')
+            appendKey("isFavorite").appendBoolean(food.isFavorite)
+            append(',')
+            appendKey("isReportedIncorrect").appendBoolean(food.isReportedIncorrect)
             append(',')
             appendKey("createdAt").appendJsonString(instantFormatter.format(food.createdAt))
             append('}')
@@ -111,6 +122,10 @@ class ExportSerializer {
     private fun StringBuilder.appendNumber(value: Double): StringBuilder {
         val sanitized = if (value.isNaN() || value.isInfinite()) 0.0 else value
         return append(sanitized.toString())
+    }
+
+    private fun StringBuilder.appendBoolean(value: Boolean): StringBuilder {
+        return append(if (value) "true" else "false")
     }
 
     private fun escapeJson(value: String): String {

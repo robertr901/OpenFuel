@@ -5,7 +5,7 @@ import com.openfuel.app.domain.model.FoodItem
 import com.openfuel.app.domain.model.MealEntry
 import java.time.Instant
 
-const val EXPORT_SCHEMA_VERSION = 1
+const val EXPORT_SCHEMA_VERSION = 2
 
 data class ExportSnapshot(
     val schemaVersion: Int,

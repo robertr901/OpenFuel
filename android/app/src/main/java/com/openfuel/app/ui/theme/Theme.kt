@@ -1,6 +1,5 @@
 package com.openfuel.app.ui.theme
 
-import android.app.Activity
 import android.os.Build
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
@@ -10,35 +9,47 @@ import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.graphics.Color
 
 private val DarkColorScheme = darkColorScheme(
-    primary = Purple80,
-    secondary = PurpleGrey80,
-    tertiary = Pink80
+    primary = Teal80,
+    onPrimary = Slate10,
+    secondary = Blue80,
+    onSecondary = Slate10,
+    tertiary = Amber80,
+    onTertiary = Slate10,
+    background = Slate10,
+    onBackground = Slate95,
+    surface = Slate20,
+    onSurface = Slate95,
+    surfaceVariant = Color(0xFF2A2F3A),
+    onSurfaceVariant = Slate90,
+    error = Error80,
+    onError = Slate10,
 )
 
 private val LightColorScheme = lightColorScheme(
-    primary = Purple40,
-    secondary = PurpleGrey40,
-    tertiary = Pink40
-
-    /* Other default colors to override
-    background = Color(0xFFFFFBFE),
-    surface = Color(0xFFFFFBFE),
-    onPrimary = Color.White,
-    onSecondary = Color.White,
-    onTertiary = Color.White,
-    onBackground = Color(0xFF1C1B1F),
-    onSurface = Color(0xFF1C1B1F),
-    */
+    primary = Teal40,
+    onPrimary = Slate99,
+    secondary = Blue40,
+    onSecondary = Slate99,
+    tertiary = Amber40,
+    onTertiary = Slate99,
+    background = Slate99,
+    onBackground = Slate10,
+    surface = Slate99,
+    onSurface = Slate10,
+    surfaceVariant = Slate95,
+    onSurfaceVariant = Color(0xFF4C5567),
+    error = Error40,
+    onError = Slate99,
 )
 
 @Composable
 fun OpenFuelTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
-    // Dynamic color is available on Android 12+
-    dynamicColor: Boolean = true,
-    content: @Composable () -> Unit
+    dynamicColor: Boolean = false,
+    content: @Composable () -> Unit,
 ) {
     val colorScheme = when {
         dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
@@ -53,6 +64,7 @@ fun OpenFuelTheme(
     MaterialTheme(
         colorScheme = colorScheme,
         typography = Typography,
-        content = content
+        shapes = OpenFuelShapes,
+        content = content,
     )
 }

@@ -11,6 +11,11 @@ import com.openfuel.app.domain.model.RemoteFoodCandidate
 import com.openfuel.app.domain.repository.FoodRepository
 import com.openfuel.app.domain.repository.LogRepository
 import com.openfuel.app.domain.repository.SettingsRepository
+import com.openfuel.app.domain.search.SearchSourceFilter
+import com.openfuel.app.domain.search.UnifiedFoodSearchResult
+import com.openfuel.app.domain.search.UnifiedSearchState
+import com.openfuel.app.domain.search.applySourceFilter
+import com.openfuel.app.domain.search.mergeUnifiedSearchResults
 import com.openfuel.app.domain.service.FoodCatalogProvider
 import com.openfuel.app.domain.util.EntryValidation
 import java.time.Instant
@@ -40,41 +45,33 @@ class AddFoodViewModel(
     private companion object {
         private const val MAX_CALORIES_KCAL = 10_000.0
         private const val MAX_MACRO_GRAMS = 1_000.0
+        private const val SEARCH_LIMIT = 20
     }
 
-    private val sectionLimit = 20
-    private val searchQuery = MutableStateFlow("")
-    private val onlineState = MutableStateFlow(OnlineSearchState())
+    private val unifiedSearchState = MutableStateFlow(UnifiedSearchState())
+    private val transientState = MutableStateFlow(AddFoodTransientState())
 
-    private val localSearchState: StateFlow<LocalSearchState> = searchQuery
+    private val localSearchResultsState: StateFlow<List<FoodItem>> = unifiedSearchState
+        .map { state -> state.query }
         .debounce(300)
         .distinctUntilChanged()
         .flatMapLatest { query ->
-            foodRepository.searchFoods(query = query, limit = 20)
-                .map { foods ->
-                    LocalSearchState(
-                        searchQuery = query,
-                        foods = foods,
-                    )
-                }
+            foodRepository.searchFoods(query = query, limit = SEARCH_LIMIT)
         }
-        .stateIn(
-            scope = viewModelScope,
-            started = SharingStarted.WhileSubscribed(5_000),
-            initialValue = LocalSearchState(
-                searchQuery = "",
-                foods = emptyList(),
-            ),
-        )
-
-    private val favoriteFoodsState: StateFlow<List<FoodItem>> = foodRepository.favoriteFoods(sectionLimit)
         .stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(5_000),
             initialValue = emptyList(),
         )
 
-    private val recentLoggedFoodsState: StateFlow<List<FoodItem>> = foodRepository.recentLoggedFoods(sectionLimit)
+    private val favoriteFoodsState: StateFlow<List<FoodItem>> = foodRepository.favoriteFoods(SEARCH_LIMIT)
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5_000),
+            initialValue = emptyList(),
+        )
+
+    private val recentLoggedFoodsState: StateFlow<List<FoodItem>> = foodRepository.recentLoggedFoods(SEARCH_LIMIT)
         .stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(5_000),
@@ -89,106 +86,128 @@ class AddFoodViewModel(
         )
 
     val uiState: StateFlow<AddFoodUiState> = combine(
-        localSearchState,
-        onlineState,
+        unifiedSearchState,
+        localSearchResultsState,
         favoriteFoodsState,
         recentLoggedFoodsState,
         onlineLookupEnabledState,
-    ) { local, online, favorites, recents, onlineLookupEnabled ->
+    ) { unified, localResults, favoriteFoods, recentFoods, onlineEnabled ->
+        UnifiedSearchComposedState(
+            unified = unified,
+            localResults = localResults,
+            favoriteFoods = favoriteFoods,
+            recentFoods = recentFoods,
+            onlineEnabled = onlineEnabled,
+        )
+    }.combine(transientState) { composed, transient ->
+        val mergedResults = applySourceFilter(
+            results = mergeUnifiedSearchResults(
+                localResults = composed.localResults,
+                onlineResults = composed.unified.onlineResults,
+            ),
+            sourceFilter = composed.unified.sourceFilter,
+        )
+        val effectiveUnifiedSearch = composed.unified.copy(
+            localResults = composed.localResults,
+            mergedResults = mergedResults,
+            onlineEnabled = composed.onlineEnabled,
+        )
+
         AddFoodUiState(
-            searchQuery = local.searchQuery,
-            foods = local.foods,
-            favoriteFoods = favorites,
-            recentLoggedFoods = recents,
-            onlineLookupEnabled = onlineLookupEnabled,
-            hasSearchedOnline = online.hasSearchedOnline,
-            onlineResults = online.onlineResults,
-            isOnlineSearchInProgress = online.isLoading,
-            onlineErrorMessage = online.errorMessage,
-            selectedOnlineFood = online.selectedOnlineFood,
-            message = online.message,
+            unifiedSearch = effectiveUnifiedSearch,
+            searchQuery = effectiveUnifiedSearch.query,
+            sourceFilter = effectiveUnifiedSearch.sourceFilter,
+            foods = composed.localResults,
+            favoriteFoods = composed.favoriteFoods,
+            recentLoggedFoods = composed.recentFoods,
+            mergedResults = effectiveUnifiedSearch.mergedResults,
+            onlineLookupEnabled = effectiveUnifiedSearch.onlineEnabled,
+            hasSearchedOnline = effectiveUnifiedSearch.onlineHasSearched,
+            onlineResults = effectiveUnifiedSearch.onlineResults,
+            isOnlineSearchInProgress = effectiveUnifiedSearch.onlineIsLoading,
+            onlineErrorMessage = effectiveUnifiedSearch.onlineError,
+            selectedOnlineFood = transient.selectedOnlineFood,
+            message = transient.message,
         )
     }.stateIn(
         scope = viewModelScope,
         started = SharingStarted.WhileSubscribed(5_000),
-        initialValue = AddFoodUiState(
-            searchQuery = "",
-            foods = emptyList(),
-            favoriteFoods = emptyList(),
-            recentLoggedFoods = emptyList(),
-            onlineLookupEnabled = true,
-            hasSearchedOnline = false,
-            onlineResults = emptyList(),
-            isOnlineSearchInProgress = false,
-            onlineErrorMessage = null,
-            selectedOnlineFood = null,
-            message = null,
-        ),
+        initialValue = AddFoodUiState(),
     )
 
     fun updateSearchQuery(query: String) {
-        searchQuery.update { query }
-        onlineState.update { current ->
+        unifiedSearchState.update { current ->
             current.copy(
-                hasSearchedOnline = false,
+                query = query,
                 onlineResults = emptyList(),
-                errorMessage = null,
-                selectedOnlineFood = null,
+                onlineHasSearched = false,
+                onlineIsLoading = false,
+                onlineError = null,
             )
         }
+        transientState.update { current ->
+            current.copy(selectedOnlineFood = null)
+        }
+    }
+
+    fun setSourceFilter(sourceFilter: SearchSourceFilter) {
+        unifiedSearchState.update { current -> current.copy(sourceFilter = sourceFilter) }
     }
 
     fun searchOnline() {
         if (!onlineLookupEnabledState.value) {
-            onlineState.update { current ->
+            unifiedSearchState.update { current ->
                 current.copy(
-                    hasSearchedOnline = false,
-                    isLoading = false,
+                    onlineEnabled = false,
+                    onlineHasSearched = false,
+                    onlineIsLoading = false,
                     onlineResults = emptyList(),
-                    errorMessage = "Online search is turned off. Enable it in Settings to continue.",
+                    onlineError = "Online search is turned off. Enable it in Settings to continue.",
                 )
             }
             return
         }
-        val query = searchQuery.value.trim()
+
+        val query = unifiedSearchState.value.query.trim()
         if (query.isBlank()) {
-            onlineState.update { current ->
+            unifiedSearchState.update { current ->
                 current.copy(
-                    hasSearchedOnline = false,
-                    isLoading = false,
+                    onlineHasSearched = false,
+                    onlineIsLoading = false,
                     onlineResults = emptyList(),
-                    errorMessage = "Enter a search term to look up online.",
+                    onlineError = "Enter a search term to look up online.",
                 )
             }
             return
         }
 
         viewModelScope.launch {
-            onlineState.update { current ->
+            unifiedSearchState.update { current ->
                 current.copy(
-                    hasSearchedOnline = true,
-                    isLoading = true,
-                    errorMessage = null,
+                    onlineHasSearched = true,
+                    onlineIsLoading = true,
+                    onlineResults = emptyList(),
+                    onlineError = null,
                 )
             }
             try {
                 val token = userInitiatedNetworkGuard.issueToken("add_food_search_online")
                 val results = foodCatalogProvider.search(query, token)
-                onlineState.update { current ->
+                unifiedSearchState.update { current ->
                     current.copy(
-                        hasSearchedOnline = true,
-                        isLoading = false,
+                        onlineHasSearched = true,
+                        onlineIsLoading = false,
                         onlineResults = results,
-                        errorMessage = null,
+                        onlineError = null,
                     )
                 }
             } catch (_: Exception) {
-                onlineState.update { current ->
+                unifiedSearchState.update { current ->
                     current.copy(
-                        hasSearchedOnline = true,
-                        isLoading = false,
+                        onlineHasSearched = true,
+                        onlineIsLoading = false,
                         onlineResults = emptyList(),
-                        errorMessage = "Online search failed. Check connection and try again.",
+                        onlineError = "Online search failed. Check connection and try again.",
                     )
                 }
             }
@@ -196,25 +215,25 @@ class AddFoodViewModel(
     }
 
     fun openOnlineFoodPreview(food: RemoteFoodCandidate) {
-        onlineState.update { current -> current.copy(selectedOnlineFood = food) }
+        transientState.update { current -> current.copy(selectedOnlineFood = food) }
     }
 
     fun closeOnlineFoodPreview() {
-        onlineState.update { current -> current.copy(selectedOnlineFood = null) }
+        transientState.update { current -> current.copy(selectedOnlineFood = null) }
     }
 
     fun saveOnlineFood(food: RemoteFoodCandidate) {
         viewModelScope.launch {
             try {
                 foodRepository.upsertFood(food.toLocalFoodItem())
-                onlineState.update { current ->
+                transientState.update { current ->
                     current.copy(
                         selectedOnlineFood = null,
                         message = "Saved to My Foods.",
                     )
                 }
             } catch (_: Exception) {
-                onlineState.update { current ->
+                transientState.update { current ->
                     current.copy(message = "Could not save food. Please try again.")
                 }
             }
@@ -228,7 +247,7 @@ class AddFoodViewModel(
         unit: FoodUnit,
     ) {
         if (!EntryValidation.isValidQuantity(quantity)) {
-            onlineState.update { current ->
+            transientState.update { current ->
                 current.copy(message = "Enter a valid quantity greater than 0.")
             }
             return
@@ -247,14 +266,14 @@ class AddFoodViewModel(
                         unit = unit,
                     ),
                 )
-                onlineState.update { current ->
+                transientState.update { current ->
                     current.copy(
                         selectedOnlineFood = null,
                         message = "Saved and logged.",
                     )
                 }
             } catch (_: Exception) {
-                onlineState.update { current ->
+                transientState.update { current ->
                     current.copy(message = "Could not save and log food. Please try again.")
                 }
             }
@@ -262,7 +281,7 @@ class AddFoodViewModel(
     }
 
     fun consumeMessage() {
-        onlineState.update { current -> current.copy(message = null) }
+        transientState.update { current -> current.copy(message = null) }
     }
 
     fun logFood(foodId: String, mealType: MealType, quantity: Double, unit: FoodUnit) {
@@ -317,31 +336,33 @@ class AddFoodViewModel(
 }
 
 data class AddFoodUiState(
-    val searchQuery: String,
-    val foods: List<FoodItem>,
-    val favoriteFoods: List<FoodItem>,
-    val recentLoggedFoods: List<FoodItem>,
-    val onlineLookupEnabled: Boolean,
-    val hasSearchedOnline: Boolean,
-    val onlineResults: List<RemoteFoodCandidate>,
-    val isOnlineSearchInProgress: Boolean,
-    val onlineErrorMessage: String?,
-    val selectedOnlineFood: RemoteFoodCandidate?,
-    val message: String?,
-)
-
-private data class LocalSearchState(
-    val searchQuery: String,
-    val foods: List<FoodItem>,
-)
-
-private data class OnlineSearchState(
+    val unifiedSearch: UnifiedSearchState = UnifiedSearchState(),
+    val searchQuery: String = "",
+    val sourceFilter: SearchSourceFilter = SearchSourceFilter.ALL,
+    val foods: List<FoodItem> = emptyList(),
+    val favoriteFoods: List<FoodItem> = emptyList(),
+    val recentLoggedFoods: List<FoodItem> = emptyList(),
+    val mergedResults: List<UnifiedFoodSearchResult> = emptyList(),
+    val onlineLookupEnabled: Boolean = true,
     val hasSearchedOnline: Boolean = false,
     val onlineResults: List<RemoteFoodCandidate> = emptyList(),
-    val isLoading: Boolean = false,
-    val errorMessage: String? = null,
+    val isOnlineSearchInProgress: Boolean = false,
+    val onlineErrorMessage: String? = null,
     val selectedOnlineFood: RemoteFoodCandidate? = null,
     val message: String? = null,
+)
+
+private data class AddFoodTransientState(
+    val selectedOnlineFood: RemoteFoodCandidate? = null,
+    val message: String? = null,
+)
+
+private data class UnifiedSearchComposedState(
+    val unified: UnifiedSearchState,
+    val localResults: List<FoodItem>,
+    val favoriteFoods: List<FoodItem>,
+    val recentFoods: List<FoodItem>,
+    val onlineEnabled: Boolean,
 )
 
 private fun RemoteFoodCandidate.toLocalFoodItem(): FoodItem {

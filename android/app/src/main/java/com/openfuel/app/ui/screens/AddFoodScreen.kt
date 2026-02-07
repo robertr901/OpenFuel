@@ -40,6 +40,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.openfuel.app.domain.model.FoodItem
@@ -82,6 +83,7 @@ fun AddFoodScreen(
     }
 
     Scaffold(
+        modifier = Modifier.testTag("screen_add_food"),
         topBar = {
             TopAppBar(
                 title = { Text("Add food") },
@@ -405,14 +407,18 @@ private fun QuickAddCard(
                 value = name,
                 onValueChange = { name = it },
                 label = { Text("Food name") },
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .testTag("add_food_quick_name_input"),
             )
             OutlinedTextField(
                 value = calories,
                 onValueChange = { calories = it },
                 label = { Text("Calories (kcal)") },
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .testTag("add_food_quick_calories_input"),
             )
             Row(
                 horizontalArrangement = Arrangement.spacedBy(Dimens.s),
@@ -423,21 +429,27 @@ private fun QuickAddCard(
                     onValueChange = { protein = it },
                     label = { Text("Protein (g)") },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                    modifier = Modifier.weight(1f),
+                    modifier = Modifier
+                        .weight(1f)
+                        .testTag("add_food_quick_protein_input"),
                 )
                 OutlinedTextField(
                     value = carbs,
                     onValueChange = { carbs = it },
                     label = { Text("Carbs (g)") },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                    modifier = Modifier.weight(1f),
+                    modifier = Modifier
+                        .weight(1f)
+                        .testTag("add_food_quick_carbs_input"),
                 )
                 OutlinedTextField(
                     value = fat,
                     onValueChange = { fat = it },
                     label = { Text("Fat (g)") },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                    modifier = Modifier.weight(1f),
+                    modifier = Modifier
+                        .weight(1f)
+                        .testTag("add_food_quick_fat_input"),
                 )
             }
             MealTypeDropdown(
@@ -459,7 +471,9 @@ private fun QuickAddCard(
                         ),
                     )
                 },
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .testTag("add_food_quick_log_button"),
             )
         }
     }

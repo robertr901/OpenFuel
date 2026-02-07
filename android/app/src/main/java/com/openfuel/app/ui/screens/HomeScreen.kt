@@ -166,6 +166,7 @@ fun HomeScreen(
                     )
                 },
                 onClick = onAddFood,
+                modifier = Modifier.testTag("home_add_food_fab"),
             )
         },
         snackbarHost = { SnackbarHost(snackbarHostState) },

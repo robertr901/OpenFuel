@@ -44,6 +44,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -117,6 +118,7 @@ fun HomeScreen(
     }
 
     Scaffold(
+        modifier = Modifier.testTag("screen_today"),
         topBar = {
             TopAppBar(
                 navigationIcon = {

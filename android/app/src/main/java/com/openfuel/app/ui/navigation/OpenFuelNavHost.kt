@@ -7,6 +7,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.testTag
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavType
 import androidx.navigation.NavHostController
@@ -56,16 +57,19 @@ fun OpenFuelAppRoot() {
             TopLevelDestination(
                 route = Routes.TODAY,
                 label = "Today",
+                testTag = "tab_today",
                 icon = { Icon(Icons.Default.Home, contentDescription = "Today tab") },
             ),
             TopLevelDestination(
                 route = Routes.HISTORY,
                 label = "History",
+                testTag = "tab_history",
                 icon = { Icon(Icons.Default.History, contentDescription = "History tab") },
             ),
             TopLevelDestination(
                 route = Routes.FOODS,
                 label = "Foods",
+                testTag = "tab_foods",
                 icon = {
                     Icon(
                         imageVector = Icons.Default.RestaurantMenu,
@@ -76,11 +80,13 @@ fun OpenFuelAppRoot() {
             TopLevelDestination(
                 route = Routes.INSIGHTS,
                 label = "Insights",
+                testTag = "tab_insights",
                 icon = { Icon(Icons.Default.Insights, contentDescription = "Insights tab") },
             ),
             TopLevelDestination(
                 route = Routes.SETTINGS,
                 label = "Settings",
+                testTag = "tab_settings",
                 icon = { Icon(Icons.Default.Settings, contentDescription = "Settings tab") },
             ),
         )
@@ -200,6 +206,7 @@ private fun OpenFuelBottomNavigation(
             NavigationBarItem(
                 selected = currentRoute == destination.route,
                 onClick = { onDestinationSelected(destination.route) },
+                modifier = Modifier.testTag(destination.testTag),
                 icon = destination.icon,
                 label = { Text(destination.label) },
                 alwaysShowLabel = true,
@@ -228,5 +235,6 @@ private fun String.routeBase(): String {
 private data class TopLevelDestination(
     val route: String,
     val label: String,
+    val testTag: String,
     val icon: @Composable () -> Unit,
 )

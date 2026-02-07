@@ -14,6 +14,7 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.openfuel.app.domain.model.InsightWindow
 import com.openfuel.app.ui.theme.Dimens
@@ -29,6 +30,7 @@ fun InsightsScreen(
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
 
     Scaffold(
+        modifier = Modifier.testTag("screen_insights"),
         topBar = { TopAppBar(title = { Text("Insights") }) },
     ) { padding ->
         Column(

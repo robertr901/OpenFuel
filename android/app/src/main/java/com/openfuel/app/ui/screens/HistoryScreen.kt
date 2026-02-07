@@ -17,6 +17,7 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.openfuel.app.ui.theme.Dimens
 import com.openfuel.app.viewmodel.HistoryViewModel
@@ -33,6 +34,7 @@ fun HistoryScreen(
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
 
     Scaffold(
+        modifier = Modifier.testTag("screen_history"),
         topBar = {
             TopAppBar(title = { Text("History") })
         },

@@ -27,6 +27,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.openfuel.app.domain.model.FoodItem
 import com.openfuel.app.ui.theme.Dimens
@@ -45,6 +46,7 @@ fun FoodLibraryScreen(
     var searchInput by rememberSaveable { mutableStateOf(uiState.searchQuery) }
 
     Scaffold(
+        modifier = Modifier.testTag("screen_foods"),
         topBar = {
             TopAppBar(title = { Text("Foods") })
         },

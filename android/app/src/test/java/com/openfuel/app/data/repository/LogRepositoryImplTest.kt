@@ -60,6 +60,13 @@ private class FakeMealEntryDao : MealEntryDao {
         return flowOf(emptyList())
     }
 
+    override fun observeEntriesBetween(
+        start: Instant,
+        end: Instant,
+    ): Flow<List<MealEntryWithFoodEntity>> {
+        return flowOf(emptyList())
+    }
+
     override fun observeEntryTimestampsDesc(): Flow<List<Instant>> {
         return timestamps
     }

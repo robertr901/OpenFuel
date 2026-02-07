@@ -33,6 +33,17 @@ class LogRepositoryImpl(
             .map { entries -> entries.map { it.toDomain() } }
     }
 
+    override fun entriesInRange(
+        startDate: LocalDate,
+        endDateInclusive: LocalDate,
+        zoneId: ZoneId,
+    ): Flow<List<MealEntryWithFood>> {
+        val startInstant = startDate.atStartOfDay(zoneId).toInstant()
+        val endExclusive = endDateInclusive.plusDays(1).atStartOfDay(zoneId).toInstant()
+        return mealEntryDao.observeEntriesBetween(startInstant, endExclusive)
+            .map { entries -> entries.map { it.toDomain() } }
+    }
+
     override fun loggedDates(zoneId: ZoneId): Flow<List<LocalDate>> {
         return mealEntryDao.observeEntryTimestampsDesc()
             .map { timestamps ->

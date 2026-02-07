@@ -4,6 +4,7 @@ object Routes {
     const val TODAY = "today"
     const val HISTORY = "history"
     const val FOODS = "foods"
+    const val INSIGHTS = "insights"
     const val SETTINGS = "settings"
 
     const val SELECTED_DATE_ARG = "selectedDate"
@@ -13,7 +14,7 @@ object Routes {
     const val SCAN_BARCODE = "scan-barcode"
     const val FOOD_DETAIL = "food-detail"
 
-    val topLevelRoutes: Set<String> = setOf(TODAY, HISTORY, FOODS, SETTINGS)
+    val topLevelRoutes: Set<String> = setOf(TODAY, HISTORY, FOODS, INSIGHTS, SETTINGS)
 
     fun todayRoute(selectedDate: String? = null): String {
         return if (selectedDate.isNullOrBlank()) TODAY else "$TODAY?$SELECTED_DATE_ARG=$selectedDate"

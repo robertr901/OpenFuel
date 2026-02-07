@@ -17,4 +17,9 @@ interface LogRepository {
     fun loggedDates(
         zoneId: ZoneId = ZoneId.systemDefault(),
     ): Flow<List<LocalDate>>
+    fun entriesInRange(
+        startDate: LocalDate,
+        endDateInclusive: LocalDate,
+        zoneId: ZoneId = ZoneId.systemDefault(),
+    ): Flow<List<MealEntryWithFood>>
 }

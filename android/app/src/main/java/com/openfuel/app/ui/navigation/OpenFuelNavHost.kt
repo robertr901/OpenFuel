@@ -17,6 +17,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Insights
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.RestaurantMenu
@@ -32,12 +33,14 @@ import com.openfuel.app.ui.screens.FoodDetailScreen
 import com.openfuel.app.ui.screens.FoodLibraryScreen
 import com.openfuel.app.ui.screens.HistoryScreen
 import com.openfuel.app.ui.screens.HomeScreen
+import com.openfuel.app.ui.screens.InsightsScreen
 import com.openfuel.app.ui.screens.ScanBarcodeScreen
 import com.openfuel.app.ui.screens.SettingsScreen
 import com.openfuel.app.viewmodel.AddFoodViewModel
 import com.openfuel.app.viewmodel.FoodLibraryViewModel
 import com.openfuel.app.viewmodel.HistoryViewModel
 import com.openfuel.app.viewmodel.HomeViewModel
+import com.openfuel.app.viewmodel.InsightsViewModel
 import com.openfuel.app.viewmodel.OpenFuelViewModelFactory
 import com.openfuel.app.viewmodel.ScanBarcodeViewModel
 import com.openfuel.app.viewmodel.SettingsViewModel
@@ -70,6 +73,11 @@ fun OpenFuelAppRoot() {
                         contentDescription = "Foods tab",
                     )
                 },
+            ),
+            TopLevelDestination(
+                route = Routes.INSIGHTS,
+                label = "Insights",
+                icon = { Icon(Icons.Default.Insights, contentDescription = "Insights tab") },
             ),
             TopLevelDestination(
                 route = Routes.SETTINGS,
@@ -138,6 +146,10 @@ fun OpenFuelAppRoot() {
                     onAddFood = { navController.navigate(Routes.ADD_FOOD) },
                     onOpenFoodDetail = { foodId -> navController.navigate(Routes.foodDetailRoute(foodId)) },
                 )
+            }
+            composable(Routes.INSIGHTS) {
+                val viewModel: InsightsViewModel = viewModel(factory = viewModelFactory)
+                InsightsScreen(viewModel = viewModel)
             }
             composable(Routes.ADD_FOOD) {
                 val viewModel: AddFoodViewModel = viewModel(factory = viewModelFactory)

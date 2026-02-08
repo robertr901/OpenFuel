@@ -2,7 +2,7 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
-    kotlin("kapt")
+    alias(libs.plugins.ksp)
 }
 
 android {
@@ -16,7 +16,7 @@ android {
         versionCode = 1
         versionName = "1.0"
 
-        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+        testInstrumentationRunner = "com.openfuel.app.OpenFuelAndroidTestRunner"
     }
 
     buildTypes {
@@ -68,7 +68,7 @@ dependencies {
     implementation(libs.androidx.camera.view)
     implementation(libs.google.mlkit.barcode.scanning)
     implementation(libs.kotlinx.coroutines.android)
-    kapt(libs.androidx.room.compiler)
+    ksp(libs.androidx.room.compiler)
     testImplementation(libs.junit)
     testImplementation(libs.kotlinx.coroutines.test)
     androidTestImplementation(libs.androidx.junit)

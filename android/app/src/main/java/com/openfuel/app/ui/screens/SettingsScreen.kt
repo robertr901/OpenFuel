@@ -17,7 +17,6 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.Divider
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -54,6 +53,7 @@ import com.openfuel.app.ui.util.parseDecimalInput
 import com.openfuel.app.viewmodel.ExportState
 import com.openfuel.app.viewmodel.GoalSaveResult
 import com.openfuel.app.viewmodel.SettingsViewModel
+import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -188,6 +188,64 @@ fun SettingsScreen(
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.error,
                     )
+                }
+                Spacer(modifier = Modifier.height(Dimens.xs))
+                Text(
+                    text = "Provider diagnostics",
+                    style = MaterialTheme.typography.bodyLarge,
+                    fontWeight = FontWeight.SemiBold,
+                )
+                uiState.providerDiagnostics.forEach { provider ->
+                    Column(
+                        verticalArrangement = Arrangement.spacedBy(Dimens.xxs),
+                    ) {
+                        Text(
+                            text = "${provider.displayName}: ${if (provider.enabled) "Enabled" else "Disabled"}",
+                            style = MaterialTheme.typography.bodyMedium,
+                        )
+                        Text(
+                            text = provider.statusReason,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                        val capabilities = buildList {
+                            if (provider.supportsTextSearch) add("Text search")
+                            if (provider.supportsBarcode) add("Barcode")
+                        }.ifEmpty { listOf("No capabilities") }
+                        Text(
+                            text = "Capabilities: ${capabilities.joinToString()}",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                }
+                val lastExecution = uiState.lastProviderExecution
+                if (lastExecution != null) {
+                    Spacer(modifier = Modifier.height(Dimens.xs))
+                    Text(
+                        text = "Last execution",
+                        style = MaterialTheme.typography.bodyLarge,
+                        fontWeight = FontWeight.SemiBold,
+                    )
+                    Text(
+                        text = "Elapsed: ${lastExecution.report.overallElapsedMs} ms",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    Text(
+                        text = "Cache: ${lastExecution.report.cacheStats.hitCount} hit(s), ${lastExecution.report.cacheStats.missCount} miss(es)",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    lastExecution.report.providerResults.forEach { result ->
+                        val count = result.items.size
+                        val status = result.status.name.lowercase(Locale.ROOT).replace('_', ' ')
+                        Text(
+                            text = "${result.providerId}: $status · ${result.elapsedMs} ms · $count item(s)",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
                 }
             }
             HorizontalDivider()

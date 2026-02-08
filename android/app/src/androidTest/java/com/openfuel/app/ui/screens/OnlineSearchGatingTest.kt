@@ -6,7 +6,6 @@ import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onNodeWithTag
-import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextInput
 import androidx.datastore.preferences.core.edit
@@ -33,6 +32,7 @@ class OnlineSearchGatingTest {
                 preferences[SettingsKeys.ONLINE_LOOKUP_ENABLED] = false
             }
         }
+        composeRule.activityRule.scenario.recreate()
 
         try {
             composeRule.waitForIdle()
@@ -41,16 +41,10 @@ class OnlineSearchGatingTest {
             composeRule.waitForIdle()
 
             composeRule.onNodeWithTag("screen_add_food").assertIsDisplayed()
-            composeRule.onNodeWithTag("add_food_section_online").performClick()
+            composeRule.onNodeWithTag("add_food_unified_query_input").performTextInput("coke zero")
+            composeRule.onNodeWithTag("add_food_unified_search_online").performClick()
             composeRule.waitForIdle()
-            composeRule.onNodeWithText(
-                "Online search is off. You can enable it in Settings any time.",
-            ).assertIsDisplayed()
-
-            composeRule.onNodeWithTag("add_food_online_query_input").performTextInput("coke zero")
-            composeRule.onNodeWithTag("add_food_online_search_button").performClick()
-            composeRule.waitForIdle()
-            composeRule.onAllNodesWithTag("add_food_online_loading_indicator").assertCountEquals(0)
+            composeRule.onAllNodesWithTag("add_food_unified_online_loading").assertCountEquals(0)
         } finally {
             runBlocking {
                 context.settingsDataStore.edit { preferences ->

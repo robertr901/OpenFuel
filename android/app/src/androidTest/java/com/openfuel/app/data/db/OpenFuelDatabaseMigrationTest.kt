@@ -32,7 +32,7 @@ class OpenFuelDatabaseMigrationTest {
     }
 
     @Test
-    fun migrateFromV1ToV4_preservesRowsAndAddsExpectedColumns() {
+    fun migrateFromV1ToV5_preservesRowsAndAddsExpectedColumns() {
         createVersion1Database()
 
         database = Room.databaseBuilder(context, OpenFuelDatabase::class.java, dbName)
@@ -40,6 +40,7 @@ class OpenFuelDatabaseMigrationTest {
                 OpenFuelDatabase.MIGRATION_1_2,
                 OpenFuelDatabase.MIGRATION_2_3,
                 OpenFuelDatabase.MIGRATION_3_4,
+                OpenFuelDatabase.MIGRATION_4_5,
             )
             .allowMainThreadQueries()
             .build()
@@ -51,6 +52,13 @@ class OpenFuelDatabaseMigrationTest {
         assertColumnExists(migratedDb, table = "food_items", column = "isReportedIncorrect")
         assertIndexExists(migratedDb, table = "food_items", index = "index_food_items_name_brand")
         assertIndexExists(migratedDb, table = "food_items", index = "index_food_items_barcode")
+        assertColumnExists(migratedDb, table = "provider_search_cache", column = "cacheKey")
+        assertColumnExists(migratedDb, table = "provider_search_cache", column = "expiresAtEpochMs")
+        assertIndexExists(
+            migratedDb,
+            table = "provider_search_cache",
+            index = "index_provider_search_cache_providerId_requestType",
+        )
 
         migratedDb.query(
             "SELECT barcode, isFavorite, isReportedIncorrect FROM food_items WHERE id = 'food-1'",

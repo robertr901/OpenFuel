@@ -10,7 +10,7 @@ class OpenFuelViewModelFactory(
     private val container: AppContainer,
 ) : ViewModelProvider.Factory {
     override fun <T : ViewModel> create(modelClass: Class<T>, extras: CreationExtras): T {
-        return when (modelClass) {
+        val viewModel: ViewModel = when (modelClass) {
             HomeViewModel::class.java -> HomeViewModel(
                 logRepository = container.logRepository,
                 goalsRepository = container.goalsRepository,
@@ -23,7 +23,7 @@ class OpenFuelViewModelFactory(
                 foodRepository = container.foodRepository,
                 logRepository = container.logRepository,
                 settingsRepository = container.settingsRepository,
-                remoteFoodDataSource = container.remoteFoodDataSource,
+                providerExecutor = container.providerExecutor,
                 userInitiatedNetworkGuard = container.networkGuard,
             )
             FoodLibraryViewModel::class.java -> FoodLibraryViewModel(
@@ -39,7 +39,7 @@ class OpenFuelViewModelFactory(
                 logRepository = container.logRepository,
             )
             ScanBarcodeViewModel::class.java -> ScanBarcodeViewModel(
-                remoteFoodDataSource = container.remoteFoodDataSource,
+                providerExecutor = container.providerExecutor,
                 userInitiatedNetworkGuard = container.networkGuard,
                 foodRepository = container.foodRepository,
                 logRepository = container.logRepository,
@@ -50,9 +50,12 @@ class OpenFuelViewModelFactory(
                 entitlementService = container.entitlementService,
                 goalsRepository = container.goalsRepository,
                 exportManager = container.exportManager,
+                foodCatalogProviderRegistry = container.foodCatalogProviderRegistry,
+                providerExecutionDiagnosticsStore = container.providerExecutionDiagnosticsStore,
             )
             else -> throw IllegalArgumentException("Unknown ViewModel class: ${modelClass.name}")
-        } as T
+        }
+        return modelClass.cast(viewModel)
     }
 
     override fun <T : ViewModel> create(modelClass: Class<T>): T {

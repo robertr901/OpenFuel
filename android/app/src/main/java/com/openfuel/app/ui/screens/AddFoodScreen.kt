@@ -6,16 +6,13 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Add
 import androidx.compose.material3.Button
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -25,12 +22,11 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.SegmentedButtonDefaults
+import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
-import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -43,16 +39,20 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.openfuel.app.BuildConfig
 import com.openfuel.app.domain.model.FoodItem
 import com.openfuel.app.domain.model.FoodUnit
 import com.openfuel.app.domain.model.MealType
 import com.openfuel.app.domain.model.RemoteFoodCandidate
+import com.openfuel.app.domain.search.SearchSourceFilter
+import com.openfuel.app.domain.service.ProviderStatus
+import com.openfuel.app.ui.components.MealTypeDropdown
 import com.openfuel.app.ui.components.OFCard
 import com.openfuel.app.ui.components.OFEmptyState
 import com.openfuel.app.ui.components.OFPrimaryButton
-import com.openfuel.app.ui.components.OFSecondaryButton
 import com.openfuel.app.ui.components.OFSectionHeader
-import com.openfuel.app.ui.components.MealTypeDropdown
+import com.openfuel.app.ui.components.OFSecondaryButton
+import com.openfuel.app.ui.components.OFStatPill
 import com.openfuel.app.ui.components.UnitDropdown
 import com.openfuel.app.ui.theme.Dimens
 import com.openfuel.app.ui.util.formatCalories
@@ -74,7 +74,12 @@ fun AddFoodScreen(
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
     var searchInput by rememberSaveable { mutableStateOf(uiState.searchQuery) }
-    var selectedSection by rememberSaveable { mutableStateOf(AddFoodSection.RECENTS) }
+
+    LaunchedEffect(uiState.searchQuery) {
+        if (uiState.searchQuery != searchInput) {
+            searchInput = uiState.searchQuery
+        }
+    }
 
     LaunchedEffect(uiState.message) {
         val message = uiState.message ?: return@LaunchedEffect
@@ -101,6 +106,7 @@ fun AddFoodScreen(
     ) { padding ->
         LazyColumn(
             modifier = Modifier
+                .testTag("add_food_unified_results_list")
                 .padding(padding)
                 .padding(horizontal = Dimens.m),
             verticalArrangement = Arrangement.spacedBy(Dimens.l),
@@ -118,113 +124,109 @@ fun AddFoodScreen(
                 )
             }
             item {
-                AddFoodSectionSelector(
-                    selectedSection = selectedSection,
-                    onSelected = { selectedSection = it },
+                UnifiedSearchControls(
+                    query = searchInput,
+                    sourceFilter = uiState.sourceFilter,
+                    isOnlineSearchInProgress = uiState.isOnlineSearchInProgress,
+                    onQueryChange = { newQuery ->
+                        searchInput = newQuery
+                        viewModel.updateSearchQuery(newQuery)
+                    },
+                    onSourceFilterChange = viewModel::setSourceFilter,
+                    onSearchOnline = viewModel::searchOnline,
+                    onScanBarcode = onScanBarcode,
                 )
             }
-            when (selectedSection) {
-                AddFoodSection.RECENTS -> {
-                    item {
-                        OFSectionHeader(
-                            title = "Recent logs",
-                            subtitle = "Fastest way to repeat your usual foods.",
-                        )
-                    }
-                    if (uiState.recentLoggedFoods.isEmpty()) {
-                        item {
-                            OFEmptyState(
-                                title = "No recent foods yet",
-                                body = "Log a meal once and it will appear here for quick reuse.",
-                            )
-                        }
-                    } else {
-                        items(uiState.recentLoggedFoods, key = { "recent-${it.id}" }) { food ->
-                            RecentFoodRow(
-                                food = food,
-                                onLog = { mealType ->
-                                    logFoodFromRow(
-                                        viewModel = viewModel,
-                                        scope = scope,
-                                        snackbarHostState = snackbarHostState,
-                                        food = food,
-                                        mealType = mealType,
-                                    )
-                                },
-                                onOpenDetail = { onOpenFoodDetail(food.id) },
-                            )
-                        }
-                    }
+
+            val queryBlank = searchInput.isBlank()
+            if (queryBlank) {
+                item {
+                    OFSectionHeader(
+                        title = "Recent logs",
+                        subtitle = "Fastest way to repeat your usual foods.",
+                    )
                 }
-                AddFoodSection.FAVORITES -> {
+                if (uiState.recentLoggedFoods.isEmpty()) {
                     item {
-                        OFSectionHeader(
-                            title = "Favorites",
-                            subtitle = "Pin foods you log often.",
+                        OFEmptyState(
+                            title = "No recent foods yet",
+                            body = "Log a meal once and it will appear here for quick reuse.",
                         )
                     }
-                    if (uiState.favoriteFoods.isEmpty()) {
-                        item {
-                            OFEmptyState(
-                                title = "No favorites yet",
-                                body = "Star foods in details and they will show up here.",
-                            )
-                        }
-                    } else {
-                        items(uiState.favoriteFoods, key = { "favorite-${it.id}" }) { food ->
-                            RecentFoodRow(
-                                food = food,
-                                onLog = { mealType ->
-                                    logFoodFromRow(
-                                        viewModel = viewModel,
-                                        scope = scope,
-                                        snackbarHostState = snackbarHostState,
-                                        food = food,
-                                        mealType = mealType,
-                                    )
-                                },
-                                onOpenDetail = { onOpenFoodDetail(food.id) },
-                            )
-                        }
-                    }
-                }
-                AddFoodSection.LOCAL -> {
-                    item {
-                        OFSectionHeader(
-                            title = "Local foods",
-                            subtitle = "Search everything stored on this device.",
-                        )
-                    }
-                    item {
-                        OutlinedTextField(
-                            value = searchInput,
-                            onValueChange = {
-                                searchInput = it
-                                viewModel.updateSearchQuery(it)
+                } else {
+                    items(uiState.recentLoggedFoods, key = { "recent-${it.id}" }) { food ->
+                        SearchResultFoodRow(
+                            food = food,
+                            sourceLabel = "Recent",
+                            onLog = { mealType ->
+                                logFoodFromRow(
+                                    viewModel = viewModel,
+                                    scope = scope,
+                                    snackbarHostState = snackbarHostState,
+                                    food = food,
+                                    mealType = mealType,
+                                )
                             },
-                            label = { Text("Search local foods") },
-                            modifier = Modifier.fillMaxWidth(),
+                            onOpenDetail = { onOpenFoodDetail(food.id) },
+                        )
+                    }
+                }
+
+                item {
+                    OFSectionHeader(
+                        title = "Favorites",
+                        subtitle = "Pin foods you log often.",
+                    )
+                }
+                if (uiState.favoriteFoods.isEmpty()) {
+                    item {
+                        OFEmptyState(
+                            title = "No favorites yet",
+                            body = "Star foods in details and they will show up here.",
+                        )
+                    }
+                } else {
+                    items(uiState.favoriteFoods, key = { "favorite-${it.id}" }) { food ->
+                        SearchResultFoodRow(
+                            food = food,
+                            sourceLabel = "Favorite",
+                            onLog = { mealType ->
+                                logFoodFromRow(
+                                    viewModel = viewModel,
+                                    scope = scope,
+                                    snackbarHostState = snackbarHostState,
+                                    food = food,
+                                    mealType = mealType,
+                                )
+                            },
+                            onOpenDetail = { onOpenFoodDetail(food.id) },
+                        )
+                    }
+                }
+            } else {
+                val showLocalSection = uiState.sourceFilter != SearchSourceFilter.ONLINE_ONLY
+                val showOnlineSection = uiState.sourceFilter != SearchSourceFilter.LOCAL_ONLY
+
+                if (showLocalSection) {
+                    item {
+                        OFSectionHeader(
+                            title = "Local results",
+                            subtitle = "Instant matches from foods already on this device.",
+                            modifier = Modifier.testTag("add_food_unified_local_section"),
                         )
                     }
                     if (uiState.foods.isEmpty()) {
                         item {
                             OFEmptyState(
-                                title = if (searchInput.isBlank()) {
-                                    "No local foods yet"
-                                } else {
-                                    "No local matches"
-                                },
-                                body = if (searchInput.isBlank()) {
-                                    "Use Quick add, Online, or Scan barcode to start your library."
-                                } else {
-                                    "Try a broader search phrase."
-                                },
+                                title = "No local matches",
+                                body = "Try a broader search phrase or use Search online.",
                             )
                         }
                     } else {
-                        items(uiState.foods, key = { it.id }) { food ->
-                            RecentFoodRow(
+                        items(uiState.foods, key = { "local-${it.id}" }) { food ->
+                            SearchResultFoodRow(
                                 food = food,
+                                sourceLabel = "Local",
                                 onLog = { mealType ->
                                     logFoodFromRow(
                                         viewModel = viewModel,
@@ -239,24 +241,13 @@ fun AddFoodScreen(
                         }
                     }
                 }
-                AddFoodSection.ONLINE -> {
+
+                if (showOnlineSection) {
                     item {
                         OFSectionHeader(
-                            title = "Online search",
-                            subtitle = "Explicitly fetch foods from Open Food Facts.",
-                        )
-                    }
-                    item {
-                        OutlinedTextField(
-                            value = searchInput,
-                            onValueChange = {
-                                searchInput = it
-                                viewModel.updateSearchQuery(it)
-                            },
-                            label = { Text("Search online foods") },
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .testTag("add_food_online_query_input"),
+                            title = "Online results",
+                            subtitle = "Fetched from Open Food Facts when you tap Search online.",
+                            modifier = Modifier.testTag("add_food_unified_online_section"),
                         )
                     }
                     if (!uiState.onlineLookupEnabled) {
@@ -265,88 +256,125 @@ fun AddFoodScreen(
                                 text = "Online search is off. You can enable it in Settings any time.",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.testTag("add_food_unified_online_disabled_hint"),
+                            )
+                        }
+                    } else if (!uiState.hasSearchedOnline && !uiState.isOnlineSearchInProgress && uiState.onlineErrorMessage == null) {
+                        item {
+                            OFEmptyState(
+                                title = "Ready to search online",
+                                body = "Tap Search online to fetch matching foods.",
+                                modifier = Modifier.testTag("add_food_unified_online_idle_hint"),
                             )
                         }
                     }
-                    item {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(Dimens.s),
-                        ) {
-                            OFPrimaryButton(
-                                text = "Search online",
-                                onClick = { viewModel.searchOnline() },
-                                enabled = searchInput.isNotBlank() && !uiState.isOnlineSearchInProgress,
-                                modifier = Modifier
-                                    .weight(1f)
-                                    .testTag("add_food_online_search_button"),
-                            )
-                            OFSecondaryButton(
-                                text = "Scan barcode",
-                                onClick = onScanBarcode,
-                                modifier = Modifier
-                                    .weight(1f)
-                                    .testTag("add_food_online_scan_button"),
-                            )
-                        }
-                    }
+
                     if (uiState.isOnlineSearchInProgress) {
                         item {
-                            Row(
+                            Column(
                                 modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.Center,
+                                verticalArrangement = Arrangement.spacedBy(Dimens.s),
                             ) {
-                                CircularProgressIndicator(
-                                    modifier = Modifier.testTag("add_food_online_loading_indicator"),
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.Center,
+                                ) {
+                                    CircularProgressIndicator(
+                                        modifier = Modifier.testTag("add_food_unified_online_loading"),
+                                    )
+                                }
+                                Text(
+                                    text = "Searching online catalogs...",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.testTag("add_food_unified_online_loading_text"),
                                 )
                             }
                         }
                     }
+
                     if (uiState.onlineErrorMessage != null) {
                         item {
                             Text(
-                                text = uiState.onlineErrorMessage ?: "",
+                                text = uiState.onlineErrorMessage.orEmpty(),
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = MaterialTheme.colorScheme.error,
                             )
                         }
                     }
-                    if (
-                        searchInput.isNotBlank() &&
-                        !uiState.hasSearchedOnline &&
-                        !uiState.isOnlineSearchInProgress &&
-                        uiState.onlineErrorMessage == null
-                    ) {
-                        item {
-                            OFEmptyState(
-                                title = "Ready to search",
-                                body = "Tap Search online to fetch matching foods from Open Food Facts.",
-                            )
-                        }
-                    }
-                    if (
-                        uiState.hasSearchedOnline &&
-                        uiState.onlineResults.isEmpty() &&
-                        !uiState.isOnlineSearchInProgress &&
-                        uiState.onlineErrorMessage == null
-                    ) {
+
+                    if (uiState.hasSearchedOnline && uiState.onlineResults.isEmpty() && !uiState.isOnlineSearchInProgress && uiState.onlineErrorMessage == null) {
                         item {
                             OFEmptyState(
                                 title = "No online matches found",
-                                body = "No results for \"$searchInput\". Try a brand name or shorter query.",
+                                body = "No results for \"$searchInput\".",
+                                modifier = Modifier.testTag("add_food_unified_online_empty_state"),
                             )
                         }
                     }
+
                     if (uiState.onlineResults.isNotEmpty()) {
                         items(uiState.onlineResults, key = { "${it.source}:${it.sourceId}" }) { food ->
                             OnlineResultRow(
                                 food = food,
                                 onOpenPreview = { viewModel.openOnlineFoodPreview(food) },
+                                modifier = Modifier.testTag("add_food_unified_online_result_${food.sourceId}"),
+                            )
+                        }
+                    }
+
+                    val failedStatuses = setOf(
+                        ProviderStatus.ERROR,
+                        ProviderStatus.TIMEOUT,
+                        ProviderStatus.GUARD_REJECTED,
+                        ProviderStatus.RATE_LIMITED,
+                    )
+                    val failedProviders = uiState.onlineProviderResults.filter { result ->
+                        result.status in failedStatuses
+                    }
+                    if (BuildConfig.DEBUG && uiState.onlineProviderResults.isNotEmpty()) {
+                        item {
+                            Column(
+                                verticalArrangement = Arrangement.spacedBy(Dimens.xxs),
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .testTag("add_food_unified_provider_debug"),
+                            ) {
+                                Text(
+                                    text = "Provider diagnostics",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                                Text(
+                                    text = "Elapsed ${uiState.onlineExecutionElapsedMs} ms · cache ${uiState.onlineProviderResults.count { it.fromCache }} hit(s)",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                                uiState.onlineProviderResults.forEach { result ->
+                                    Text(
+                                        text = "${result.providerId}: ${result.status.name} · ${result.elapsedMs} ms · ${result.items.size} item(s)",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = if (result.status in failedStatuses) {
+                                            MaterialTheme.colorScheme.error
+                                        } else {
+                                            MaterialTheme.colorScheme.onSurfaceVariant
+                                        },
+                                    )
+                                }
+                            }
+                        }
+                    } else if (failedProviders.isNotEmpty() && uiState.onlineErrorMessage == null) {
+                        item {
+                            Text(
+                                text = "Some providers were unavailable. Showing available results.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.error,
                             )
                         }
                     }
                 }
             }
+
             item {
                 Spacer(modifier = Modifier.height(Dimens.xl))
             }
@@ -380,32 +408,76 @@ private data class QuickAddInput(
     val mealType: MealType,
 )
 
-private enum class AddFoodSection(val title: String, val testTag: String) {
-    RECENTS("Recents", "add_food_section_recents"),
-    FAVORITES("Favourites", "add_food_section_favourites"),
-    LOCAL("Local", "add_food_section_local"),
-    ONLINE("Online", "add_food_section_online"),
-}
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun AddFoodSectionSelector(
-    selectedSection: AddFoodSection,
-    onSelected: (AddFoodSection) -> Unit,
+private fun UnifiedSearchControls(
+    query: String,
+    sourceFilter: SearchSourceFilter,
+    isOnlineSearchInProgress: Boolean,
+    onQueryChange: (String) -> Unit,
+    onSourceFilterChange: (SearchSourceFilter) -> Unit,
+    onSearchOnline: () -> Unit,
+    onScanBarcode: () -> Unit,
 ) {
-    SingleChoiceSegmentedButtonRow(
-        modifier = Modifier.fillMaxWidth(),
-    ) {
-        AddFoodSection.entries.forEachIndexed { index, section ->
-            SegmentedButton(
-                selected = section == selectedSection,
-                onClick = { onSelected(section) },
-                shape = SegmentedButtonDefaults.itemShape(
-                    index = index,
-                    count = AddFoodSection.entries.size,
-                ),
-                modifier = Modifier.testTag(section.testTag),
-                label = { Text(section.title) },
+    OFCard {
+        OFSectionHeader(
+            title = "Unified search",
+            subtitle = "Search your local foods first, then fetch online when needed.",
+        )
+        OutlinedTextField(
+            value = query,
+            onValueChange = onQueryChange,
+            label = { Text("Search foods") },
+            modifier = Modifier
+                .fillMaxWidth()
+                .testTag("add_food_unified_query_input"),
+        )
+        SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
+            SearchSourceFilter.entries.forEachIndexed { index, filter ->
+                SegmentedButton(
+                    selected = sourceFilter == filter,
+                    onClick = { onSourceFilterChange(filter) },
+                    shape = SegmentedButtonDefaults.itemShape(
+                        index = index,
+                        count = SearchSourceFilter.entries.size,
+                    ),
+                    modifier = Modifier.testTag(
+                        when (filter) {
+                            SearchSourceFilter.ALL -> "add_food_filter_all"
+                            SearchSourceFilter.LOCAL_ONLY -> "add_food_filter_local"
+                            SearchSourceFilter.ONLINE_ONLY -> "add_food_filter_online"
+                        },
+                    ),
+                    label = {
+                        Text(
+                            when (filter) {
+                                SearchSourceFilter.ALL -> "All"
+                                SearchSourceFilter.LOCAL_ONLY -> "Local"
+                                SearchSourceFilter.ONLINE_ONLY -> "Online"
+                            },
+                        )
+                    },
+                )
+            }
+        }
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(Dimens.s),
+        ) {
+            OFPrimaryButton(
+                text = "Search online",
+                onClick = onSearchOnline,
+                enabled = query.isNotBlank() && !isOnlineSearchInProgress,
+                modifier = Modifier
+                    .weight(1f)
+                    .testTag("add_food_unified_search_online"),
+            )
+            OFSecondaryButton(
+                text = "Scan barcode",
+                onClick = onScanBarcode,
+                modifier = Modifier
+                    .weight(1f)
+                    .testTag("add_food_unified_scan_barcode"),
             )
         }
     }
@@ -561,8 +633,9 @@ private fun logFoodFromRow(
 }
 
 @Composable
-private fun RecentFoodRow(
+private fun SearchResultFoodRow(
     food: FoodItem,
+    sourceLabel: String,
     onLog: (MealType) -> Unit,
     onOpenDetail: () -> Unit,
 ) {
@@ -572,10 +645,16 @@ private fun RecentFoodRow(
             modifier = Modifier.fillMaxWidth(),
             verticalArrangement = Arrangement.spacedBy(Dimens.s),
         ) {
-            Text(text = food.name, style = MaterialTheme.typography.titleMedium)
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+            ) {
+                Text(text = food.name, style = MaterialTheme.typography.titleMedium)
+                OFStatPill(text = sourceLabel)
+            }
             if (!food.brand.isNullOrBlank()) {
                 Text(
-                    text = food.brand ?: "",
+                    text = food.brand.orEmpty(),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -612,16 +691,23 @@ private fun RecentFoodRow(
 private fun OnlineResultRow(
     food: RemoteFoodCandidate,
     onOpenPreview: () -> Unit,
+    modifier: Modifier = Modifier,
 ) {
-    OFCard(modifier = Modifier.fillMaxWidth()) {
+    OFCard(modifier = modifier.fillMaxWidth()) {
         Column(
             modifier = Modifier.fillMaxWidth(),
             verticalArrangement = Arrangement.spacedBy(Dimens.s),
         ) {
-            Text(
-                text = food.name,
-                style = MaterialTheme.typography.titleMedium,
-            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+            ) {
+                Text(
+                    text = food.name,
+                    style = MaterialTheme.typography.titleMedium,
+                )
+                OFStatPill(text = "Online")
+            }
             if (!food.brand.isNullOrBlank()) {
                 Text(
                     text = food.brand.orEmpty(),
@@ -629,10 +715,22 @@ private fun OnlineResultRow(
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
-            Text(
-                text = "${formatCalories(food.caloriesKcalPer100g ?: 0.0)} kcal · ${formatMacro(food.proteinGPer100g ?: 0.0)}p ${formatMacro(food.carbsGPer100g ?: 0.0)}c ${formatMacro(food.fatGPer100g ?: 0.0)}f per 100g",
-                style = MaterialTheme.typography.bodySmall,
-            )
+            val calories = food.caloriesKcalPer100g
+            val protein = food.proteinGPer100g
+            val carbs = food.carbsGPer100g
+            val fat = food.fatGPer100g
+            if (calories == null && protein == null && carbs == null && fat == null) {
+                Text(
+                    text = "Nutrition unknown",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            } else {
+                Text(
+                    text = "${formatCalories(calories ?: 0.0)} kcal · ${formatMacro(protein ?: 0.0)}p ${formatMacro(carbs ?: 0.0)}c ${formatMacro(fat ?: 0.0)}f per 100g",
+                    style = MaterialTheme.typography.bodySmall,
+                )
+            }
             OFSecondaryButton(
                 text = "Preview",
                 onClick = onOpenPreview,

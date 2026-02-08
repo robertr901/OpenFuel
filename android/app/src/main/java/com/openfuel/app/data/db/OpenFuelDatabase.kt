@@ -13,8 +13,9 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         FoodItemEntity::class,
         MealEntryEntity::class,
         DailyGoalEntity::class,
+        ProviderSearchCacheEntity::class,
     ],
-    version = 4,
+    version = 5,
     exportSchema = false,
 )
 @TypeConverters(Converters::class)
@@ -22,6 +23,7 @@ abstract class OpenFuelDatabase : RoomDatabase() {
     abstract fun foodDao(): FoodDao
     abstract fun mealEntryDao(): MealEntryDao
     abstract fun dailyGoalDao(): DailyGoalDao
+    abstract fun providerSearchCacheDao(): ProviderSearchCacheDao
 
     companion object {
         private const val DB_NAME = "openfuel.db"
@@ -62,13 +64,39 @@ abstract class OpenFuelDatabase : RoomDatabase() {
             }
         }
 
+        val MIGRATION_4_5 = object : Migration(4, 5) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS provider_search_cache (
+                        cacheKey TEXT NOT NULL,
+                        providerId TEXT NOT NULL,
+                        requestType TEXT NOT NULL,
+                        normalizedInput TEXT NOT NULL,
+                        payloadJson TEXT NOT NULL,
+                        cachedAtEpochMs INTEGER NOT NULL,
+                        expiresAtEpochMs INTEGER NOT NULL,
+                        itemCount INTEGER NOT NULL,
+                        PRIMARY KEY(cacheKey)
+                    )
+                    """.trimIndent(),
+                )
+                db.execSQL(
+                    "CREATE INDEX IF NOT EXISTS index_provider_search_cache_expiresAtEpochMs ON provider_search_cache(expiresAtEpochMs)",
+                )
+                db.execSQL(
+                    "CREATE INDEX IF NOT EXISTS index_provider_search_cache_providerId_requestType ON provider_search_cache(providerId, requestType)",
+                )
+            }
+        }
+
         fun build(context: Context): OpenFuelDatabase {
             return Room.databaseBuilder(
                 context.applicationContext,
                 OpenFuelDatabase::class.java,
                 DB_NAME,
             )
-                .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
+                .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5)
                 .fallbackToDestructiveMigrationOnDowngrade()
                 .build()
         }

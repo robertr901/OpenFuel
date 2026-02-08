@@ -156,32 +156,56 @@ internal data class OpenFoodFactsNutrimentsDto(
 )
 
 private fun OpenFoodFactsProductDto.toRemoteFoodCandidate(): RemoteFoodCandidate? {
-    val resolvedName = productName.orIfBlank(productNameEn).orIfBlank(genericName)
+    val normalizedProductName = productName.normalizedOrNull()
+    val normalizedProductNameEn = productNameEn.normalizedOrNull()
+    val normalizedGenericName = genericName.normalizedOrNull()
+    val normalizedBrand = brands.normalizedOrNull()
+    val normalizedServingSize = servingSize.normalizedOrNull()
+    val normalizedCode = code.normalizedOrNull()
+    val normalizedId = id.normalizedOrNull()
+
+    val resolvedName = normalizedProductName
+        .orIfBlank(normalizedProductNameEn)
+        .orIfBlank(normalizedGenericName)
     if (resolvedName.isNullOrBlank()) {
         return null
     }
-    val resolvedCode = code.orIfBlank(id)
+    val resolvedCode = normalizedCode
+        .orIfBlank(normalizedId)
         ?: buildDerivedSourceId(
             name = resolvedName,
-            brand = brands,
-            servingSize = servingSize,
+            brand = normalizedBrand,
+            servingSize = normalizedServingSize,
         )
     return RemoteFoodCandidate(
         source = RemoteFoodSource.OPEN_FOOD_FACTS,
         sourceId = resolvedCode,
-        barcode = code?.takeIf { it.isNotBlank() },
+        barcode = normalizedCode,
         name = resolvedName,
-        brand = brands?.takeIf { it.isNotBlank() },
-        caloriesKcalPer100g = nutriments?.energyKcal100g ?: nutriments?.energyKcal,
-        proteinGPer100g = nutriments?.proteins100g ?: nutriments?.proteins,
-        carbsGPer100g = nutriments?.carbohydrates100g ?: nutriments?.carbohydrates,
-        fatGPer100g = nutriments?.fat100g ?: nutriments?.fat,
-        servingSize = servingSize?.takeIf { it.isNotBlank() },
+        brand = normalizedBrand,
+        caloriesKcalPer100g = nutriments?.energyKcal100g.sanitizeNutrient()
+            ?: nutriments?.energyKcal.sanitizeNutrient(),
+        proteinGPer100g = nutriments?.proteins100g.sanitizeNutrient()
+            ?: nutriments?.proteins.sanitizeNutrient(),
+        carbsGPer100g = nutriments?.carbohydrates100g.sanitizeNutrient()
+            ?: nutriments?.carbohydrates.sanitizeNutrient(),
+        fatGPer100g = nutriments?.fat100g.sanitizeNutrient()
+            ?: nutriments?.fat.sanitizeNutrient(),
+        servingSize = normalizedServingSize,
     )
 }
 
 private fun String?.orIfBlank(fallback: String?): String? {
     return if (this.isNullOrBlank()) fallback else this
+}
+
+private fun String?.normalizedOrNull(): String? {
+    return this?.trim()?.takeIf { it.isNotEmpty() }
+}
+
+private fun Double?.sanitizeNutrient(): Double? {
+    val value = this ?: return null
+    return value.takeIf { it.isFinite() && it >= 0.0 }
 }
 
 private fun buildDerivedSourceId(

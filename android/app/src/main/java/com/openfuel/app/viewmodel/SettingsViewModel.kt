@@ -3,6 +3,7 @@ package com.openfuel.app.viewmodel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.openfuel.app.domain.model.DailyGoal
+import com.openfuel.app.domain.model.EntitlementActionResult
 import com.openfuel.app.domain.repository.GoalsRepository
 import com.openfuel.app.domain.repository.SettingsRepository
 import com.openfuel.app.domain.service.EntitlementService
@@ -32,8 +33,9 @@ class SettingsViewModel(
     private val clock: Clock = Clock.systemDefaultZone(),
 ) : ViewModel() {
     private val exportState = MutableStateFlow<ExportState>(ExportState.Idle)
+    private val paywallUiState = MutableStateFlow(PaywallUiState())
 
-    val uiState: StateFlow<SettingsUiState> = combine(
+    private val baseUiState = combine(
         settingsRepository.onlineLookupEnabled,
         entitlementService.getEntitlementState(),
         exportState,
@@ -53,6 +55,17 @@ class SettingsViewModel(
             exportState = exportStateValue,
             dailyGoal = dailyGoal,
         )
+    }
+
+    val uiState: StateFlow<SettingsUiState> = combine(
+        baseUiState,
+        paywallUiState,
+    ) { base, paywall ->
+        base.copy(
+            showPaywall = paywall.showPaywall,
+            isEntitlementActionInProgress = paywall.isActionInProgress,
+            entitlementActionMessage = paywall.message,
+        )
     }.stateIn(
         scope = viewModelScope,
         started = SharingStarted.WhileSubscribed(5_000),
@@ -65,6 +78,9 @@ class SettingsViewModel(
             lastProviderExecution = null,
             exportState = ExportState.Idle,
             dailyGoal = null,
+            showPaywall = false,
+            isEntitlementActionInProgress = false,
+            entitlementActionMessage = null,
         ),
     )
 
@@ -84,6 +100,29 @@ class SettingsViewModel(
         viewModelScope.launch {
             entitlementService.setDebugProOverride(enabled)
         }
+    }
+
+    fun openPaywall() {
+        paywallUiState.value = paywallUiState.value.copy(
+            showPaywall = true,
+            message = null,
+        )
+    }
+
+    fun dismissPaywall() {
+        paywallUiState.value = paywallUiState.value.copy(showPaywall = false)
+    }
+
+    fun purchasePro() {
+        runEntitlementAction { entitlementService.purchasePro() }
+    }
+
+    fun restorePurchases() {
+        runEntitlementAction { entitlementService.restorePurchases() }
+    }
+
+    fun consumeEntitlementMessage() {
+        paywallUiState.value = paywallUiState.value.copy(message = null)
     }
 
     fun saveGoals(
@@ -136,17 +175,44 @@ class SettingsViewModel(
     }
 
     private fun today(): LocalDate = LocalDate.now(clock)
+
+    private fun runEntitlementAction(
+        action: suspend () -> EntitlementActionResult,
+    ) {
+        if (paywallUiState.value.isActionInProgress) return
+        viewModelScope.launch {
+            paywallUiState.value = paywallUiState.value.copy(
+                isActionInProgress = true,
+                message = null,
+            )
+            val result = action()
+            entitlementService.refreshEntitlements()
+            val message = when (result) {
+                is EntitlementActionResult.Success -> result.message
+                is EntitlementActionResult.Error -> result.message
+                EntitlementActionResult.Cancelled -> "Purchase cancelled."
+            }
+            paywallUiState.value = paywallUiState.value.copy(
+                showPaywall = result !is EntitlementActionResult.Success,
+                isActionInProgress = false,
+                message = message,
+            )
+        }
+    }
 }
 
 data class SettingsUiState(
-    val onlineLookupEnabled: Boolean,
-    val isPro: Boolean,
-    val showDebugProToggle: Boolean,
-    val showSecurityWarning: Boolean,
-    val providerDiagnostics: List<FoodCatalogProviderDescriptor>,
-    val lastProviderExecution: ProviderExecutionSnapshot?,
-    val exportState: ExportState,
-    val dailyGoal: DailyGoal?,
+    val onlineLookupEnabled: Boolean = true,
+    val isPro: Boolean = false,
+    val showDebugProToggle: Boolean = false,
+    val showSecurityWarning: Boolean = false,
+    val providerDiagnostics: List<FoodCatalogProviderDescriptor> = emptyList(),
+    val lastProviderExecution: ProviderExecutionSnapshot? = null,
+    val exportState: ExportState = ExportState.Idle,
+    val dailyGoal: DailyGoal? = null,
+    val showPaywall: Boolean = false,
+    val isEntitlementActionInProgress: Boolean = false,
+    val entitlementActionMessage: String? = null,
 )
 
 sealed class GoalSaveResult {
@@ -160,3 +226,9 @@ sealed class ExportState {
     data class Success(val file: File) : ExportState()
     data class Error(val message: String) : ExportState()
 }
+
+private data class PaywallUiState(
+    val showPaywall: Boolean = false,
+    val isActionInProgress: Boolean = false,
+    val message: String? = null,
+)

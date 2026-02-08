@@ -46,6 +46,7 @@ import androidx.core.content.FileProvider
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.openfuel.app.BuildConfig
 import com.openfuel.app.domain.model.DailyGoal
+import com.openfuel.app.ui.components.ProPaywallDialog
 import com.openfuel.app.domain.util.GoalValidation
 import com.openfuel.app.ui.theme.Dimens
 import com.openfuel.app.ui.util.formatMacro
@@ -85,6 +86,12 @@ fun SettingsScreen(
         } else if (exportState is ExportState.Error) {
             snackbarHostState.showSnackbar(exportState.message)
         }
+    }
+
+    LaunchedEffect(uiState.entitlementActionMessage) {
+        val message = uiState.entitlementActionMessage ?: return@LaunchedEffect
+        snackbarHostState.showSnackbar(message)
+        viewModel.consumeEntitlementMessage()
     }
 
     if (showGoalsDialog) {
@@ -315,7 +322,7 @@ fun SettingsScreen(
             )
             if (uiState.isPro) {
                 Text(
-                    text = "Advanced export is enabled for this build and is coming in a follow-up phase.",
+                    text = "Advanced export is enabled for your account.",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -325,9 +332,24 @@ fun SettingsScreen(
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
+                Button(
+                    modifier = Modifier.testTag("settings_open_paywall_button"),
+                    onClick = viewModel::openPaywall,
+                ) {
+                    Text("See Pro options")
+                }
             }
             Spacer(modifier = Modifier.height(Dimens.xl))
         }
+
+        ProPaywallDialog(
+            show = uiState.showPaywall,
+            isActionInProgress = uiState.isEntitlementActionInProgress,
+            message = uiState.entitlementActionMessage,
+            onDismiss = viewModel::dismissPaywall,
+            onPurchaseClick = viewModel::purchasePro,
+            onRestoreClick = viewModel::restorePurchases,
+        )
     }
 }
 

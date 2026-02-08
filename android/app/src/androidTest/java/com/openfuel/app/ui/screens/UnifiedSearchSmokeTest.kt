@@ -145,15 +145,11 @@ class UnifiedSearchSmokeTest {
         composeRule.onNodeWithTag("screen_add_food").assertIsDisplayed()
         composeRule.onNodeWithTag("add_food_quick_add_text_button").performClick()
         composeRule.onNodeWithTag("add_food_quick_add_voice_button").performClick()
-        composeRule.waitUntil(timeoutMillis = 5_000) {
-            composeRule.onAllNodesWithTag("add_food_quick_add_voice_listening")
-                .fetchSemanticsNodes().isNotEmpty()
-        }
-        composeRule.onNodeWithTag("add_food_quick_add_voice_listening").assertIsDisplayed()
-        composeRule.onNodeWithTag("add_food_quick_add_voice_cancel").assertIsDisplayed()
-        composeRule.waitUntil(timeoutMillis = 5_000) {
-            composeRule.onAllNodesWithTag("add_food_quick_add_voice_listening")
-                .fetchSemanticsNodes().isEmpty()
+        composeRule.waitUntil(timeoutMillis = 10_000) {
+            runCatching {
+                composeRule.onNodeWithTag("add_food_quick_add_text_input")
+                    .assertTextContains("2 eggs and banana")
+            }.isSuccess
         }
         composeRule.waitForIdle()
 

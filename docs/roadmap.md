@@ -186,7 +186,25 @@ This roadmap separates product milestones (user outcomes) from implementation ph
 - If no model is present, the app must fall back to rule-based parsing with identical UI behaviour.
 - No network calls for inference. No server storage. No analytics.
 
-## Phase 13: Smart local suggestions (no guessing calories)
+## Phase 13: Security/docs/release hardening (completed)
+**Completed**
+- Documentation refreshed to repo-relative verification instructions across README/docs.
+- Deterministic instrumentation gate (`:app:connectedDebugAndroidTest`) documented as first-class in release guidance.
+- Security evidence documentation aligned with runtime guardrails and explicit-action networking.
+- Added deterministic documentation consistency unit tests to prevent drift on privacy/networking claims.
+
+## Phase 14: Entitlements, paywall, and advanced export (completed)
+**Completed**
+- Release entitlement wiring now uses Play Billing behind the existing `EntitlementService` seam.
+- Added deterministic paywall UX on Pro-gated surfaces with explicit `Upgrade` and `Restore purchases` actions.
+- Added entitlement refresh on app foreground entry and explicit restore action (no background polling).
+- Added Pro Advanced Export:
+  - JSON export path (versioned)
+  - CSV export path
+  - optional redaction mode for privacy-conscious sharing.
+- Added deterministic instrumentation coverage for paywall lock/restore behavior using test fakes (no real billing UI/network in tests).
+
+## Phase 15: Smart local suggestions (no guessing calories)
 **Scope**
 - Local-only suggestion helpers that accelerate capture without inventing nutrition:
   - “Did you mean …?” suggestions based on local food library, recents, favourites, and simple string similarity.
@@ -203,9 +221,9 @@ This roadmap separates product milestones (user outcomes) from implementation ph
 - No heavy background processing. Any indexing runs on explicit screen open or app idle with strict time budget.
 - No health advice, no nutritional recommendations, no medical claims.
 
-## Phase 14: Optional camera text capture (OCR) and accessibility polish (local-only)
+## Phase 16: Optional camera text capture (OCR) and accessibility polish (local-only)
 **Scope**
-- Add an explicit “Scan text” action inside Quick add (text) to OCR a receipt/label/ingredients list.
+- Add an explicit “Scan text” action inside Quick add to OCR a receipt/label/ingredients list.
 - Requires camera permission; request only when the user taps “Scan text”, with a clear rationale.
 - OCR runs locally only (ML Kit on-device text recognition if available, or equivalent).
 - Extracted text is shown to the user for editing before parsing (never auto-log).
@@ -219,7 +237,7 @@ This roadmap separates product milestones (user outcomes) from implementation ph
 - No network calls. No telemetry. No background capture.
 - Instrumentation tests verify UI wiring and state transitions without depending on real camera frames (use fake inputs).
 
-## Longer-term (Phase 15+ ideas, not planned yet)
+## Longer-term (Phase 17+ ideas, not planned yet)
 - Optional on-device embeddings for better local matching and dedupe (local-only).
 - Private export/import improvements (encrypted export, user-controlled keys).
 - Multi-device sync only if end-to-end encrypted and user-owned (explicitly not in scope yet).
@@ -230,6 +248,4 @@ This roadmap separates product milestones (user outcomes) from implementation ph
 - Additional online providers beyond OpenFoodFacts.
 - Advanced quick add presets and ranking heuristics.
 - Per-day goal overrides (goals intentionally global so far).
-- Billing integration for live Pro purchase entitlements (debug/local flag currently used).
-- Advanced export payload formats (UI gate added; implementation deferred).
 - Full instrumentation coverage for camera scanning and Compose scanner interactions (Room DAO instrumentation test added; scanner UI tests deferred).

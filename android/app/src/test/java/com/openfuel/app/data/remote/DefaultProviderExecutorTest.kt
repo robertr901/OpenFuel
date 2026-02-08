@@ -102,6 +102,39 @@ class DefaultProviderExecutorTest {
     }
 
     @Test
+    fun execute_missingBrandAndServing_doesNotHideDistinctProviderItems() = runTest {
+        val providerA = FakeExecutorFoodCatalogProvider(
+            searchResults = listOf(
+                candidate(sourceId = "provider-a-item", barcode = null, name = "Protein Bar", brand = null, servingSize = null),
+            ),
+        )
+        val providerB = FakeExecutorFoodCatalogProvider(
+            searchResults = listOf(
+                candidate(sourceId = "provider-b-item", barcode = null, name = "Protein Bar", brand = null, servingSize = null),
+            ),
+        )
+        val executor = DefaultProviderExecutor(
+            providerSource = { _ ->
+                listOf(
+                    provider(key = "provider_a", priority = 10, provider = providerA),
+                    provider(key = "provider_b", priority = 20, provider = providerB),
+                )
+            },
+        )
+
+        val report = executor.execute(
+            request = textRequest(
+                query = "protein bar",
+                token = guard.issueToken("search_online"),
+            ),
+        )
+
+        assertEquals(2, report.mergedCandidates.size)
+        assertEquals("provider-a-item", report.mergedCandidates[0].candidate.sourceId)
+        assertEquals("provider-b-item", report.mergedCandidates[1].candidate.sourceId)
+    }
+
+    @Test
     fun execute_providerTimeout_returnsTimeoutStatusWithoutThrowing() = runTest {
         val slowProvider = FakeExecutorFoodCatalogProvider(
             delayMs = 2_000L,

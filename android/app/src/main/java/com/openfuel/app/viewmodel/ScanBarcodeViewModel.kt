@@ -3,11 +3,11 @@ package com.openfuel.app.viewmodel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.openfuel.app.data.remote.UserInitiatedNetworkGuard
-import com.openfuel.app.domain.model.FoodItem
 import com.openfuel.app.domain.model.FoodUnit
 import com.openfuel.app.domain.model.MealEntry
 import com.openfuel.app.domain.model.MealType
 import com.openfuel.app.domain.model.RemoteFoodCandidate
+import com.openfuel.app.domain.model.toLocalFoodItem
 import com.openfuel.app.domain.repository.FoodRepository
 import com.openfuel.app.domain.repository.LogRepository
 import com.openfuel.app.domain.repository.SettingsRepository
@@ -219,23 +219,6 @@ data class ScanBarcodeUiState(
     val providerResults: List<ProviderResult> = emptyList(),
     val message: String? = null,
 )
-
-private fun RemoteFoodCandidate.toLocalFoodItem(): FoodItem {
-    val maxCalories = 10_000.0
-    val maxMacro = 1_000.0
-    return FoodItem(
-        id = UUID.randomUUID().toString(),
-        name = name,
-        brand = brand,
-        barcode = barcode,
-        caloriesKcal = caloriesKcalPer100g?.coerceIn(0.0, maxCalories) ?: 0.0,
-        proteinG = proteinGPer100g?.coerceIn(0.0, maxMacro) ?: 0.0,
-        carbsG = carbsGPer100g?.coerceIn(0.0, maxMacro) ?: 0.0,
-        fatG = fatGPer100g?.coerceIn(0.0, maxMacro) ?: 0.0,
-        isFavorite = false,
-        createdAt = Instant.now(),
-    )
-}
 
 private fun deriveBarcodeError(
     providerResults: List<ProviderResult>,

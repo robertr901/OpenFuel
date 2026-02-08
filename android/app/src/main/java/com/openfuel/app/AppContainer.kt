@@ -1,5 +1,7 @@
 package com.openfuel.app
 
+import android.app.Activity
+import android.app.Application
 import android.content.Context
 import com.openfuel.app.data.entitlement.DebugEntitlementService
 import com.openfuel.app.data.entitlement.PlaceholderPlayBillingEntitlementService
@@ -14,6 +16,7 @@ import com.openfuel.app.data.remote.RoomProviderResultCache
 import com.openfuel.app.data.remote.RemoteFoodDataSource
 import com.openfuel.app.data.remote.StaticSampleCatalogProvider
 import com.openfuel.app.data.remote.UserInitiatedNetworkGuard
+import com.openfuel.app.data.voice.RecognizerIntentVoiceTranscriber
 import com.openfuel.app.data.security.LocalSecurityPostureProvider
 import com.openfuel.app.data.repository.EntitlementsRepositoryImpl
 import com.openfuel.app.data.repository.FoodRepositoryImpl
@@ -28,6 +31,7 @@ import com.openfuel.app.domain.repository.SettingsRepository
 import com.openfuel.app.domain.security.SecurityPostureProvider
 import com.openfuel.app.domain.intelligence.IntelligenceService
 import com.openfuel.app.domain.intelligence.RuleBasedIntelligenceService
+import com.openfuel.app.domain.voice.VoiceTranscriber
 import com.openfuel.app.domain.service.EntitlementService
 import com.openfuel.app.domain.service.FoodCatalogProvider
 import com.openfuel.app.domain.service.FoodCatalogProviderDescriptor
@@ -35,15 +39,19 @@ import com.openfuel.app.domain.service.FoodCatalogProviderRegistry
 import com.openfuel.app.domain.service.InMemoryProviderExecutionDiagnosticsStore
 import com.openfuel.app.domain.service.ProviderExecutor
 import com.openfuel.app.export.ExportManager
+import androidx.activity.ComponentActivity
 import okhttp3.OkHttpClient
+import java.lang.ref.WeakReference
 import java.util.concurrent.TimeUnit
 
 class AppContainer(
     context: Context,
     private val forceDeterministicProvidersOnly: Boolean = false,
+    private val voiceTranscriberOverride: VoiceTranscriber? = null,
 ) {
     private val database: OpenFuelDatabase = OpenFuelDatabase.build(context)
     private val userInitiatedNetworkGuard = UserInitiatedNetworkGuard()
+    private val currentActivityRef = java.util.concurrent.atomic.AtomicReference<WeakReference<ComponentActivity>?>(null)
     private val onlineHttpClient: OkHttpClient = OkHttpClient.Builder()
         .connectTimeout(5, TimeUnit.SECONDS)
         .readTimeout(10, TimeUnit.SECONDS)
@@ -162,10 +170,62 @@ class AppContainer(
     )
     val networkGuard: UserInitiatedNetworkGuard = userInitiatedNetworkGuard
     val intelligenceService: IntelligenceService = RuleBasedIntelligenceService()
+    val voiceTranscriber: VoiceTranscriber = voiceTranscriberOverride ?: RecognizerIntentVoiceTranscriber(
+        currentActivityProvider = { currentActivityRef.get()?.get() },
+    )
 
     val exportManager: ExportManager = ExportManager(
         foodDao = database.foodDao(),
         mealEntryDao = database.mealEntryDao(),
         goalsRepository = goalsRepository,
     )
+
+    init {
+        (context.applicationContext as? Application)?.registerActivityLifecycleCallbacks(
+            object : Application.ActivityLifecycleCallbacks {
+                override fun onActivityCreated(activity: Activity, savedInstanceState: android.os.Bundle?) {
+                    updateCurrentActivity(activity)
+                }
+
+                override fun onActivityStarted(activity: Activity) {
+                    updateCurrentActivity(activity)
+                }
+
+                override fun onActivityResumed(activity: Activity) {
+                    updateCurrentActivity(activity)
+                }
+
+                override fun onActivityPaused(activity: Activity) {
+                    clearCurrentActivity(activity)
+                }
+
+                override fun onActivityStopped(activity: Activity) {
+                    clearCurrentActivity(activity)
+                }
+
+                override fun onActivitySaveInstanceState(
+                    activity: Activity,
+                    outState: android.os.Bundle,
+                ) {
+                }
+
+                override fun onActivityDestroyed(activity: Activity) {
+                    clearCurrentActivity(activity)
+                }
+            },
+        )
+    }
+
+    private fun updateCurrentActivity(activity: Activity) {
+        val componentActivity = activity as? ComponentActivity ?: return
+        currentActivityRef.set(WeakReference(componentActivity))
+    }
+
+    private fun clearCurrentActivity(activity: Activity) {
+        val componentActivity = activity as? ComponentActivity ?: return
+        val current = currentActivityRef.get()?.get() ?: return
+        if (current === componentActivity) {
+            currentActivityRef.set(null)
+        }
+    }
 }

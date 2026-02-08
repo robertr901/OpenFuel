@@ -166,6 +166,7 @@ fun OpenFuelAppRoot() {
                 AddFoodScreen(
                     viewModel = viewModel,
                     intelligenceService = container.intelligenceService,
+                    voiceTranscriber = container.voiceTranscriber,
                     onNavigateBack = { navController.popBackStack() },
                     onOpenFoodDetail = { foodId -> navController.navigate(Routes.foodDetailRoute(foodId)) },
                     onScanBarcode = { navController.navigate(Routes.SCAN_BARCODE) },

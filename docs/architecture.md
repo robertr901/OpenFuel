@@ -77,6 +77,20 @@ domain (pure logic, calculations, unit helpers)
   - deterministic unit tests cover parser/normalizer behavior
   - deterministic instrumentation smoke test validates query prefill flow end-to-end offline
 
+## Voice transcriber seam (Phase 11)
+- New domain boundary: `com.openfuel.app.domain.voice`.
+- `VoiceTranscriber` defines one explicit-action entry point: `transcribeOnce(...)`.
+- Result model is structured and non-throwing:
+  - `Success(text)`
+  - `Unavailable(reason)`
+  - `Cancelled`
+  - `Failure(message)` (sanitized user-safe message)
+- Android implementation uses `RecognizerIntent` and only starts on explicit user tap from Add Food quick-add dialog.
+- No always-listening, no background service, no audio persistence, no telemetry.
+- Voice success only populates quick-add text input; parsing/preview still flows through `IntelligenceService.parseFoodText(...)`.
+- Selecting a preview item still only prefills unified search query; no auto-search, auto-save, or auto-log.
+- Deterministic androidTest runner injects a fake `VoiceTranscriber` to keep tests offline and independent of microphone/system speech UI.
+
 ## Provider cache architecture
 - Storage: Room table `provider_search_cache`.
 - Cache key: normalized request input + provider id + request type.

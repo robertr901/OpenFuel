@@ -129,4 +129,29 @@ class UnifiedSearchSmokeTest {
 
         composeRule.onNodeWithTag("add_food_unified_query_input").assertTextContains("eggs")
     }
+
+    @Test
+    fun quickAddVoice_prefillsTextAndSearchQuery() {
+        composeRule.onNodeWithTag("screen_today").assertIsDisplayed()
+        composeRule.onNodeWithTag("home_add_food_fab").performClick()
+        composeRule.waitForIdle()
+
+        composeRule.onNodeWithTag("screen_add_food").assertIsDisplayed()
+        composeRule.onNodeWithTag("add_food_quick_add_text_button").performClick()
+        composeRule.onNodeWithTag("add_food_quick_add_voice_button").performClick()
+        composeRule.waitForIdle()
+
+        composeRule.onNodeWithTag("add_food_quick_add_text_input")
+            .assertTextContains("2 eggs and banana")
+        composeRule.onNodeWithTag("add_food_quick_add_text_preview_list").assertIsDisplayed()
+        composeRule.onNodeWithTag("add_food_quick_add_text_preview_item_0")
+            .assertTextContains("eggs", substring = true)
+        composeRule.onNodeWithTag("add_food_quick_add_text_preview_item_1")
+            .assertTextContains("banana", substring = true)
+
+        composeRule.onNodeWithTag("add_food_quick_add_text_preview_item_0").performClick()
+        composeRule.waitForIdle()
+
+        composeRule.onNodeWithTag("add_food_unified_query_input").assertTextContains("eggs")
+    }
 }

@@ -3,6 +3,9 @@ package com.openfuel.app
 import android.app.Application
 import android.content.Context
 import androidx.test.runner.AndroidJUnitRunner
+import com.openfuel.app.domain.voice.VoiceTranscribeConfig
+import com.openfuel.app.domain.voice.VoiceTranscribeResult
+import com.openfuel.app.domain.voice.VoiceTranscriber
 
 class OpenFuelAndroidTestRunner : AndroidJUnitRunner() {
     override fun newApplication(
@@ -14,6 +17,11 @@ class OpenFuelAndroidTestRunner : AndroidJUnitRunner() {
             AppContainer(
                 context = appContext,
                 forceDeterministicProvidersOnly = true,
+                voiceTranscriberOverride = object : VoiceTranscriber {
+                    override suspend fun transcribeOnce(config: VoiceTranscribeConfig): VoiceTranscribeResult {
+                        return VoiceTranscribeResult.Success("2 eggs and banana")
+                    }
+                },
             )
         }
         return super.newApplication(

@@ -51,6 +51,10 @@ import com.openfuel.app.domain.model.RemoteFoodCandidate
 import com.openfuel.app.domain.model.RemoteFoodSource
 import com.openfuel.app.domain.search.SearchSourceFilter
 import com.openfuel.app.domain.service.ProviderStatus
+import com.openfuel.app.domain.voice.VoiceTranscribeConfig
+import com.openfuel.app.domain.voice.VoiceTranscribeResult
+import com.openfuel.app.domain.voice.VoiceTranscriber
+import com.openfuel.app.domain.voice.messageOrNull
 import com.openfuel.app.ui.components.MealTypeDropdown
 import com.openfuel.app.ui.components.OFCard
 import com.openfuel.app.ui.components.OFEmptyState
@@ -64,7 +68,10 @@ import com.openfuel.app.ui.util.formatCalories
 import com.openfuel.app.ui.util.formatMacro
 import com.openfuel.app.ui.util.parseDecimalInput
 import com.openfuel.app.viewmodel.AddFoodViewModel
+import java.util.Locale
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -72,6 +79,7 @@ import kotlinx.coroutines.launch
 fun AddFoodScreen(
     viewModel: AddFoodViewModel,
     intelligenceService: IntelligenceService,
+    voiceTranscriber: VoiceTranscriber,
     onNavigateBack: () -> Unit,
     onOpenFoodDetail: (String) -> Unit,
     onScanBarcode: () -> Unit,
@@ -415,6 +423,7 @@ fun AddFoodScreen(
         QuickAddTextDialog(
             input = quickAddTextInput,
             intelligenceService = intelligenceService,
+            voiceTranscriber = voiceTranscriber,
             onInputChange = { quickAddTextInput = it },
             onDismiss = { isQuickAddTextDialogVisible = false },
             onSelectItem = { candidate ->
@@ -550,13 +559,48 @@ private fun UnifiedSearchControls(
 private fun QuickAddTextDialog(
     input: String,
     intelligenceService: IntelligenceService,
+    voiceTranscriber: VoiceTranscriber,
     onInputChange: (String) -> Unit,
     onDismiss: () -> Unit,
     onSelectItem: (String) -> Unit,
 ) {
+    val scope = rememberCoroutineScope()
+    var voiceUiState by remember { mutableStateOf<QuickAddVoiceUiState>(QuickAddVoiceUiState.Idle) }
+    var voiceJob by remember { mutableStateOf<Job?>(null) }
     val intent = intelligenceService.parseFoodText(input)
+    val dismissDialog = {
+        voiceJob?.cancel()
+        voiceUiState = QuickAddVoiceUiState.Idle
+        onDismiss()
+    }
+    val startVoiceCapture = {
+        voiceJob?.cancel()
+        voiceUiState = QuickAddVoiceUiState.Listening
+        voiceJob = scope.launch {
+            try {
+                val result = voiceTranscriber.transcribeOnce(
+                    config = VoiceTranscribeConfig(
+                        languageTag = Locale.getDefault().toLanguageTag(),
+                        maxDurationMs = 10_000L,
+                    ),
+                )
+                voiceUiState = when (result) {
+                    is VoiceTranscribeResult.Success -> {
+                        onInputChange(result.text)
+                        QuickAddVoiceUiState.Idle
+                    }
+                    VoiceTranscribeResult.Cancelled -> QuickAddVoiceUiState.Idle
+                    else -> QuickAddVoiceUiState.Error(
+                        result.messageOrNull() ?: "Voice input failed. Please try again.",
+                    )
+                }
+            } catch (_: CancellationException) {
+                voiceUiState = QuickAddVoiceUiState.Idle
+            }
+        }
+    }
     AlertDialog(
-        onDismissRequest = onDismiss,
+        onDismissRequest = dismissDialog,
         title = {
             Text("Quick add (text)")
         },
@@ -578,6 +622,54 @@ private fun QuickAddTextDialog(
                         .fillMaxWidth()
                         .testTag("add_food_quick_add_text_input"),
                 )
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(Dimens.s),
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    OFSecondaryButton(
+                        text = "Voice",
+                        onClick = startVoiceCapture,
+                        enabled = voiceUiState !is QuickAddVoiceUiState.Listening,
+                        modifier = Modifier
+                            .weight(1f)
+                            .testTag("add_food_quick_add_voice_button"),
+                    )
+                    if (voiceUiState is QuickAddVoiceUiState.Listening) {
+                        OFSecondaryButton(
+                            text = "Cancel",
+                            onClick = {
+                                voiceJob?.cancel()
+                                voiceUiState = QuickAddVoiceUiState.Idle
+                            },
+                            modifier = Modifier
+                                .weight(1f)
+                                .testTag("add_food_quick_add_voice_cancel"),
+                        )
+                    }
+                }
+                if (voiceUiState is QuickAddVoiceUiState.Listening) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .testTag("add_food_quick_add_voice_listening"),
+                        horizontalArrangement = Arrangement.spacedBy(Dimens.s),
+                    ) {
+                        CircularProgressIndicator()
+                        Text(
+                            text = "Listening...",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                }
+                if (voiceUiState is QuickAddVoiceUiState.Error) {
+                    Text(
+                        text = (voiceUiState as QuickAddVoiceUiState.Error).message,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.error,
+                        modifier = Modifier.testTag("add_food_quick_add_voice_error"),
+                    )
+                }
                 if (intent.items.isEmpty()) {
                     Text(
                         text = "Try: 2 eggs and banana",
@@ -608,11 +700,19 @@ private fun QuickAddTextDialog(
             }
         },
         confirmButton = {
-            TextButton(onClick = onDismiss) {
+            TextButton(onClick = dismissDialog) {
                 Text("Close")
             }
         },
     )
+}
+
+private sealed interface QuickAddVoiceUiState {
+    data object Idle : QuickAddVoiceUiState
+
+    data object Listening : QuickAddVoiceUiState
+
+    data class Error(val message: String) : QuickAddVoiceUiState
 }
 
 private fun quickAddPreviewLabel(item: FoodTextItem): String {

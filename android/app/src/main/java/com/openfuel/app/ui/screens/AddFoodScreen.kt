@@ -324,6 +324,9 @@ fun AddFoodScreen(
                     }
 
                     val failedStatuses = setOf(
+                        ProviderStatus.NETWORK_UNAVAILABLE,
+                        ProviderStatus.HTTP_ERROR,
+                        ProviderStatus.PARSING_ERROR,
                         ProviderStatus.ERROR,
                         ProviderStatus.TIMEOUT,
                         ProviderStatus.GUARD_REJECTED,

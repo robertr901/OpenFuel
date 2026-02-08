@@ -242,6 +242,9 @@ private fun deriveBarcodeError(
     hasResult: Boolean,
 ): String? {
     val failedStatuses = setOf(
+        ProviderStatus.NETWORK_UNAVAILABLE,
+        ProviderStatus.HTTP_ERROR,
+        ProviderStatus.PARSING_ERROR,
         ProviderStatus.ERROR,
         ProviderStatus.TIMEOUT,
         ProviderStatus.GUARD_REJECTED,

@@ -15,11 +15,16 @@ import java.time.Clock
 import java.time.Duration
 import java.time.Instant
 import java.time.ZoneId
+import java.net.UnknownHostException
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.test.runTest
+import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.ResponseBody.Companion.toResponseBody
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import retrofit2.HttpException
+import retrofit2.Response
 
 class DefaultProviderExecutorTest {
     private val guard = UserInitiatedNetworkGuard()
@@ -183,6 +188,101 @@ class DefaultProviderExecutorTest {
 
         assertEquals(ProviderStatus.ERROR, report.providerResults.single().status)
         assertTrue(report.mergedCandidates.isEmpty())
+    }
+
+    @Test
+    fun execute_providerRateLimit_mapsToRateLimitedStatus() = runTest {
+        val failingProvider = FakeExecutorFoodCatalogProvider(
+            throwable = httpException(code = 429),
+        )
+        val executor = DefaultProviderExecutor(
+            providerSource = { _ -> listOf(provider(key = "provider_a", priority = 10, provider = failingProvider)) },
+        )
+
+        val report = executor.execute(
+            request = textRequest(
+                query = "oat",
+                token = guard.issueToken("search_online"),
+            ),
+        )
+
+        assertEquals(ProviderStatus.RATE_LIMITED, report.providerResults.single().status)
+    }
+
+    @Test
+    fun execute_providerHttpError_mapsToHttpErrorStatus() = runTest {
+        val failingProvider = FakeExecutorFoodCatalogProvider(
+            throwable = httpException(code = 500),
+        )
+        val executor = DefaultProviderExecutor(
+            providerSource = { _ -> listOf(provider(key = "provider_a", priority = 10, provider = failingProvider)) },
+        )
+
+        val report = executor.execute(
+            request = textRequest(
+                query = "oat",
+                token = guard.issueToken("search_online"),
+            ),
+        )
+
+        assertEquals(ProviderStatus.HTTP_ERROR, report.providerResults.single().status)
+    }
+
+    @Test
+    fun execute_providerParsingFailure_mapsToParsingErrorStatus() = runTest {
+        val failingProvider = FakeExecutorFoodCatalogProvider(
+            throwable = com.google.gson.JsonParseException("bad json"),
+        )
+        val executor = DefaultProviderExecutor(
+            providerSource = { _ -> listOf(provider(key = "provider_a", priority = 10, provider = failingProvider)) },
+        )
+
+        val report = executor.execute(
+            request = textRequest(
+                query = "oat",
+                token = guard.issueToken("search_online"),
+            ),
+        )
+
+        assertEquals(ProviderStatus.PARSING_ERROR, report.providerResults.single().status)
+    }
+
+    @Test
+    fun execute_providerNetworkFailure_mapsToNetworkUnavailableStatus() = runTest {
+        val failingProvider = FakeExecutorFoodCatalogProvider(
+            throwable = UnknownHostException("no network"),
+        )
+        val executor = DefaultProviderExecutor(
+            providerSource = { _ -> listOf(provider(key = "provider_a", priority = 10, provider = failingProvider)) },
+        )
+
+        val report = executor.execute(
+            request = textRequest(
+                query = "oat",
+                token = guard.issueToken("search_online"),
+            ),
+        )
+
+        assertEquals(ProviderStatus.NETWORK_UNAVAILABLE, report.providerResults.single().status)
+    }
+
+    @Test
+    fun execute_providerGuardViolation_mapsToGuardRejectedStatus() = runTest {
+        val failingProvider = FakeExecutorFoodCatalogProvider(
+            throwable = UserInitiatedNetworkGuardViolationException("stale token"),
+        )
+        val executor = DefaultProviderExecutor(
+            providerSource = { _ -> listOf(provider(key = "provider_a", priority = 10, provider = failingProvider)) },
+        )
+
+        val report = executor.execute(
+            request = textRequest(
+                query = "oat",
+                token = guard.issueToken("search_online"),
+            ),
+        )
+
+        assertEquals(ProviderStatus.GUARD_REJECTED, report.providerResults.single().status)
     }
 
     @Test
@@ -359,6 +459,15 @@ class DefaultProviderExecutorTest {
             carbsGPer100g = 10.0,
             fatGPer100g = 1.0,
             servingSize = servingSize,
+        )
+    }
+
+    private fun httpException(code: Int): HttpException {
+        return HttpException(
+            Response.error<Any>(
+                code,
+                "{}".toResponseBody("application/json".toMediaType()),
+            ),
         )
     }
 }

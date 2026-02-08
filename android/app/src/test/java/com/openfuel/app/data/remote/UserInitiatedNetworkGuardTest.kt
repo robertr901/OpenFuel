@@ -30,7 +30,7 @@ class UserInitiatedNetworkGuardTest {
         val token = guard.issueToken("barcode-lookup")
         clock.currentInstant = Instant.parse("2024-01-01T00:00:11Z")
 
-        assertThrows(IllegalStateException::class.java) {
+        assertThrows(UserInitiatedNetworkGuardViolationException::class.java) {
             guard.validate(token)
         }
     }

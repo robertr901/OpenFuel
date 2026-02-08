@@ -120,6 +120,32 @@ class DefaultFoodCatalogProviderRegistryTest {
     }
 
     @Test
+    fun providersFor_releaseBuildKeepsRealProviderEnabledWhenOnlineIsOn() {
+        val registry = DefaultFoodCatalogProviderRegistry(
+            entries = listOf(
+                ProviderEntry(
+                    metadata = descriptor(
+                        key = "open_food_facts",
+                        enabled = true,
+                    ),
+                    provider = FakeFoodCatalogProvider(name = "off"),
+                    debugDiagnosticsOnly = false,
+                ),
+            ),
+            isDebugBuild = false,
+            debugDiagnosticsEnabled = false,
+        )
+
+        val providers = registry.providersFor(
+            requestType = ProviderRequestType.TEXT_SEARCH,
+            onlineLookupEnabled = true,
+        )
+
+        assertEquals(1, providers.size)
+        assertTrue(providers.single().descriptor.enabled)
+    }
+
+    @Test
     fun providersFor_filtersByCapability() {
         val registry = DefaultFoodCatalogProviderRegistry(
             entries = listOf(

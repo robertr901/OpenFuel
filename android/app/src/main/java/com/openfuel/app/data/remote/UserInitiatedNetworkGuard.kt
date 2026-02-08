@@ -18,8 +18,10 @@ class UserInitiatedNetworkGuard(
 
     fun validate(token: UserInitiatedNetworkToken) {
         val age = Duration.between(token.issuedAt, clock.instant())
-        check(!age.isNegative && age <= tokenValidityWindow) {
-            "Network call must be triggered by a recent explicit user action."
+        if (age.isNegative || age > tokenValidityWindow) {
+            throw UserInitiatedNetworkGuardViolationException(
+                message = "Network call must be triggered by a recent explicit user action.",
+            )
         }
     }
 }
@@ -28,3 +30,7 @@ data class UserInitiatedNetworkToken internal constructor(
     val action: String,
     val issuedAt: Instant,
 )
+
+class UserInitiatedNetworkGuardViolationException(
+    message: String,
+) : IllegalStateException(message)

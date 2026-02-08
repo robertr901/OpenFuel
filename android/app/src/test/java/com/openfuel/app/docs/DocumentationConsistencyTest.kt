@@ -55,7 +55,8 @@ class DocumentationConsistencyTest {
     }
 
     private fun readRepoFile(relativePath: String): String {
-        return Files.readString(repoRoot.resolve(relativePath))
+        val bytes = Files.readAllBytes(repoRoot.resolve(relativePath))
+        return bytes.toString(Charsets.UTF_8)
     }
 
     private fun resolveRepoRoot(): Path {

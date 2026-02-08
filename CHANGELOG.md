@@ -4,6 +4,17 @@ All notable changes to OpenFuel are documented here.
 
 ## Unreleased
 
+### Phase 14: Entitlements/paywall/advanced export foundations
+- Replaced release entitlement placeholder with Play Billing-backed entitlement wiring behind the existing `EntitlementService` seam.
+- Added deterministic paywall UX on Pro-gated surfaces with explicit `Upgrade`, `Restore purchases`, and dismiss actions.
+- Added entitlement refresh on app foreground entry plus explicit restore action (no background polling).
+- Added Pro advanced export with:
+  - JSON export (existing versioned payload path)
+  - CSV export
+  - optional redaction mode for privacy-conscious sharing.
+- Added deterministic instrumentation coverage for paywall lock and restore flows using fakes (no real billing UI/network in tests).
+- No provider executor changes, no provider registry changes, no cache schema/migration changes, and no online guard token behavior changes.
+
 ### Phase 13: Security/docs/release hardening
 - Refreshed core documentation to remove local absolute paths and standardize repo-relative verification instructions.
 - Elevated deterministic instrumentation (`:app:connectedDebugAndroidTest`) as a first-class release gate in docs.
@@ -38,6 +49,8 @@ Run from `android/` before release or PR merge:
    - Verify Add Food local search, quick add, and barcode navigation flows.
    - Verify online lookup remains explicit action only (`Search online` / `Refresh online`).
    - Verify online-disabled setting blocks network actions with clear user feedback.
+   - Verify Pro-gated surfaces show paywall when locked and `Restore purchases` updates unlocked state.
+   - Verify advanced export JSON/CSV plus optional redaction output before sharing.
 3. Privacy/permissions checks:
    - Confirm no telemetry/analytics/crash-reporting SDKs were added.
    - Confirm no new dangerous permissions were added unintentionally.

@@ -26,6 +26,8 @@ import com.openfuel.app.domain.repository.GoalsRepository
 import com.openfuel.app.domain.repository.LogRepository
 import com.openfuel.app.domain.repository.SettingsRepository
 import com.openfuel.app.domain.security.SecurityPostureProvider
+import com.openfuel.app.domain.intelligence.IntelligenceService
+import com.openfuel.app.domain.intelligence.RuleBasedIntelligenceService
 import com.openfuel.app.domain.service.EntitlementService
 import com.openfuel.app.domain.service.FoodCatalogProvider
 import com.openfuel.app.domain.service.FoodCatalogProviderDescriptor
@@ -159,6 +161,7 @@ class AppContainer(
         diagnosticsStore = providerExecutionDiagnosticsStore,
     )
     val networkGuard: UserInitiatedNetworkGuard = userInitiatedNetworkGuard
+    val intelligenceService: IntelligenceService = RuleBasedIntelligenceService()
 
     val exportManager: ExportManager = ExportManager(
         foodDao = database.foodDao(),

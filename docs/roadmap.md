@@ -134,6 +134,16 @@ This roadmap separates product milestones (user outcomes) from implementation ph
 - Extended deterministic runner wiring to inject fake voice transcriber in androidTest.
 - Added deterministic instrumentation smoke coverage for voice quick-add flow without microphone/system speech dependency.
 
+## Phase 12a: Add Food UX and accessibility polish (completed)
+**Completed**
+- Reworked Add Food information hierarchy into calmer sections with compact quick actions and a local-search-first layout.
+- Kept online actions explicit and visually subordinate (`Search online`, `Refresh online`) without behavior changes.
+- Collapsed debug provider diagnostics details behind a debug-only advanced expander while retaining deterministic execution counters.
+- Standardized Add Food spacing/typography rhythm and instrument-style numeric readability.
+- Normalized key app iconography to Material Rounded for bottom navigation and major action surfaces.
+- Improved keyboard-first flow and TalkBack semantics in Add Food quick-add/voice interactions.
+- Extended deterministic instrumentation assertions for Add Food diagnostics expander behavior.
+
 ## Phase 12: On-device ML parser plug-in (still local-only)
 **Scope**
 - Introduce an optional `IntelligenceService` implementation that uses on-device ML, with rule-based as the default fallback.

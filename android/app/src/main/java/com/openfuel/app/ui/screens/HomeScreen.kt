@@ -13,10 +13,10 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.automirrored.filled.ArrowForward
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.automirrored.rounded.ArrowBack
+import androidx.compose.material.icons.automirrored.rounded.ArrowForward
+import androidx.compose.material.icons.rounded.Add
+import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -129,7 +129,7 @@ fun HomeScreen(
                 navigationIcon = {
                     IconButton(onClick = viewModel::goToPreviousDay) {
                         Icon(
-                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                            imageVector = Icons.AutoMirrored.Rounded.ArrowBack,
                             contentDescription = "Previous day",
                         )
                     }
@@ -143,13 +143,13 @@ fun HomeScreen(
                 actions = {
                     IconButton(onClick = viewModel::goToNextDay) {
                         Icon(
-                            imageVector = Icons.AutoMirrored.Filled.ArrowForward,
+                            imageVector = Icons.AutoMirrored.Rounded.ArrowForward,
                             contentDescription = "Next day",
                         )
                     }
                     IconButton(onClick = onOpenSettings) {
                         Icon(
-                            imageVector = Icons.Default.Settings,
+                            imageVector = Icons.Rounded.Settings,
                             contentDescription = "Open settings",
                         )
                     }
@@ -161,7 +161,7 @@ fun HomeScreen(
                 text = { Text("Add food") },
                 icon = {
                     Icon(
-                        imageVector = Icons.Default.Add,
+                        imageVector = Icons.Rounded.Add,
                         contentDescription = "Add food",
                     )
                 },
@@ -213,7 +213,7 @@ private fun EmptyDayState() {
         title = "No meals logged yet",
         body = "Tap Add food to start logging this day and build your streak.",
         modifier = Modifier.fillMaxWidth(),
-        icon = Icons.Default.Add,
+        icon = Icons.Rounded.Add,
     )
 }
 

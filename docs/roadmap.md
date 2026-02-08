@@ -116,22 +116,23 @@ This roadmap separates product milestones (user outcomes) from implementation ph
 - Selecting a quick-add preview item prefills the existing unified search query only (no auto-save, auto-log, or auto-online search).
 - Added deterministic instrumentation coverage for quick-add text parsing preview and query prefill behaviour.
 
-## Phase 11: Voice capture (local-only, explicit action)
-**Scope**
-- Add an explicit “Voice” button inside “Quick add (text)” only (no always-listening, no background capture).
-- Use on-device speech-to-text APIs only (platform SpeechRecognizer or equivalent) with clear UX: start, stop, cancel.
-- Feed recognised text into `IntelligenceService.parseFoodText(...)`.
-- Show the same preview list as typed quick add, and require explicit user selection per item.
-- No auto-search, no auto-save, no auto-log. No network calls from OpenFuel.
-- Add a short privacy notice in the dialog: “Voice is processed on device. Nothing is sent anywhere.”
-
-**Acceptance criteria**
-- Works without network calls from OpenFuel. Speech recognition may require offline language packs depending on device; UI must handle “offline speech unavailable” gracefully.
-- No background services. No telemetry. No remote endpoints.
-- Deterministic tests: unit tests remain pure; instrumentation verifies UI wiring without relying on real audio input.
-
-**Notes**
-- If needed, place behind a feature flag. Default ON is acceptable if behaviour remains explicit-action only.
+## Phase 11: Voice capture (completed, local-only, explicit action)
+**Completed**
+- Added `VoiceTranscriber` seam (`domain/voice`) with structured non-throwing result model.
+- Added Android `RecognizerIntent`-based implementation with explicit-action start and bounded capture duration.
+- Added voice controls to Add Food “Quick add (text)” dialog:
+  - voice start button
+  - listening state with cancel
+  - friendly unavailable/error states
+  - transcribed text inserted into existing quick-add input field
+- Kept existing behavior constraints:
+  - no always-listening
+  - no background capture/service
+  - no auto-search
+  - no auto-save/log
+  - no provider/cache/online execution changes
+- Extended deterministic runner wiring to inject fake voice transcriber in androidTest.
+- Added deterministic instrumentation smoke coverage for voice quick-add flow without microphone/system speech dependency.
 
 ## Phase 12: On-device ML parser plug-in (still local-only)
 **Scope**

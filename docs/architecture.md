@@ -31,6 +31,7 @@ domain (pure logic, calculations, unit helpers)
 - `AddFoodScreen` presents one query input and explicit online actions:
   - `Search online` for cache-preferred lookup
   - `Refresh online` for explicit cache bypass (`FORCE_REFRESH`)
+  - compact quick-actions section (`Scan barcode`, `Quick add (manual)`, `Quick add (text)`)
 - `AddFoodViewModel` owns a single `UnifiedSearchState`:
   - local results update from debounced query (Room)
   - online results update only when the user explicitly requests online search
@@ -114,6 +115,7 @@ domain (pure logic, calculations, unit helpers)
   - overall elapsed time
   - cache hit/miss counts
 - Add Food debug diagnostics include execution count for deterministic verification of repeated explicit actions.
+- Advanced provider diagnostics details are collapsed by default behind a debug-only expander in Add Food.
 - Exposed in debug Settings diagnostics UI only.
 - No remote telemetry, no server-side analytics, no personal-log upload.
 

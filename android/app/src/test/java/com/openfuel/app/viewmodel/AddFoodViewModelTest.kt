@@ -18,6 +18,7 @@ import com.openfuel.app.domain.service.ProviderExecutionReport
 import com.openfuel.app.domain.service.ProviderExecutionRequest
 import com.openfuel.app.domain.service.ProviderExecutor
 import com.openfuel.app.domain.service.ProviderMergedCandidate
+import com.openfuel.app.domain.service.ProviderRefreshPolicy
 import com.openfuel.app.domain.service.ProviderResult
 import com.openfuel.app.domain.service.ProviderStatus
 import java.time.Instant
@@ -242,6 +243,33 @@ class AddFoodViewModelTest {
         assertEquals("Recent Oatmeal", viewModel.uiState.value.recentLoggedFoods.first().name)
         collectJob.cancel()
     }
+
+    @Test
+    fun refreshOnline_usesForceRefreshAndIncrementsExecutionCount() = runTest {
+        val remoteDataSource = FakeProviderExecutor()
+        val viewModel = AddFoodViewModel(
+            foodRepository = AddFoodFakeFoodRepository(),
+            logRepository = AddFoodFakeLogRepository(),
+            settingsRepository = FakeSettingsRepository(enabled = true),
+            providerExecutor = remoteDataSource,
+            userInitiatedNetworkGuard = UserInitiatedNetworkGuard(),
+        )
+        val collectJob = launch { viewModel.uiState.collect { } }
+
+        viewModel.updateSearchQuery("oat")
+        advanceTimeBy(300)
+        advanceUntilIdle()
+        viewModel.searchOnline()
+        advanceUntilIdle()
+        viewModel.refreshOnline()
+        advanceUntilIdle()
+
+        assertEquals(2, remoteDataSource.searchCalls)
+        assertEquals(2, viewModel.uiState.value.onlineExecutionCount)
+        assertEquals(ProviderRefreshPolicy.CACHE_PREFERRED, remoteDataSource.requests[0].refreshPolicy)
+        assertEquals(ProviderRefreshPolicy.FORCE_REFRESH, remoteDataSource.requests[1].refreshPolicy)
+        collectJob.cancel()
+    }
 }
 
 private class AddFoodFakeFoodRepository(
@@ -361,9 +389,11 @@ private class FakeProviderExecutor(
     private val delayMs: Long = 0L,
 ) : ProviderExecutor {
     var searchCalls: Int = 0
+    val requests = mutableListOf<ProviderExecutionRequest>()
 
     override suspend fun execute(request: ProviderExecutionRequest): ProviderExecutionReport {
         searchCalls += 1
+        requests += request
         if (delayMs > 0) {
             delay(delayMs)
         }

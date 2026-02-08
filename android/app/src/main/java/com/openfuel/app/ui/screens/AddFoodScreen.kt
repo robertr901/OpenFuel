@@ -44,6 +44,7 @@ import com.openfuel.app.domain.model.FoodItem
 import com.openfuel.app.domain.model.FoodUnit
 import com.openfuel.app.domain.model.MealType
 import com.openfuel.app.domain.model.RemoteFoodCandidate
+import com.openfuel.app.domain.model.RemoteFoodSource
 import com.openfuel.app.domain.search.SearchSourceFilter
 import com.openfuel.app.domain.service.ProviderStatus
 import com.openfuel.app.ui.components.MealTypeDropdown
@@ -134,6 +135,7 @@ fun AddFoodScreen(
                     },
                     onSourceFilterChange = viewModel::setSourceFilter,
                     onSearchOnline = viewModel::searchOnline,
+                    onRefreshOnline = viewModel::refreshOnline,
                     onScanBarcode = onScanBarcode,
                 )
             }
@@ -349,10 +351,24 @@ fun AddFoodScreen(
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 )
                                 Text(
+                                    text = "Execution #${uiState.onlineExecutionCount}",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.testTag("add_food_unified_provider_debug_execution_count"),
+                                )
+                                Text(
                                     text = "Elapsed ${uiState.onlineExecutionElapsedMs} ms · cache ${uiState.onlineProviderResults.count { it.fromCache }} hit(s)",
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 )
+                                if (uiState.onlineProviderResults.any { it.fromCache }) {
+                                    Text(
+                                        text = "Cache hit",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        modifier = Modifier.testTag("add_food_unified_debug_cache_hit"),
+                                    )
+                                }
                                 uiState.onlineProviderResults.forEach { result ->
                                     Text(
                                         text = "${result.providerId}: ${result.status.name} · ${result.elapsedMs} ms · ${result.items.size} item(s)",
@@ -420,6 +436,7 @@ private fun UnifiedSearchControls(
     onQueryChange: (String) -> Unit,
     onSourceFilterChange: (SearchSourceFilter) -> Unit,
     onSearchOnline: () -> Unit,
+    onRefreshOnline: () -> Unit,
     onScanBarcode: () -> Unit,
 ) {
     OFCard {
@@ -483,6 +500,14 @@ private fun UnifiedSearchControls(
                     .testTag("add_food_unified_scan_barcode"),
             )
         }
+        OFSecondaryButton(
+            text = "Refresh online",
+            onClick = onRefreshOnline,
+            enabled = query.isNotBlank() && !isOnlineSearchInProgress,
+            modifier = Modifier
+                .fillMaxWidth()
+                .testTag("add_food_unified_refresh_online"),
+        )
     }
 }
 
@@ -709,7 +734,7 @@ private fun OnlineResultRow(
                     text = food.name,
                     style = MaterialTheme.typography.titleMedium,
                 )
-                OFStatPill(text = "Online")
+                OFStatPill(text = provenanceLabel(food))
             }
             if (!food.brand.isNullOrBlank()) {
                 Text(
@@ -740,6 +765,18 @@ private fun OnlineResultRow(
                 modifier = Modifier.fillMaxWidth(),
             )
         }
+    }
+}
+
+private fun provenanceLabel(food: RemoteFoodCandidate): String {
+    val providerKey = food.providerKey.orEmpty()
+    return when {
+        providerKey.equals("open_food_facts", ignoreCase = true) -> "OFF"
+        providerKey.equals("static_sample", ignoreCase = true) -> "Sample"
+        providerKey.isNotBlank() -> providerKey
+        food.source == RemoteFoodSource.OPEN_FOOD_FACTS -> "OFF"
+        food.source == RemoteFoodSource.STATIC_SAMPLE -> "Sample"
+        else -> "Online"
     }
 }
 

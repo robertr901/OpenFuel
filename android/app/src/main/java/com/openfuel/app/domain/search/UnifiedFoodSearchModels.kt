@@ -24,6 +24,7 @@ data class UnifiedSearchState(
     val onlineError: String? = null,
     val providerResults: List<ProviderResult> = emptyList(),
     val onlineElapsedMs: Long = 0L,
+    val onlineExecutionCount: Int = 0,
 )
 
 sealed class UnifiedFoodSearchResult {

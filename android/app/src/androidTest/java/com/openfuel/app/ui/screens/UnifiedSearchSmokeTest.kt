@@ -1,6 +1,7 @@
 package com.openfuel.app.ui.screens
 
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertTextContains
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.onNodeWithTag
@@ -83,5 +84,19 @@ class UnifiedSearchSmokeTest {
         composeRule.onNodeWithTag("add_food_unified_results_list")
             .performScrollToNode(hasTestTag("add_food_unified_online_result_sample-oatmeal-1"))
         composeRule.onNodeWithTag("add_food_unified_online_result_sample-oatmeal-1").assertIsDisplayed()
+
+        composeRule.onNodeWithTag("add_food_unified_results_list")
+            .performScrollToNode(hasTestTag("add_food_unified_provider_debug"))
+        composeRule.onNodeWithTag("add_food_unified_provider_debug_execution_count")
+            .assertTextContains("Execution #1")
+
+        composeRule.onNodeWithTag("add_food_unified_results_list")
+            .performScrollToNode(hasTestTag("add_food_unified_refresh_online"))
+        composeRule.onNodeWithTag("add_food_unified_refresh_online").performClick()
+        composeRule.waitForIdle()
+        composeRule.onNodeWithTag("add_food_unified_results_list")
+            .performScrollToNode(hasTestTag("add_food_unified_provider_debug"))
+        composeRule.onNodeWithTag("add_food_unified_provider_debug_execution_count")
+            .assertTextContains("Execution #2")
     }
 }

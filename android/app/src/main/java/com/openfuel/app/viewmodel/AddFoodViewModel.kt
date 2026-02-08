@@ -131,6 +131,7 @@ class AddFoodViewModel(
             onlineResults = effectiveUnifiedSearch.onlineResults,
             onlineProviderResults = effectiveUnifiedSearch.providerResults,
             onlineExecutionElapsedMs = effectiveUnifiedSearch.onlineElapsedMs,
+            onlineExecutionCount = effectiveUnifiedSearch.onlineExecutionCount,
             isOnlineSearchInProgress = effectiveUnifiedSearch.onlineIsLoading,
             onlineErrorMessage = effectiveUnifiedSearch.onlineError,
             selectedOnlineFood = transient.selectedOnlineFood,
@@ -152,6 +153,7 @@ class AddFoodViewModel(
                 onlineError = null,
                 providerResults = emptyList(),
                 onlineElapsedMs = 0L,
+                onlineExecutionCount = 0,
             )
         }
         transientState.update { current ->
@@ -164,6 +166,14 @@ class AddFoodViewModel(
     }
 
     fun searchOnline() {
+        executeOnlineSearch(refreshPolicy = ProviderRefreshPolicy.CACHE_PREFERRED)
+    }
+
+    fun refreshOnline() {
+        executeOnlineSearch(refreshPolicy = ProviderRefreshPolicy.FORCE_REFRESH)
+    }
+
+    private fun executeOnlineSearch(refreshPolicy: ProviderRefreshPolicy) {
         if (!onlineLookupEnabledState.value) {
             unifiedSearchState.update { current ->
                 current.copy(
@@ -214,7 +224,7 @@ class AddFoodViewModel(
                         onlineLookupEnabled = onlineLookupEnabledState.value,
                         query = query,
                         token = token,
-                        refreshPolicy = ProviderRefreshPolicy.CACHE_PREFERRED,
+                        refreshPolicy = refreshPolicy,
                     ),
                 )
                 val results = report.mergedCandidates.map { merged -> merged.candidate }
@@ -230,6 +240,7 @@ class AddFoodViewModel(
                         onlineError = error,
                         providerResults = report.providerResults,
                         onlineElapsedMs = report.overallElapsedMs,
+                        onlineExecutionCount = current.onlineExecutionCount + 1,
                     )
                 }
             } catch (_: Exception) {
@@ -241,6 +252,7 @@ class AddFoodViewModel(
                         onlineError = "Online search failed. Check connection and try again.",
                         providerResults = emptyList(),
                         onlineElapsedMs = 0L,
+                        onlineExecutionCount = current.onlineExecutionCount + 1,
                     )
                 }
             }
@@ -381,6 +393,7 @@ data class AddFoodUiState(
     val onlineResults: List<RemoteFoodCandidate> = emptyList(),
     val onlineProviderResults: List<ProviderResult> = emptyList(),
     val onlineExecutionElapsedMs: Long = 0L,
+    val onlineExecutionCount: Int = 0,
     val isOnlineSearchInProgress: Boolean = false,
     val onlineErrorMessage: String? = null,
     val selectedOnlineFood: RemoteFoodCandidate? = null,

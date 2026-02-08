@@ -13,4 +13,5 @@
 ## Expected results
 - All commands complete with no errors.
 - Unit tests pass.
+- Intelligence golden corpus parser tests pass as part of `./gradlew test`.
 - Instrumentation tests pass on the pinned emulator profile.

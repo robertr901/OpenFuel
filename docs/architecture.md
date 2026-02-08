@@ -78,6 +78,16 @@ domain (pure logic, calculations, unit helpers)
   - deterministic unit tests cover parser/normalizer behavior
   - deterministic instrumentation smoke test validates query prefill flow end-to-end offline
 
+## Intelligence seam hardening (Phase 12b)
+- The rule-based parser contract is explicitly non-throwing and deterministic for both parsing and normalization.
+- A golden test corpus locks expected outputs for tricky inputs (units, separators, punctuation, brands, garbage input).
+- Edge-case handling is hardened for:
+  - comma-decimal quantities (for example `1,5 cups milk`)
+  - uppercase unit tokens (`ML`, `CUPS`, etc.)
+  - leading noise tokens (`add`, `log`, `today`, `now`) without changing raw user-entered text in preview.
+- Internal parser helper naming/structure is clarified to reduce duplication while preserving output behavior.
+- No provider execution, cache schema, online gating, or network behavior changes were made in this hardening phase.
+
 ## Voice transcriber seam (Phase 11)
 - New domain boundary: `com.openfuel.app.domain.voice`.
 - `VoiceTranscriber` defines one explicit-action entry point: `transcribeOnce(...)`.

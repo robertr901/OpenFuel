@@ -90,6 +90,11 @@ class UnifiedSearchSmokeTest {
             .performScrollToNode(hasTestTag("add_food_unified_provider_debug"))
         composeRule.onNodeWithTag("add_food_unified_provider_debug_execution_count")
             .assertTextContains("Execution #1")
+        composeRule.onNodeWithTag("add_food_unified_provider_debug_toggle")
+            .assertTextContains("Show advanced")
+        composeRule.onNodeWithTag("add_food_unified_provider_debug_toggle").performClick()
+        composeRule.onNodeWithTag("add_food_unified_provider_debug_toggle")
+            .assertTextContains("Hide advanced")
 
         composeRule.onNodeWithTag("add_food_unified_results_list")
             .performScrollToNode(hasTestTag("add_food_unified_refresh_online"))

@@ -30,6 +30,34 @@ class ExportSerializer {
         }
     }
 
+    fun serializeCsv(snapshot: ExportSnapshot): String {
+        val foodsById = snapshot.foods.associateBy { food -> food.id }
+        return buildString {
+            appendLine(
+                "timestamp,meal_type,food_id,food_name,brand,barcode,quantity,unit,calories_kcal,protein_g,carbs_g,fat_g",
+            )
+            snapshot.mealEntries.forEach { entry ->
+                val food = foodsById[entry.foodItemId]
+                appendCsvRow(
+                    values = listOf(
+                        instantFormatter.format(entry.timestamp),
+                        entry.mealType.name,
+                        entry.foodItemId,
+                        food?.name.orEmpty(),
+                        food?.brand.orEmpty(),
+                        food?.barcode.orEmpty(),
+                        sanitizeNumber(entry.quantity),
+                        entry.unit.name,
+                        sanitizeNumber(food?.caloriesKcal ?: 0.0),
+                        sanitizeNumber(food?.proteinG ?: 0.0),
+                        sanitizeNumber(food?.carbsG ?: 0.0),
+                        sanitizeNumber(food?.fatG ?: 0.0),
+                    ),
+                )
+            }
+        }
+    }
+
     private fun StringBuilder.appendFoods(foods: List<FoodItem>) {
         append('[')
         foods.forEachIndexed { index, food ->
@@ -120,8 +148,7 @@ class ExportSerializer {
     }
 
     private fun StringBuilder.appendNumber(value: Double): StringBuilder {
-        val sanitized = if (value.isNaN() || value.isInfinite()) 0.0 else value
-        return append(sanitized.toString())
+        return append(sanitizeNumber(value))
     }
 
     private fun StringBuilder.appendBoolean(value: Boolean): StringBuilder {
@@ -141,5 +168,26 @@ class ExportSerializer {
             }
         }
         return escaped.toString()
+    }
+
+    private fun sanitizeNumber(value: Double): String {
+        val sanitized = if (value.isNaN() || value.isInfinite()) 0.0 else value
+        return sanitized.toString()
+    }
+
+    private fun StringBuilder.appendCsvRow(values: List<String>) {
+        values.forEachIndexed { index, value ->
+            if (index > 0) append(',')
+            append(escapeCsv(value))
+        }
+        appendLine()
+    }
+
+    private fun escapeCsv(value: String): String {
+        val needsQuotes = value.any { char ->
+            char == ',' || char == '"' || char == '\n' || char == '\r'
+        }
+        val escaped = value.replace("\"", "\"\"")
+        return if (needsQuotes) "\"$escaped\"" else escaped
     }
 }

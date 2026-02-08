@@ -66,4 +66,44 @@ class ExportSerializerTest {
         assertTrue(json.contains("\"isReportedIncorrect\":false"))
         assertTrue(json.contains("\"mealType\":\"BREAKFAST\""))
     }
+
+    @Test
+    fun serializeCsv_includesHeaderAndEscapesText() {
+        val snapshot = ExportSnapshot(
+            schemaVersion = EXPORT_SCHEMA_VERSION,
+            appVersion = "1.0",
+            exportedAt = Instant.parse("2024-01-01T00:00:00Z"),
+            foods = listOf(
+                FoodItem(
+                    id = "food-1",
+                    name = "Greek Yogurt",
+                    brand = "Brand, Inc.",
+                    barcode = "1234567890",
+                    caloriesKcal = 120.0,
+                    proteinG = 10.0,
+                    carbsG = 14.0,
+                    fatG = 3.0,
+                    isFavorite = false,
+                    isReportedIncorrect = false,
+                    createdAt = Instant.parse("2024-01-01T00:00:00Z"),
+                ),
+            ),
+            mealEntries = listOf(
+                MealEntry(
+                    id = "entry-1",
+                    timestamp = Instant.parse("2024-01-01T08:00:00Z"),
+                    mealType = MealType.BREAKFAST,
+                    foodItemId = "food-1",
+                    quantity = 1.0,
+                    unit = FoodUnit.SERVING,
+                ),
+            ),
+            dailyGoals = emptyList(),
+        )
+
+        val csv = ExportSerializer().serializeCsv(snapshot)
+
+        assertTrue(csv.startsWith("timestamp,meal_type,food_id,food_name,brand,barcode,quantity,unit,calories_kcal,protein_g,carbs_g,fat_g"))
+        assertTrue(csv.contains("2024-01-01T08:00:00Z,BREAKFAST,food-1,Greek Yogurt,\"Brand, Inc.\",1234567890,1.0,SERVING,120.0,10.0,14.0,3.0"))
+    }
 }

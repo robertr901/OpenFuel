@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
@@ -40,9 +41,17 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.focus.FocusDirection
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.openfuel.app.BuildConfig
@@ -507,6 +516,7 @@ private fun UnifiedSearchControls(
     onSearchOnline: () -> Unit,
     onRefreshOnline: () -> Unit,
 ) {
+    val focusManager = LocalFocusManager.current
     OFCard {
         OFSectionHeader(
             title = "Local search",
@@ -516,6 +526,10 @@ private fun UnifiedSearchControls(
             value = query,
             onValueChange = onQueryChange,
             label = { Text("Search foods") },
+            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+            keyboardActions = KeyboardActions(
+                onDone = { focusManager.clearFocus() },
+            ),
             modifier = Modifier
                 .fillMaxWidth()
                 .testTag("add_food_unified_query_input"),
@@ -582,6 +596,7 @@ private fun QuickAddTextDialog(
     onSelectItem: (String) -> Unit,
 ) {
     val scope = rememberCoroutineScope()
+    val focusManager = LocalFocusManager.current
     var voiceUiState by remember { mutableStateOf<QuickAddVoiceUiState>(QuickAddVoiceUiState.Idle) }
     var voiceJob by remember { mutableStateOf<Job?>(null) }
     val intent = intelligenceService.parseFoodText(input)
@@ -635,6 +650,10 @@ private fun QuickAddTextDialog(
                     value = input,
                     onValueChange = onInputChange,
                     label = { Text("Paste text") },
+                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+                    keyboardActions = KeyboardActions(
+                        onDone = { focusManager.clearFocus() },
+                    ),
                     modifier = Modifier
                         .fillMaxWidth()
                         .testTag("add_food_quick_add_text_input"),
@@ -668,6 +687,11 @@ private fun QuickAddTextDialog(
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
+                            .semantics {
+                                contentDescription = "Voice input listening"
+                                stateDescription = "Listening"
+                                liveRegion = LiveRegionMode.Polite
+                            }
                             .testTag("add_food_quick_add_voice_listening"),
                         horizontalArrangement = Arrangement.spacedBy(Dimens.sm),
                     ) {
@@ -698,6 +722,7 @@ private fun QuickAddTextDialog(
                         verticalArrangement = Arrangement.spacedBy(Dimens.s),
                         modifier = Modifier
                             .fillMaxWidth()
+                            .semantics { contentDescription = "Parsed quick add preview list" }
                             .testTag("add_food_quick_add_text_preview_list"),
                     ) {
                         intent.items.forEachIndexed { index, item ->
@@ -709,6 +734,9 @@ private fun QuickAddTextDialog(
                                 },
                                 modifier = Modifier
                                     .fillMaxWidth()
+                                    .semantics {
+                                        contentDescription = "Use parsed item ${index + 1}: $label"
+                                    }
                                     .testTag("add_food_quick_add_text_preview_item_$index"),
                             )
                         }
@@ -773,6 +801,9 @@ private fun QuickActionsCard(
                 onClick = onToggleManualQuickAdd,
                 modifier = Modifier
                     .weight(1f)
+                    .semantics {
+                        stateDescription = if (isManualQuickAddExpanded) "Expanded" else "Collapsed"
+                    }
                     .testTag("add_food_quick_manual_toggle"),
             )
         }
@@ -797,6 +828,7 @@ private fun QuickActionsCard(
 private fun QuickAddManualForm(
     onQuickAdd: (QuickAddInput) -> Unit,
 ) {
+    val focusManager = LocalFocusManager.current
     var name by rememberSaveable { mutableStateOf("") }
     var calories by rememberSaveable { mutableStateOf("") }
     var protein by rememberSaveable { mutableStateOf("") }
@@ -812,6 +844,10 @@ private fun QuickAddManualForm(
             value = name,
             onValueChange = { name = it },
             label = { Text("Food name") },
+            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
+            keyboardActions = KeyboardActions(
+                onNext = { focusManager.moveFocus(FocusDirection.Down) },
+            ),
             modifier = Modifier
                 .fillMaxWidth()
                 .testTag("add_food_quick_name_input"),
@@ -820,43 +856,62 @@ private fun QuickAddManualForm(
             value = calories,
             onValueChange = { calories = it },
             label = { Text("Calories (kcal)") },
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+            keyboardOptions = KeyboardOptions(
+                keyboardType = KeyboardType.Decimal,
+                imeAction = ImeAction.Next,
+            ),
+            keyboardActions = KeyboardActions(
+                onNext = { focusManager.moveFocus(FocusDirection.Down) },
+            ),
             modifier = Modifier
                 .fillMaxWidth()
                 .testTag("add_food_quick_calories_input"),
         )
-        Row(
-            horizontalArrangement = Arrangement.spacedBy(Dimens.sm),
-            modifier = Modifier.fillMaxWidth(),
-        ) {
-            OutlinedTextField(
-                value = protein,
-                onValueChange = { protein = it },
-                label = { Text("Protein (g)") },
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                modifier = Modifier
-                    .weight(1f)
-                    .testTag("add_food_quick_protein_input"),
-            )
-            OutlinedTextField(
-                value = carbs,
-                onValueChange = { carbs = it },
-                label = { Text("Carbs (g)") },
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                modifier = Modifier
-                    .weight(1f)
-                    .testTag("add_food_quick_carbs_input"),
-            )
-            OutlinedTextField(
-                value = fat,
-                onValueChange = { fat = it },
-                label = { Text("Fat (g)") },
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                modifier = Modifier
-                    .weight(1f)
-                    .testTag("add_food_quick_fat_input"),
-            )
-        }
+        OutlinedTextField(
+            value = protein,
+            onValueChange = { protein = it },
+            label = { Text("Protein (g)") },
+            keyboardOptions = KeyboardOptions(
+                keyboardType = KeyboardType.Decimal,
+                imeAction = ImeAction.Next,
+            ),
+            keyboardActions = KeyboardActions(
+                onNext = { focusManager.moveFocus(FocusDirection.Down) },
+            ),
+            modifier = Modifier
+                .fillMaxWidth()
+                .testTag("add_food_quick_protein_input"),
+        )
+        OutlinedTextField(
+            value = carbs,
+            onValueChange = { carbs = it },
+            label = { Text("Carbs (g)") },
+            keyboardOptions = KeyboardOptions(
+                keyboardType = KeyboardType.Decimal,
+                imeAction = ImeAction.Next,
+            ),
+            keyboardActions = KeyboardActions(
+                onNext = { focusManager.moveFocus(FocusDirection.Down) },
+            ),
+            modifier = Modifier
+                .fillMaxWidth()
+                .testTag("add_food_quick_carbs_input"),
+        )
+        OutlinedTextField(
+            value = fat,
+            onValueChange = { fat = it },
+            label = { Text("Fat (g)") },
+            keyboardOptions = KeyboardOptions(
+                keyboardType = KeyboardType.Decimal,
+                imeAction = ImeAction.Done,
+            ),
+            keyboardActions = KeyboardActions(
+                onDone = { focusManager.clearFocus() },
+            ),
+            modifier = Modifier
+                .fillMaxWidth()
+                .testTag("add_food_quick_fat_input"),
+        )
         MealTypeDropdown(
             selected = mealType,
             onSelected = { mealType = it },

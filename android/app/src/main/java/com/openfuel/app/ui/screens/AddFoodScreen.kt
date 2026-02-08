@@ -102,7 +102,6 @@ fun AddFoodScreen(
     val scope = rememberCoroutineScope()
     var searchInput by rememberSaveable { mutableStateOf(uiState.searchQuery) }
     var isQuickAddTextDialogVisible by rememberSaveable { mutableStateOf(false) }
-    var isManualQuickAddExpanded by rememberSaveable { mutableStateOf(false) }
     var isDiagnosticsExpanded by rememberSaveable { mutableStateOf(false) }
     var quickAddTextInput by rememberSaveable { mutableStateOf("") }
     val applySearchQuery: (String) -> Unit = { newQuery ->
@@ -148,22 +147,10 @@ fun AddFoodScreen(
         ) {
             item {
                 QuickActionsCard(
-                    isManualQuickAddExpanded = isManualQuickAddExpanded,
-                    onToggleManualQuickAdd = {
-                        isManualQuickAddExpanded = !isManualQuickAddExpanded
-                    },
-                    onOpenQuickAddText = {
+                    onOpenQuickAdd = {
                         isQuickAddTextDialogVisible = true
                     },
                     onScanBarcode = onScanBarcode,
-                    onQuickAdd = { input ->
-                        handleQuickAdd(
-                            input = input,
-                            viewModel = viewModel,
-                            scope = scope,
-                            snackbarHostState = snackbarHostState,
-                        )
-                    },
                 )
             }
             item {
@@ -467,6 +454,18 @@ fun AddFoodScreen(
             intelligenceService = intelligenceService,
             voiceTranscriber = voiceTranscriber,
             onInputChange = { quickAddTextInput = it },
+            onQuickAdd = { input ->
+                handleQuickAdd(
+                    input = input,
+                    viewModel = viewModel,
+                    scope = scope,
+                    snackbarHostState = snackbarHostState,
+                ).also { didLog ->
+                    if (didLog) {
+                        isQuickAddTextDialogVisible = false
+                    }
+                }
+            },
             onDismiss = { isQuickAddTextDialogVisible = false },
             onSelectItem = { candidate ->
                 val normalized = intelligenceService.normaliseSearchQuery(candidate)
@@ -592,6 +591,7 @@ private fun QuickAddTextDialog(
     intelligenceService: IntelligenceService,
     voiceTranscriber: VoiceTranscriber,
     onInputChange: (String) -> Unit,
+    onQuickAdd: (QuickAddInput) -> Boolean,
     onDismiss: () -> Unit,
     onSelectItem: (String) -> Unit,
 ) {
@@ -599,6 +599,7 @@ private fun QuickAddTextDialog(
     val focusManager = LocalFocusManager.current
     var voiceUiState by remember { mutableStateOf<QuickAddVoiceUiState>(QuickAddVoiceUiState.Idle) }
     var voiceJob by remember { mutableStateOf<Job?>(null) }
+    var isManualDetailsExpanded by rememberSaveable { mutableStateOf(false) }
     val intent = intelligenceService.parseFoodText(input)
     val dismissDialog = {
         voiceJob?.cancel()
@@ -634,7 +635,7 @@ private fun QuickAddTextDialog(
     AlertDialog(
         onDismissRequest = dismissDialog,
         title = {
-            Text("Quick add (text)")
+            Text("Quick add")
         },
         text = {
             Column(
@@ -742,6 +743,23 @@ private fun QuickAddTextDialog(
                         }
                     }
                 }
+                OFSecondaryButton(
+                    text = if (isManualDetailsExpanded) "Hide manual details" else "Manual details",
+                    onClick = { isManualDetailsExpanded = !isManualDetailsExpanded },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .semantics {
+                            stateDescription = if (isManualDetailsExpanded) "Expanded" else "Collapsed"
+                        }
+                        .testTag("add_food_quick_manual_toggle"),
+                )
+                AnimatedVisibility(
+                    visible = isManualDetailsExpanded,
+                    enter = fadeIn(),
+                    exit = fadeOut(),
+                ) {
+                    QuickAddManualForm(onQuickAdd = onQuickAdd)
+                }
             }
         },
         confirmButton = {
@@ -774,16 +792,13 @@ private fun quickAddPreviewLabel(item: FoodTextItem): String {
 
 @Composable
 private fun QuickActionsCard(
-    isManualQuickAddExpanded: Boolean,
-    onToggleManualQuickAdd: () -> Unit,
-    onOpenQuickAddText: () -> Unit,
+    onOpenQuickAdd: () -> Unit,
     onScanBarcode: () -> Unit,
-    onQuickAdd: (QuickAddInput) -> Unit,
 ) {
     OFCard {
         OFSectionHeader(
             title = "Quick actions",
-            subtitle = "Scan, quick-log, or parse text with explicit actions.",
+            subtitle = "Scan or launch quick add with explicit actions.",
         )
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -797,36 +812,19 @@ private fun QuickActionsCard(
                     .testTag("add_food_unified_scan_barcode"),
             )
             OFSecondaryButton(
-                text = if (isManualQuickAddExpanded) "Hide quick add" else "Quick add (manual)",
-                onClick = onToggleManualQuickAdd,
+                text = "Quick add",
+                onClick = onOpenQuickAdd,
                 modifier = Modifier
                     .weight(1f)
-                    .semantics {
-                        stateDescription = if (isManualQuickAddExpanded) "Expanded" else "Collapsed"
-                    }
-                    .testTag("add_food_quick_manual_toggle"),
+                    .testTag("add_food_quick_add_text_button"),
             )
-        }
-        OFSecondaryButton(
-            text = "Quick add (text)",
-            onClick = onOpenQuickAddText,
-            modifier = Modifier
-                .fillMaxWidth()
-                .testTag("add_food_quick_add_text_button"),
-        )
-        AnimatedVisibility(
-            visible = isManualQuickAddExpanded,
-            enter = fadeIn(),
-            exit = fadeOut(),
-        ) {
-            QuickAddManualForm(onQuickAdd = onQuickAdd)
         }
     }
 }
 
 @Composable
 private fun QuickAddManualForm(
-    onQuickAdd: (QuickAddInput) -> Unit,
+    onQuickAdd: (QuickAddInput) -> Boolean,
 ) {
     val focusManager = LocalFocusManager.current
     var name by rememberSaveable { mutableStateOf("") }
@@ -920,7 +918,7 @@ private fun QuickAddManualForm(
         OFPrimaryButton(
             text = "Log quick add",
             onClick = {
-                onQuickAdd(
+                val didLog = onQuickAdd(
                     QuickAddInput(
                         name = name,
                         calories = calories,
@@ -930,6 +928,14 @@ private fun QuickAddManualForm(
                         mealType = mealType,
                     ),
                 )
+                if (didLog) {
+                    focusManager.clearFocus()
+                    name = ""
+                    calories = ""
+                    protein = ""
+                    carbs = ""
+                    fat = ""
+                }
             },
             modifier = Modifier
                 .fillMaxWidth()
@@ -943,24 +949,24 @@ private fun handleQuickAdd(
     viewModel: AddFoodViewModel,
     scope: CoroutineScope,
     snackbarHostState: SnackbarHostState,
-) {
+): Boolean {
     val maxCalories = 10_000.0
     val maxMacro = 1_000.0
     val caloriesValue = parseDecimalInput(input.calories)
     if (caloriesValue == null) {
         scope.launch { snackbarHostState.showSnackbar("Enter calories") }
-        return
+        return false
     }
     val proteinValue = parseDecimalInput(input.protein) ?: 0.0
     val carbsValue = parseDecimalInput(input.carbs) ?: 0.0
     val fatValue = parseDecimalInput(input.fat) ?: 0.0
     if (caloriesValue !in 0.0..maxCalories) {
         scope.launch { snackbarHostState.showSnackbar("Calories must be between 0 and 10000.") }
-        return
+        return false
     }
     if (proteinValue !in 0.0..maxMacro || carbsValue !in 0.0..maxMacro || fatValue !in 0.0..maxMacro) {
         scope.launch { snackbarHostState.showSnackbar("Macros must be between 0 and 1000 g.") }
-        return
+        return false
     }
     viewModel.quickAdd(
         name = input.name,
@@ -971,6 +977,7 @@ private fun handleQuickAdd(
         mealType = input.mealType,
     )
     scope.launch { snackbarHostState.showSnackbar("Quick add logged") }
+    return true
 }
 
 private fun logFoodFromRow(

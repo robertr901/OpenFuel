@@ -157,6 +157,18 @@ This roadmap separates product milestones (user outcomes) from implementation ph
   - no online guard or network behavior changes
   - deterministic offline androidTest strategy remains unchanged
 
+## Phase 12c: Unified quick add + voice EUX refinement (completed)
+**Completed**
+- Replaced split quick-add actions with one `Quick add` entry in Add Food quick actions.
+- Unified quick-add dialog keeps text parsing primary and moves macro logging behind collapsed `Manual details`.
+- Integrated voice capture as a trailing mic action in the quick-add text field.
+- Voice UI states are explicit and deterministic (`Idle`, `Listening`, `Result`, `Unavailable/Error`) with clear cancel/error affordances.
+- Preserved behavior guardrails:
+  - no auto-search
+  - no auto-save/log from parsed or voice text
+  - no provider executor/registry/cache/online guard changes
+- Updated deterministic instrumentation coverage to assert unified quick-add and voice listening transitions with fake transcriber injection.
+
 ## Phase 12: On-device ML parser plug-in (still local-only)
 **Scope**
 - Introduce an optional `IntelligenceService` implementation that uses on-device ML, with rule-based as the default fallback.

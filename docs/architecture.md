@@ -31,7 +31,7 @@ domain (pure logic, calculations, unit helpers)
 - `AddFoodScreen` presents one query input and explicit online actions:
   - `Search online` for cache-preferred lookup
   - `Refresh online` for explicit cache bypass (`FORCE_REFRESH`)
-  - compact quick-actions section (`Scan barcode`, `Quick add (manual)`, `Quick add (text)`)
+  - compact quick-actions section (`Scan barcode`, `Quick add`)
 - `AddFoodViewModel` owns a single `UnifiedSearchState`:
   - local results update from debounced query (Room)
   - online results update only when the user explicitly requests online search
@@ -66,7 +66,7 @@ domain (pure logic, calculations, unit helpers)
   - `normaliseSearchQuery(input)` for deterministic query normalization
 - `RuleBasedIntelligenceService` is pure Kotlin (no Android types, no network calls, no ML dependencies).
 - Add Food integration is intentionally minimal:
-  - UI adds `Quick add (text)` helper dialog
+  - UI adds a unified `Quick add` helper dialog (text-first input with optional manual-details expander)
   - parsed preview items are user-selectable
   - selecting an item only prefills the existing unified search query via the existing query update path
 - Guardrails:
@@ -98,9 +98,22 @@ domain (pure logic, calculations, unit helpers)
   - `Failure(message)` (sanitized user-safe message)
 - Android implementation uses `RecognizerIntent` and only starts on explicit user tap from Add Food quick-add dialog.
 - No always-listening, no background service, no audio persistence, no telemetry.
+- Voice action is exposed as a mic trailing icon in the quick-add text field.
 - Voice success only populates quick-add text input; parsing/preview still flows through `IntelligenceService.parseFoodText(...)`.
 - Selecting a preview item still only prefills unified search query; no auto-search, auto-save, or auto-log.
 - Deterministic androidTest runner injects a fake `VoiceTranscriber` to keep tests offline and independent of microphone/system speech UI.
+
+## Quick add EUX refinement (Phase 12c)
+- Add Food now has a single `Quick add` entry point to reduce competing controls.
+- Inside the dialog:
+  - text parsing remains primary
+  - voice capture is integrated in-field (mic trailing action)
+  - manual macro logging is still available behind a collapsed `Manual details` expander.
+- Voice UI states are explicit and calm: `Idle`, `Listening`, `Result`, and `Unavailable/Error`.
+- Guardrails unchanged:
+  - no auto-save or auto-log from parsed/voice text
+  - no auto-search
+  - no provider/cache/online execution behavior changes.
 
 ## Provider cache architecture
 - Storage: Room table `provider_search_cache`.

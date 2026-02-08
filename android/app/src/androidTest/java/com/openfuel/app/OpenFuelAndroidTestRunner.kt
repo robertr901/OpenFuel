@@ -6,6 +6,7 @@ import androidx.test.runner.AndroidJUnitRunner
 import com.openfuel.app.domain.voice.VoiceTranscribeConfig
 import com.openfuel.app.domain.voice.VoiceTranscribeResult
 import com.openfuel.app.domain.voice.VoiceTranscriber
+import kotlinx.coroutines.delay
 
 class OpenFuelAndroidTestRunner : AndroidJUnitRunner() {
     override fun newApplication(
@@ -19,6 +20,7 @@ class OpenFuelAndroidTestRunner : AndroidJUnitRunner() {
                 forceDeterministicProvidersOnly = true,
                 voiceTranscriberOverride = object : VoiceTranscriber {
                     override suspend fun transcribeOnce(config: VoiceTranscribeConfig): VoiceTranscribeResult {
+                        delay(300)
                         return VoiceTranscribeResult.Success("2 eggs and banana")
                     }
                 },

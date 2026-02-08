@@ -19,6 +19,9 @@ interface ProviderSearchCacheDao {
     @Query("DELETE FROM provider_search_cache WHERE expiresAtEpochMs <= :nowEpochMs")
     suspend fun deleteExpired(nowEpochMs: Long): Int
 
+    @Query("DELETE FROM provider_search_cache WHERE cacheVersion != :expectedVersion")
+    suspend fun deleteByVersionMismatch(expectedVersion: Int): Int
+
     @Query("SELECT COUNT(*) FROM provider_search_cache")
     suspend fun countAll(): Int
 }

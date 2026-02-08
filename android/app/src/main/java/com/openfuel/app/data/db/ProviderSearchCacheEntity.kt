@@ -16,6 +16,7 @@ data class ProviderSearchCacheEntity(
     val providerId: String,
     val requestType: String,
     val normalizedInput: String,
+    val cacheVersion: Int,
     val payloadJson: String,
     val cachedAtEpochMs: Long,
     val expiresAtEpochMs: Long,

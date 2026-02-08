@@ -10,6 +10,7 @@ import com.openfuel.app.data.remote.DefaultProviderExecutor
 import com.openfuel.app.data.remote.OpenFoodFactsCatalogProvider
 import com.openfuel.app.data.remote.OpenFoodFactsRemoteFoodDataSource
 import com.openfuel.app.data.remote.ProviderEntry
+import com.openfuel.app.data.remote.RoomProviderResultCache
 import com.openfuel.app.data.remote.RemoteFoodDataSource
 import com.openfuel.app.data.remote.StaticSampleCatalogProvider
 import com.openfuel.app.data.remote.UserInitiatedNetworkGuard
@@ -152,6 +153,7 @@ class AppContainer(
                 onlineLookupEnabled = request.onlineLookupEnabled,
             )
         },
+        cache = RoomProviderResultCache(database.providerSearchCacheDao()),
     )
     val networkGuard: UserInitiatedNetworkGuard = userInitiatedNetworkGuard
 

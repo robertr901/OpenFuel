@@ -10,7 +10,11 @@ import com.openfuel.app.domain.service.ProviderExecutionPolicy
 import com.openfuel.app.domain.service.ProviderExecutionRequest
 import com.openfuel.app.domain.service.ProviderRequestType
 import com.openfuel.app.domain.service.ProviderStatus
+import com.openfuel.app.domain.service.buildProviderCacheKey
+import java.time.Clock
 import java.time.Duration
+import java.time.Instant
+import java.time.ZoneId
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
@@ -181,6 +185,129 @@ class DefaultProviderExecutorTest {
         assertTrue(report.mergedCandidates.isEmpty())
     }
 
+    @Test
+    fun execute_cacheHitReturnsImmediatelyWithoutProviderCall() = runTest {
+        val provider = FakeExecutorFoodCatalogProvider(
+            searchResults = listOf(
+                candidate(sourceId = "network", barcode = "777", name = "Network Food", brand = null, servingSize = null),
+            ),
+        )
+        val cache = InMemoryProviderResultCache()
+        val now = 1_000_000L
+        val cacheKey = buildProviderCacheKey(
+            providerId = "provider_a",
+            requestType = ProviderRequestType.TEXT_SEARCH,
+            rawInput = "oat",
+        )
+        cache.put(
+            cacheKey = cacheKey,
+            providerId = "provider_a",
+            requestType = ProviderRequestType.TEXT_SEARCH,
+            normalizedInput = "oat",
+            items = listOf(
+                candidate(sourceId = "cached", barcode = "123", name = "Cached Oatmeal", brand = "Cache", servingSize = "40 g"),
+            ),
+            cachedAtEpochMs = now,
+            ttl = Duration.ofHours(1),
+        )
+        val clock = ExecutorMutableClock(Instant.ofEpochMilli(now))
+        val executor = DefaultProviderExecutor(
+            providerSource = { _ -> listOf(provider(key = "provider_a", priority = 10, provider = provider)) },
+            cache = cache,
+            clock = clock,
+        )
+
+        val report = executor.execute(
+            request = textRequest(
+                query = "oat",
+                token = null,
+            ),
+        )
+
+        assertEquals(1, report.mergedCandidates.size)
+        assertEquals("cached", report.mergedCandidates.single().candidate.sourceId)
+        assertEquals(0, provider.searchCalls)
+        assertEquals(1, report.cacheStats.hitCount)
+    }
+
+    @Test
+    fun execute_cacheMissStoresAndSubsequentRequestHitsCache() = runTest {
+        val provider = FakeExecutorFoodCatalogProvider(
+            searchResults = listOf(
+                candidate(sourceId = "network", barcode = "777", name = "Network Food", brand = null, servingSize = null),
+            ),
+        )
+        val cache = InMemoryProviderResultCache()
+        val clock = ExecutorMutableClock(Instant.ofEpochMilli(2_000_000L))
+        val executor = DefaultProviderExecutor(
+            providerSource = { _ -> listOf(provider(key = "provider_a", priority = 10, provider = provider)) },
+            cache = cache,
+            clock = clock,
+        )
+
+        val first = executor.execute(
+            request = textRequest(
+                query = "network",
+                token = guard.issueToken("search_online"),
+            ),
+        )
+        clock.currentInstant = Instant.ofEpochMilli(2_000_500L)
+        val second = executor.execute(
+            request = textRequest(
+                query = "network",
+                token = null,
+            ),
+        )
+
+        assertEquals(1, provider.searchCalls)
+        assertEquals(0, first.cacheStats.hitCount)
+        assertEquals(1, second.cacheStats.hitCount)
+        assertTrue(second.providerResults.single().fromCache)
+    }
+
+    @Test
+    fun execute_expiredCacheEntryFallsBackToProvider() = runTest {
+        val provider = FakeExecutorFoodCatalogProvider(
+            searchResults = listOf(
+                candidate(sourceId = "fresh", barcode = "888", name = "Fresh Food", brand = null, servingSize = null),
+            ),
+        )
+        val cache = InMemoryProviderResultCache()
+        val cacheKey = buildProviderCacheKey(
+            providerId = "provider_a",
+            requestType = ProviderRequestType.TEXT_SEARCH,
+            rawInput = "fresh",
+        )
+        cache.put(
+            cacheKey = cacheKey,
+            providerId = "provider_a",
+            requestType = ProviderRequestType.TEXT_SEARCH,
+            normalizedInput = "fresh",
+            items = listOf(
+                candidate(sourceId = "expired", barcode = "999", name = "Expired", brand = null, servingSize = null),
+            ),
+            cachedAtEpochMs = 1_000L,
+            ttl = Duration.ofMillis(10),
+        )
+        val clock = ExecutorMutableClock(Instant.ofEpochMilli(2_000L))
+        val executor = DefaultProviderExecutor(
+            providerSource = { _ -> listOf(provider(key = "provider_a", priority = 10, provider = provider)) },
+            cache = cache,
+            clock = clock,
+        )
+
+        val report = executor.execute(
+            request = textRequest(
+                query = "fresh",
+                token = guard.issueToken("search_online"),
+            ),
+        )
+
+        assertEquals(1, provider.searchCalls)
+        assertEquals("fresh", report.mergedCandidates.single().candidate.sourceId)
+        assertEquals(0, report.cacheStats.hitCount)
+    }
+
     private fun textRequest(
         query: String,
         token: UserInitiatedNetworkToken?,
@@ -234,6 +361,16 @@ class DefaultProviderExecutorTest {
             servingSize = servingSize,
         )
     }
+}
+
+private class ExecutorMutableClock(
+    var currentInstant: Instant,
+) : Clock() {
+    override fun getZone(): ZoneId = ZoneId.of("UTC")
+
+    override fun withZone(zone: ZoneId): Clock = this
+
+    override fun instant(): Instant = currentInstant
 }
 
 private class FakeExecutorFoodCatalogProvider(

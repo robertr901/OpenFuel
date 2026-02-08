@@ -11,7 +11,12 @@ import com.openfuel.app.domain.service.ProviderMergedCandidate
 import com.openfuel.app.domain.service.ProviderRequestType
 import com.openfuel.app.domain.service.ProviderResult
 import com.openfuel.app.domain.service.ProviderStatus
+import com.openfuel.app.domain.service.ProviderCacheStats
+import com.openfuel.app.domain.service.ProviderRefreshPolicy
+import com.openfuel.app.domain.service.buildProviderCacheKey
 import com.openfuel.app.domain.service.buildProviderDedupeKey
+import com.openfuel.app.domain.service.normalizeProviderBarcode
+import com.openfuel.app.domain.service.normalizeProviderText
 import java.time.Clock
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.TimeoutCancellationException
@@ -23,6 +28,7 @@ import kotlinx.coroutines.Dispatchers
 
 class DefaultProviderExecutor(
     private val providerSource: (ProviderExecutionRequest) -> List<FoodCatalogExecutionProvider>,
+    private val cache: ProviderResultCache? = null,
     private val policy: ProviderExecutionPolicy = ProviderExecutionPolicy(),
     private val clock: Clock = Clock.systemUTC(),
 ) : ProviderExecutor {
@@ -56,12 +62,25 @@ class DefaultProviderExecutor(
             }
 
             val mergedCandidates = mergeCandidates(providerResults)
+            val cacheStats = ProviderCacheStats(
+                hitCount = providerResults.count { it.fromCache },
+                missCount = providerResults.count { result ->
+                    !result.fromCache &&
+                        result.status in setOf(
+                            ProviderStatus.AVAILABLE,
+                            ProviderStatus.EMPTY,
+                            ProviderStatus.ERROR,
+                            ProviderStatus.TIMEOUT,
+                        )
+                },
+            )
             ProviderExecutionReport(
                 requestType = request.requestType,
                 sourceFilter = request.sourceFilter,
                 mergedCandidates = mergedCandidates,
                 providerResults = providerResults,
                 overallElapsedMs = elapsedSince(startedAtMs),
+                cacheStats = cacheStats,
             )
         }
     }
@@ -99,6 +118,20 @@ class DefaultProviderExecutor(
     ): ProviderResult {
         val startedAtMs = clock.millis()
         val capability = request.requestType.capability
+        val nowEpochMs = clock.millis()
+        val rawInput = when (request.requestType) {
+            ProviderRequestType.TEXT_SEARCH -> request.query.orEmpty()
+            ProviderRequestType.BARCODE_LOOKUP -> request.barcode.orEmpty()
+        }
+        val normalizedInput = when (request.requestType) {
+            ProviderRequestType.TEXT_SEARCH -> normalizeProviderText(rawInput)
+            ProviderRequestType.BARCODE_LOOKUP -> normalizeProviderBarcode(rawInput).orEmpty()
+        }
+        val cacheKey = buildProviderCacheKey(
+            providerId = provider.descriptor.key,
+            requestType = request.requestType,
+            rawInput = rawInput,
+        )
 
         if (!provider.descriptor.enabled) {
             return disabledResult(
@@ -126,6 +159,23 @@ class DefaultProviderExecutor(
                 status = ProviderStatus.MISCONFIGURED,
                 diagnostics = "Provider implementation is missing.",
             )
+        }
+
+        val providerCache = cache
+        if (request.refreshPolicy == ProviderRefreshPolicy.CACHE_PREFERRED && providerCache != null) {
+            val cached = runCatching { providerCache.get(cacheKey = cacheKey, nowEpochMs = nowEpochMs) }
+                .getOrNull()
+            if (cached != null) {
+                return ProviderResult(
+                    providerId = provider.descriptor.key,
+                    capability = capability,
+                    status = if (cached.items.isEmpty()) ProviderStatus.EMPTY else ProviderStatus.AVAILABLE,
+                    items = cached.items,
+                    elapsedMs = elapsedSince(startedAtMs),
+                    diagnostics = "Served from local cache.",
+                    fromCache = true,
+                )
+            }
         }
 
         val token = request.token
@@ -163,12 +213,27 @@ class DefaultProviderExecutor(
                     { "${it.source}:${it.sourceId}" },
                 ),
             )
+            if (providerCache != null) {
+                runCatching {
+                    providerCache.put(
+                        cacheKey = cacheKey,
+                        providerId = provider.descriptor.key,
+                        requestType = request.requestType,
+                        normalizedInput = normalizedInput,
+                        items = stableItems,
+                        cachedAtEpochMs = clock.millis(),
+                        ttl = policy.cacheTtl,
+                    )
+                    providerCache.purgeExpired(clock.millis())
+                }
+            }
             ProviderResult(
                 providerId = provider.descriptor.key,
                 capability = capability,
                 status = if (stableItems.isEmpty()) ProviderStatus.EMPTY else ProviderStatus.AVAILABLE,
                 items = stableItems,
                 elapsedMs = elapsedSince(startedAtMs),
+                fromCache = false,
             )
         } catch (_: TimeoutCancellationException) {
             ProviderResult(

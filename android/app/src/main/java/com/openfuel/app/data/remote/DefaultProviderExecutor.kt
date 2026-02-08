@@ -2,9 +2,7 @@ package com.openfuel.app.data.remote
 
 import com.openfuel.app.domain.model.RemoteFoodCandidate
 import com.openfuel.app.domain.search.SearchSourceFilter
-import com.openfuel.app.domain.service.FoodCatalogProvider
-import com.openfuel.app.domain.service.FoodCatalogProviderDescriptor
-import com.openfuel.app.domain.service.ProviderCapability
+import com.openfuel.app.domain.service.FoodCatalogExecutionProvider
 import com.openfuel.app.domain.service.ProviderExecutionPolicy
 import com.openfuel.app.domain.service.ProviderExecutionReport
 import com.openfuel.app.domain.service.ProviderExecutionRequest
@@ -24,15 +22,15 @@ import kotlinx.coroutines.withTimeout
 import kotlinx.coroutines.Dispatchers
 
 class DefaultProviderExecutor(
-    private val providerSource: () -> List<ExecutableFoodCatalogProvider>,
+    private val providerSource: (ProviderExecutionRequest) -> List<FoodCatalogExecutionProvider>,
     private val policy: ProviderExecutionPolicy = ProviderExecutionPolicy(),
     private val clock: Clock = Clock.systemUTC(),
 ) : ProviderExecutor {
     override suspend fun execute(request: ProviderExecutionRequest): ProviderExecutionReport {
         return withContext(Dispatchers.IO) {
             val startedAtMs = clock.millis()
-            val providers = providerSource()
-                .sortedWith(compareBy<ExecutableFoodCatalogProvider> { it.metadata.priority }.thenBy { it.metadata.key })
+            val providers = providerSource(request)
+                .sortedWith(compareBy<FoodCatalogExecutionProvider> { it.descriptor.priority }.thenBy { it.descriptor.key })
 
             if (providers.isEmpty()) {
                 return@withContext ProviderExecutionReport(
@@ -69,7 +67,7 @@ class DefaultProviderExecutor(
     }
 
     private suspend fun executeProviders(
-        providers: List<ExecutableFoodCatalogProvider>,
+        providers: List<FoodCatalogExecutionProvider>,
         request: ProviderExecutionRequest,
     ): List<ProviderResult> {
         val overallTimeoutMs = policy.overallTimeout.toMillis()
@@ -96,18 +94,18 @@ class DefaultProviderExecutor(
     }
 
     private suspend fun executeProvider(
-        provider: ExecutableFoodCatalogProvider,
+        provider: FoodCatalogExecutionProvider,
         request: ProviderExecutionRequest,
     ): ProviderResult {
         val startedAtMs = clock.millis()
         val capability = request.requestType.capability
 
-        if (!provider.metadata.enabled) {
+        if (!provider.descriptor.enabled) {
             return disabledResult(
                 provider = provider,
                 requestType = request.requestType,
                 status = ProviderStatus.DISABLED_BY_SETTINGS,
-                diagnostics = provider.metadata.statusReason,
+                diagnostics = provider.descriptor.statusReason,
             )
         }
 
@@ -166,7 +164,7 @@ class DefaultProviderExecutor(
                 ),
             )
             ProviderResult(
-                providerId = provider.metadata.key,
+                providerId = provider.descriptor.key,
                 capability = capability,
                 status = if (stableItems.isEmpty()) ProviderStatus.EMPTY else ProviderStatus.AVAILABLE,
                 items = stableItems,
@@ -174,7 +172,7 @@ class DefaultProviderExecutor(
             )
         } catch (_: TimeoutCancellationException) {
             ProviderResult(
-                providerId = provider.metadata.key,
+                providerId = provider.descriptor.key,
                 capability = capability,
                 status = ProviderStatus.TIMEOUT,
                 items = emptyList(),
@@ -183,7 +181,7 @@ class DefaultProviderExecutor(
             )
         } catch (_: CancellationException) {
             ProviderResult(
-                providerId = provider.metadata.key,
+                providerId = provider.descriptor.key,
                 capability = capability,
                 status = ProviderStatus.TIMEOUT,
                 items = emptyList(),
@@ -192,7 +190,7 @@ class DefaultProviderExecutor(
             )
         } catch (_: Exception) {
             ProviderResult(
-                providerId = provider.metadata.key,
+                providerId = provider.descriptor.key,
                 capability = capability,
                 status = ProviderStatus.ERROR,
                 items = emptyList(),
@@ -224,13 +222,13 @@ class DefaultProviderExecutor(
     }
 
     private fun disabledResult(
-        provider: ExecutableFoodCatalogProvider,
+        provider: FoodCatalogExecutionProvider,
         requestType: ProviderRequestType,
         status: ProviderStatus,
         diagnostics: String,
     ): ProviderResult {
         return ProviderResult(
-            providerId = provider.metadata.key,
+            providerId = provider.descriptor.key,
             capability = requestType.capability,
             status = status,
             items = emptyList(),
@@ -241,17 +239,5 @@ class DefaultProviderExecutor(
 
     private fun elapsedSince(startedAtMs: Long): Long {
         return (clock.millis() - startedAtMs).coerceAtLeast(0L)
-    }
-}
-
-data class ExecutableFoodCatalogProvider(
-    val metadata: FoodCatalogProviderDescriptor,
-    val provider: FoodCatalogProvider?,
-) {
-    fun supports(capability: ProviderCapability): Boolean {
-        return when (capability) {
-            ProviderCapability.TEXT_SEARCH -> metadata.supportsTextSearch
-            ProviderCapability.BARCODE_LOOKUP -> metadata.supportsBarcode
-        }
     }
 }

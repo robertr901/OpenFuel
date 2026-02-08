@@ -4,6 +4,7 @@ import com.openfuel.app.domain.model.RemoteFoodCandidate
 import com.openfuel.app.domain.model.RemoteFoodSource
 import com.openfuel.app.domain.search.SearchSourceFilter
 import com.openfuel.app.domain.service.FoodCatalogProvider
+import com.openfuel.app.domain.service.FoodCatalogExecutionProvider
 import com.openfuel.app.domain.service.FoodCatalogProviderDescriptor
 import com.openfuel.app.domain.service.ProviderExecutionPolicy
 import com.openfuel.app.domain.service.ProviderExecutionRequest
@@ -27,7 +28,7 @@ class DefaultProviderExecutorTest {
             ),
         )
         val executor = DefaultProviderExecutor(
-            providerSource = {
+            providerSource = { _ ->
                 listOf(
                     provider(
                         key = "provider_a",
@@ -67,7 +68,7 @@ class DefaultProviderExecutorTest {
             ),
         )
         val executor = DefaultProviderExecutor(
-            providerSource = {
+            providerSource = { _ ->
                 listOf(
                     provider(key = "p2", priority = 20, provider = lowerPriorityProvider),
                     provider(key = "p1", priority = 10, provider = highPriorityProvider),
@@ -100,7 +101,7 @@ class DefaultProviderExecutorTest {
             ),
         )
         val executor = DefaultProviderExecutor(
-            providerSource = { listOf(provider(key = "slow", priority = 10, provider = slowProvider)) },
+            providerSource = { _ -> listOf(provider(key = "slow", priority = 10, provider = slowProvider)) },
             policy = ProviderExecutionPolicy(
                 overallTimeout = Duration.ofSeconds(3),
                 perProviderTimeout = Duration.ofMillis(250),
@@ -126,7 +127,7 @@ class DefaultProviderExecutorTest {
             ),
         )
         val executor = DefaultProviderExecutor(
-            providerSource = { listOf(provider(key = "provider_a", priority = 10, provider = provider)) },
+            providerSource = { _ -> listOf(provider(key = "provider_a", priority = 10, provider = provider)) },
         )
 
         val report = executor.execute(
@@ -146,7 +147,7 @@ class DefaultProviderExecutorTest {
     fun execute_missingTokenMarksGuardRejectedAndSkipsExecution() = runTest {
         val provider = FakeExecutorFoodCatalogProvider()
         val executor = DefaultProviderExecutor(
-            providerSource = { listOf(provider(key = "provider_a", priority = 10, provider = provider)) },
+            providerSource = { _ -> listOf(provider(key = "provider_a", priority = 10, provider = provider)) },
         )
 
         val report = executor.execute(
@@ -166,7 +167,7 @@ class DefaultProviderExecutorTest {
             throwable = IllegalStateException("boom"),
         )
         val executor = DefaultProviderExecutor(
-            providerSource = { listOf(provider(key = "provider_a", priority = 10, provider = failingProvider)) },
+            providerSource = { _ -> listOf(provider(key = "provider_a", priority = 10, provider = failingProvider)) },
         )
 
         val report = executor.execute(
@@ -197,9 +198,9 @@ class DefaultProviderExecutorTest {
         priority: Int,
         provider: FoodCatalogProvider?,
         enabled: Boolean = true,
-    ): ExecutableFoodCatalogProvider {
-        return ExecutableFoodCatalogProvider(
-            metadata = FoodCatalogProviderDescriptor(
+    ): FoodCatalogExecutionProvider {
+        return FoodCatalogExecutionProvider(
+            descriptor = FoodCatalogProviderDescriptor(
                 key = key,
                 displayName = key,
                 priority = priority,

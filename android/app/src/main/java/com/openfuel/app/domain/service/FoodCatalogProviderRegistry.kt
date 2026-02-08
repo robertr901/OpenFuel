@@ -11,8 +11,25 @@ data class FoodCatalogProviderDescriptor(
     val statusReason: String,
 )
 
+data class FoodCatalogExecutionProvider(
+    val descriptor: FoodCatalogProviderDescriptor,
+    val provider: FoodCatalogProvider?,
+) {
+    fun supports(capability: ProviderCapability): Boolean {
+        return when (capability) {
+            ProviderCapability.TEXT_SEARCH -> descriptor.supportsTextSearch
+            ProviderCapability.BARCODE_LOOKUP -> descriptor.supportsBarcode
+        }
+    }
+}
+
 interface FoodCatalogProviderRegistry {
+    fun providersFor(
+        requestType: ProviderRequestType,
+        onlineLookupEnabled: Boolean,
+    ): List<FoodCatalogExecutionProvider>
+
     fun primaryTextSearchProvider(): FoodCatalogProvider
 
-    fun providerDiagnostics(): List<FoodCatalogProviderDescriptor>
+    fun providerDiagnostics(onlineLookupEnabled: Boolean = true): List<FoodCatalogProviderDescriptor>
 }

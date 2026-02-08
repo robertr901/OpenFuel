@@ -6,10 +6,12 @@ import com.openfuel.app.data.entitlement.PlaceholderPlayBillingEntitlementServic
 import com.openfuel.app.data.datastore.settingsDataStore
 import com.openfuel.app.data.db.OpenFuelDatabase
 import com.openfuel.app.data.remote.DefaultFoodCatalogProviderRegistry
+import com.openfuel.app.data.remote.DefaultProviderExecutor
 import com.openfuel.app.data.remote.OpenFoodFactsCatalogProvider
 import com.openfuel.app.data.remote.OpenFoodFactsRemoteFoodDataSource
 import com.openfuel.app.data.remote.ProviderEntry
 import com.openfuel.app.data.remote.RemoteFoodDataSource
+import com.openfuel.app.data.remote.StaticSampleCatalogProvider
 import com.openfuel.app.data.remote.UserInitiatedNetworkGuard
 import com.openfuel.app.data.security.LocalSecurityPostureProvider
 import com.openfuel.app.data.repository.EntitlementsRepositoryImpl
@@ -27,11 +29,15 @@ import com.openfuel.app.domain.service.EntitlementService
 import com.openfuel.app.domain.service.FoodCatalogProvider
 import com.openfuel.app.domain.service.FoodCatalogProviderDescriptor
 import com.openfuel.app.domain.service.FoodCatalogProviderRegistry
+import com.openfuel.app.domain.service.ProviderExecutor
 import com.openfuel.app.export.ExportManager
 import okhttp3.OkHttpClient
 import java.util.concurrent.TimeUnit
 
-class AppContainer(context: Context) {
+class AppContainer(
+    context: Context,
+    private val forceDeterministicProvidersOnly: Boolean = false,
+) {
     private val database: OpenFuelDatabase = OpenFuelDatabase.build(context)
     private val userInitiatedNetworkGuard = UserInitiatedNetworkGuard()
     private val onlineHttpClient: OkHttpClient = OkHttpClient.Builder()
@@ -61,6 +67,7 @@ class AppContainer(context: Context) {
     val foodCatalogProvider: FoodCatalogProvider = OpenFoodFactsCatalogProvider(
         remoteFoodDataSource = remoteFoodDataSource,
     )
+    private val staticSampleCatalogProvider: FoodCatalogProvider = StaticSampleCatalogProvider()
     val foodCatalogProviderRegistry: FoodCatalogProviderRegistry = DefaultFoodCatalogProviderRegistry(
         entries = listOf(
             ProviderEntry(
@@ -71,10 +78,28 @@ class AppContainer(context: Context) {
                     supportsBarcode = true,
                     supportsTextSearch = true,
                     termsOfUseLink = "https://world.openfoodfacts.org/terms-of-use",
-                    enabled = true,
-                    statusReason = "Active default provider.",
+                    enabled = !forceDeterministicProvidersOnly,
+                    statusReason = if (forceDeterministicProvidersOnly) {
+                        "Disabled in deterministic test mode."
+                    } else {
+                        "Configured."
+                    },
                 ),
                 provider = foodCatalogProvider,
+            ),
+            ProviderEntry(
+                metadata = FoodCatalogProviderDescriptor(
+                    key = "static_sample",
+                    displayName = "Static sample (deterministic)",
+                    priority = 15,
+                    supportsBarcode = true,
+                    supportsTextSearch = true,
+                    termsOfUseLink = null,
+                    enabled = true,
+                    statusReason = "Deterministic debug provider.",
+                ),
+                provider = staticSampleCatalogProvider,
+                debugDiagnosticsOnly = true,
             ),
             ProviderEntry(
                 metadata = FoodCatalogProviderDescriptor(
@@ -116,8 +141,18 @@ class AppContainer(context: Context) {
                 provider = null,
             ),
         ),
+        isDebugBuild = BuildConfig.DEBUG,
+        debugDiagnosticsEnabled = BuildConfig.DEBUG,
     )
     val activeFoodCatalogProvider: FoodCatalogProvider = foodCatalogProviderRegistry.primaryTextSearchProvider()
+    val providerExecutor: ProviderExecutor = DefaultProviderExecutor(
+        providerSource = { request ->
+            foodCatalogProviderRegistry.providersFor(
+                requestType = request.requestType,
+                onlineLookupEnabled = request.onlineLookupEnabled,
+            )
+        },
+    )
     val networkGuard: UserInitiatedNetworkGuard = userInitiatedNetworkGuard
 
     val exportManager: ExportManager = ExportManager(

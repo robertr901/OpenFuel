@@ -4,6 +4,7 @@ import com.openfuel.app.domain.model.RemoteFoodCandidate
 import com.openfuel.app.domain.model.RemoteFoodSource
 import com.openfuel.app.domain.service.FoodCatalogProvider
 import com.openfuel.app.domain.service.FoodCatalogProviderDescriptor
+import com.openfuel.app.domain.service.ProviderRequestType
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -67,6 +68,97 @@ class DefaultFoodCatalogProviderRegistryTest {
         assertEquals(2, diagnostics.size)
         assertTrue(diagnostics.any { it.key == "open_food_facts" && it.enabled })
         assertTrue(diagnostics.any { it.key == "usda_stub" && !it.enabled })
+    }
+
+    @Test
+    fun providersFor_whenOnlineDisabled_marksProvidersDisabled() {
+        val registry = DefaultFoodCatalogProviderRegistry(
+            entries = listOf(
+                ProviderEntry(
+                    metadata = descriptor(
+                        key = "open_food_facts",
+                        enabled = true,
+                    ),
+                    provider = FakeFoodCatalogProvider(name = "off"),
+                ),
+            ),
+        )
+
+        val providers = registry.providersFor(
+            requestType = ProviderRequestType.TEXT_SEARCH,
+            onlineLookupEnabled = false,
+        )
+
+        assertEquals(1, providers.size)
+        assertTrue(!providers.single().descriptor.enabled)
+    }
+
+    @Test
+    fun providersFor_releaseBuildDisablesDebugOnlyProvider() {
+        val registry = DefaultFoodCatalogProviderRegistry(
+            entries = listOf(
+                ProviderEntry(
+                    metadata = descriptor(
+                        key = "debug_static",
+                        enabled = true,
+                    ),
+                    provider = FakeFoodCatalogProvider(name = "debug"),
+                    debugDiagnosticsOnly = true,
+                ),
+            ),
+            isDebugBuild = false,
+            debugDiagnosticsEnabled = false,
+        )
+
+        val providers = registry.providersFor(
+            requestType = ProviderRequestType.TEXT_SEARCH,
+            onlineLookupEnabled = true,
+        )
+
+        assertEquals(1, providers.size)
+        assertTrue(!providers.single().descriptor.enabled)
+    }
+
+    @Test
+    fun providersFor_filtersByCapability() {
+        val registry = DefaultFoodCatalogProviderRegistry(
+            entries = listOf(
+                ProviderEntry(
+                    metadata = descriptor(
+                        key = "text_only",
+                        enabled = true,
+                    ).copy(
+                        supportsTextSearch = true,
+                        supportsBarcode = false,
+                    ),
+                    provider = FakeFoodCatalogProvider(name = "text"),
+                ),
+                ProviderEntry(
+                    metadata = descriptor(
+                        key = "barcode_only",
+                        enabled = true,
+                    ).copy(
+                        supportsTextSearch = false,
+                        supportsBarcode = true,
+                    ),
+                    provider = FakeFoodCatalogProvider(name = "barcode"),
+                ),
+            ),
+        )
+
+        val textProviders = registry.providersFor(
+            requestType = ProviderRequestType.TEXT_SEARCH,
+            onlineLookupEnabled = true,
+        )
+        val barcodeProviders = registry.providersFor(
+            requestType = ProviderRequestType.BARCODE_LOOKUP,
+            onlineLookupEnabled = true,
+        )
+
+        assertEquals(1, textProviders.size)
+        assertEquals("text_only", textProviders.single().descriptor.key)
+        assertEquals(1, barcodeProviders.size)
+        assertEquals("barcode_only", barcodeProviders.single().descriptor.key)
     }
 }
 

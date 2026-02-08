@@ -61,6 +61,7 @@ data class ProviderExecutionPolicy(
 data class ProviderExecutionRequest(
     val requestType: ProviderRequestType,
     val sourceFilter: SearchSourceFilter,
+    val onlineLookupEnabled: Boolean = true,
     val query: String? = null,
     val barcode: String? = null,
     val token: UserInitiatedNetworkToken? = null,

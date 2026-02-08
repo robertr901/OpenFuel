@@ -2,7 +2,6 @@ package com.openfuel.app.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.openfuel.app.data.remote.RemoteFoodDataSource
 import com.openfuel.app.data.remote.UserInitiatedNetworkGuard
 import com.openfuel.app.domain.model.FoodItem
 import com.openfuel.app.domain.model.FoodUnit
@@ -12,6 +11,13 @@ import com.openfuel.app.domain.model.RemoteFoodCandidate
 import com.openfuel.app.domain.repository.FoodRepository
 import com.openfuel.app.domain.repository.LogRepository
 import com.openfuel.app.domain.repository.SettingsRepository
+import com.openfuel.app.domain.search.SearchSourceFilter
+import com.openfuel.app.domain.service.ProviderExecutionRequest
+import com.openfuel.app.domain.service.ProviderExecutor
+import com.openfuel.app.domain.service.ProviderRefreshPolicy
+import com.openfuel.app.domain.service.ProviderRequestType
+import com.openfuel.app.domain.service.ProviderResult
+import com.openfuel.app.domain.service.ProviderStatus
 import com.openfuel.app.domain.util.EntryValidation
 import java.time.Instant
 import java.util.UUID
@@ -23,7 +29,7 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 class ScanBarcodeViewModel(
-    private val remoteFoodDataSource: RemoteFoodDataSource,
+    private val providerExecutor: ProviderExecutor,
     private val userInitiatedNetworkGuard: UserInitiatedNetworkGuard,
     private val foodRepository: FoodRepository,
     private val logRepository: LogRepository,
@@ -157,16 +163,28 @@ class ScanBarcodeViewModel(
             }
             try {
                 val token = userInitiatedNetworkGuard.issueToken(action)
-                val result = remoteFoodDataSource.lookupByBarcode(
-                    barcode = barcode,
-                    token = token,
+                val report = providerExecutor.execute(
+                    request = ProviderExecutionRequest(
+                        requestType = ProviderRequestType.BARCODE_LOOKUP,
+                        sourceFilter = SearchSourceFilter.ONLINE_ONLY,
+                        onlineLookupEnabled = uiState.value.onlineLookupEnabled,
+                        barcode = barcode,
+                        token = token,
+                        refreshPolicy = ProviderRefreshPolicy.CACHE_PREFERRED,
+                    ),
+                )
+                val result = report.mergedCandidates.firstOrNull()?.candidate
+                val error = deriveBarcodeError(
+                    providerResults = report.providerResults,
+                    hasResult = result != null,
                 )
                 if (result == null) {
                     _uiState.update { current ->
                         current.copy(
                             isLookingUp = false,
                             previewFood = null,
-                            errorMessage = "No matching food found for barcode.",
+                            errorMessage = error ?: "No matching food found for barcode.",
+                            providerResults = report.providerResults,
                         )
                     }
                 } else {
@@ -174,7 +192,8 @@ class ScanBarcodeViewModel(
                         current.copy(
                             isLookingUp = false,
                             previewFood = result,
-                            errorMessage = null,
+                            errorMessage = error,
+                            providerResults = report.providerResults,
                         )
                     }
                 }
@@ -197,6 +216,7 @@ data class ScanBarcodeUiState(
     val onlineLookupEnabled: Boolean = true,
     val previewFood: RemoteFoodCandidate? = null,
     val errorMessage: String? = null,
+    val providerResults: List<ProviderResult> = emptyList(),
     val message: String? = null,
 )
 
@@ -215,4 +235,25 @@ private fun RemoteFoodCandidate.toLocalFoodItem(): FoodItem {
         isFavorite = false,
         createdAt = Instant.now(),
     )
+}
+
+private fun deriveBarcodeError(
+    providerResults: List<ProviderResult>,
+    hasResult: Boolean,
+): String? {
+    val failedStatuses = setOf(
+        ProviderStatus.ERROR,
+        ProviderStatus.TIMEOUT,
+        ProviderStatus.GUARD_REJECTED,
+        ProviderStatus.RATE_LIMITED,
+    )
+    val failed = providerResults.any { result -> result.status in failedStatuses }
+    if (!failed) {
+        return null
+    }
+    return if (hasResult) {
+        "Some providers were unavailable. Showing available match."
+    } else {
+        "Lookup failed. Check connection and retry."
+    }
 }

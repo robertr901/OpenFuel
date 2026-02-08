@@ -2,6 +2,8 @@ package com.openfuel.app.domain.search
 
 import com.openfuel.app.domain.model.FoodItem
 import com.openfuel.app.domain.model.RemoteFoodCandidate
+import com.openfuel.app.domain.service.ProviderResult
+import java.util.Locale
 import kotlin.math.abs
 
 enum class SearchSourceFilter {
@@ -20,6 +22,8 @@ data class UnifiedSearchState(
     val onlineHasSearched: Boolean = false,
     val onlineIsLoading: Boolean = false,
     val onlineError: String? = null,
+    val providerResults: List<ProviderResult> = emptyList(),
+    val onlineElapsedMs: Long = 0L,
 )
 
 sealed class UnifiedFoodSearchResult {
@@ -34,8 +38,10 @@ sealed class UnifiedFoodSearchResult {
     data class OnlineResult(
         val candidate: RemoteFoodCandidate,
         val isSavedLocally: Boolean,
+        val provenance: String = candidate.providerKey
+            ?: candidate.source.name.lowercase(Locale.ROOT),
     ) : UnifiedFoodSearchResult() {
-        override val stableId: String = "online:${candidate.source}:${candidate.sourceId}"
+        override val stableId: String = "online:$provenance:${candidate.source}:${candidate.sourceId}"
     }
 }
 

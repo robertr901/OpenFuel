@@ -275,9 +275,10 @@ class DefaultProviderExecutor(
             result.items.forEach { candidate ->
                 val dedupeKey = buildProviderDedupeKey(candidate)
                 if (seenKeys.add(dedupeKey)) {
+                    val candidateWithProvenance = candidate.copy(providerKey = result.providerId)
                     merged += ProviderMergedCandidate(
                         providerId = result.providerId,
-                        candidate = candidate,
+                        candidate = candidateWithProvenance,
                         dedupeKey = dedupeKey,
                     )
                 }

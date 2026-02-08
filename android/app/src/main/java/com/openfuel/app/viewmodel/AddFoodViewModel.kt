@@ -16,7 +16,12 @@ import com.openfuel.app.domain.search.UnifiedFoodSearchResult
 import com.openfuel.app.domain.search.UnifiedSearchState
 import com.openfuel.app.domain.search.applySourceFilter
 import com.openfuel.app.domain.search.mergeUnifiedSearchResults
-import com.openfuel.app.domain.service.FoodCatalogProvider
+import com.openfuel.app.domain.service.ProviderExecutionRequest
+import com.openfuel.app.domain.service.ProviderExecutor
+import com.openfuel.app.domain.service.ProviderRefreshPolicy
+import com.openfuel.app.domain.service.ProviderRequestType
+import com.openfuel.app.domain.service.ProviderResult
+import com.openfuel.app.domain.service.ProviderStatus
 import com.openfuel.app.domain.util.EntryValidation
 import java.time.Instant
 import java.util.UUID
@@ -39,7 +44,7 @@ class AddFoodViewModel(
     private val foodRepository: FoodRepository,
     private val logRepository: LogRepository,
     settingsRepository: SettingsRepository,
-    private val foodCatalogProvider: FoodCatalogProvider,
+    private val providerExecutor: ProviderExecutor,
     private val userInitiatedNetworkGuard: UserInitiatedNetworkGuard,
 ) : ViewModel() {
     private companion object {
@@ -124,6 +129,8 @@ class AddFoodViewModel(
             onlineLookupEnabled = effectiveUnifiedSearch.onlineEnabled,
             hasSearchedOnline = effectiveUnifiedSearch.onlineHasSearched,
             onlineResults = effectiveUnifiedSearch.onlineResults,
+            onlineProviderResults = effectiveUnifiedSearch.providerResults,
+            onlineExecutionElapsedMs = effectiveUnifiedSearch.onlineElapsedMs,
             isOnlineSearchInProgress = effectiveUnifiedSearch.onlineIsLoading,
             onlineErrorMessage = effectiveUnifiedSearch.onlineError,
             selectedOnlineFood = transient.selectedOnlineFood,
@@ -143,6 +150,8 @@ class AddFoodViewModel(
                 onlineHasSearched = false,
                 onlineIsLoading = false,
                 onlineError = null,
+                providerResults = emptyList(),
+                onlineElapsedMs = 0L,
             )
         }
         transientState.update { current ->
@@ -163,6 +172,8 @@ class AddFoodViewModel(
                     onlineIsLoading = false,
                     onlineResults = emptyList(),
                     onlineError = "Online search is turned off. Enable it in Settings to continue.",
+                    providerResults = emptyList(),
+                    onlineElapsedMs = 0L,
                 )
             }
             return
@@ -176,6 +187,8 @@ class AddFoodViewModel(
                     onlineIsLoading = false,
                     onlineResults = emptyList(),
                     onlineError = "Enter a search term to look up online.",
+                    providerResults = emptyList(),
+                    onlineElapsedMs = 0L,
                 )
             }
             return
@@ -188,17 +201,35 @@ class AddFoodViewModel(
                     onlineIsLoading = true,
                     onlineResults = emptyList(),
                     onlineError = null,
+                    providerResults = emptyList(),
+                    onlineElapsedMs = 0L,
                 )
             }
             try {
                 val token = userInitiatedNetworkGuard.issueToken("add_food_search_online")
-                val results = foodCatalogProvider.search(query, token)
+                val report = providerExecutor.execute(
+                    request = ProviderExecutionRequest(
+                        requestType = ProviderRequestType.TEXT_SEARCH,
+                        sourceFilter = SearchSourceFilter.ONLINE_ONLY,
+                        onlineLookupEnabled = onlineLookupEnabledState.value,
+                        query = query,
+                        token = token,
+                        refreshPolicy = ProviderRefreshPolicy.CACHE_PREFERRED,
+                    ),
+                )
+                val results = report.mergedCandidates.map { merged -> merged.candidate }
+                val error = deriveOnlineErrorMessage(
+                    providerResults = report.providerResults,
+                    hasResults = results.isNotEmpty(),
+                )
                 unifiedSearchState.update { current ->
                     current.copy(
                         onlineHasSearched = true,
                         onlineIsLoading = false,
                         onlineResults = results,
-                        onlineError = null,
+                        onlineError = error,
+                        providerResults = report.providerResults,
+                        onlineElapsedMs = report.overallElapsedMs,
                     )
                 }
             } catch (_: Exception) {
@@ -208,6 +239,8 @@ class AddFoodViewModel(
                         onlineIsLoading = false,
                         onlineResults = emptyList(),
                         onlineError = "Online search failed. Check connection and try again.",
+                        providerResults = emptyList(),
+                        onlineElapsedMs = 0L,
                     )
                 }
             }
@@ -346,6 +379,8 @@ data class AddFoodUiState(
     val onlineLookupEnabled: Boolean = true,
     val hasSearchedOnline: Boolean = false,
     val onlineResults: List<RemoteFoodCandidate> = emptyList(),
+    val onlineProviderResults: List<ProviderResult> = emptyList(),
+    val onlineExecutionElapsedMs: Long = 0L,
     val isOnlineSearchInProgress: Boolean = false,
     val onlineErrorMessage: String? = null,
     val selectedOnlineFood: RemoteFoodCandidate? = null,
@@ -380,4 +415,28 @@ private fun RemoteFoodCandidate.toLocalFoodItem(): FoodItem {
         isFavorite = false,
         createdAt = Instant.now(),
     )
+}
+
+private fun deriveOnlineErrorMessage(
+    providerResults: List<ProviderResult>,
+    hasResults: Boolean,
+): String? {
+    if (providerResults.isEmpty()) {
+        return null
+    }
+    val failedStatuses = setOf(
+        ProviderStatus.ERROR,
+        ProviderStatus.TIMEOUT,
+        ProviderStatus.GUARD_REJECTED,
+        ProviderStatus.RATE_LIMITED,
+    )
+    val failed = providerResults.filter { result -> result.status in failedStatuses }
+    if (failed.isEmpty()) {
+        return null
+    }
+    return if (hasResults) {
+        "Some providers were unavailable. Showing partial results."
+    } else {
+        "Online search failed. Check connection and try again."
+    }
 }

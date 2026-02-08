@@ -13,7 +13,13 @@ import com.openfuel.app.domain.model.RemoteFoodSource
 import com.openfuel.app.domain.repository.FoodRepository
 import com.openfuel.app.domain.repository.LogRepository
 import com.openfuel.app.domain.repository.SettingsRepository
-import com.openfuel.app.domain.service.FoodCatalogProvider
+import com.openfuel.app.domain.search.SearchSourceFilter
+import com.openfuel.app.domain.service.ProviderExecutionReport
+import com.openfuel.app.domain.service.ProviderExecutionRequest
+import com.openfuel.app.domain.service.ProviderExecutor
+import com.openfuel.app.domain.service.ProviderMergedCandidate
+import com.openfuel.app.domain.service.ProviderResult
+import com.openfuel.app.domain.service.ProviderStatus
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
@@ -39,7 +45,7 @@ class AddFoodViewModelTest {
 
     @Test
     fun searchOnline_onlyRunsWhenExplicitlyRequested() = runTest {
-        val remoteDataSource = FakeRemoteFoodDataSource(delayMs = 1_000)
+        val remoteDataSource = FakeProviderExecutor(delayMs = 1_000)
         val viewModel = AddFoodViewModel(
             foodRepository = AddFoodFakeFoodRepository(
                 foods = listOf(
@@ -48,7 +54,7 @@ class AddFoodViewModelTest {
             ),
             logRepository = AddFoodFakeLogRepository(),
             settingsRepository = FakeSettingsRepository(enabled = true),
-            foodCatalogProvider = remoteDataSource,
+            providerExecutor = remoteDataSource,
             userInitiatedNetworkGuard = UserInitiatedNetworkGuard(),
         )
         val collectJob = launch { viewModel.uiState.collect { } }
@@ -74,7 +80,7 @@ class AddFoodViewModelTest {
 
     @Test
     fun updateSearchQuery_updatesLocalResultsWithoutOnlineCall() = runTest {
-        val remoteDataSource = FakeRemoteFoodDataSource()
+        val remoteDataSource = FakeProviderExecutor()
         val viewModel = AddFoodViewModel(
             foodRepository = AddFoodFakeFoodRepository(
                 foods = listOf(
@@ -84,7 +90,7 @@ class AddFoodViewModelTest {
             ),
             logRepository = AddFoodFakeLogRepository(),
             settingsRepository = FakeSettingsRepository(enabled = true),
-            foodCatalogProvider = remoteDataSource,
+            providerExecutor = remoteDataSource,
             userInitiatedNetworkGuard = UserInitiatedNetworkGuard(),
         )
         val collectJob = launch { viewModel.uiState.collect { } }
@@ -101,12 +107,12 @@ class AddFoodViewModelTest {
 
     @Test
     fun searchOnline_whenDisabled_skipsNetworkCallAndShowsMessage() = runTest {
-        val remoteDataSource = FakeRemoteFoodDataSource()
+        val remoteDataSource = FakeProviderExecutor()
         val viewModel = AddFoodViewModel(
             foodRepository = AddFoodFakeFoodRepository(),
             logRepository = AddFoodFakeLogRepository(),
             settingsRepository = FakeSettingsRepository(enabled = false),
-            foodCatalogProvider = remoteDataSource,
+            providerExecutor = remoteDataSource,
             userInitiatedNetworkGuard = UserInitiatedNetworkGuard(),
         )
         val collectJob = launch { viewModel.uiState.collect { } }
@@ -129,12 +135,12 @@ class AddFoodViewModelTest {
 
     @Test
     fun searchOnline_whenNoResults_marksAttemptWithoutError() = runTest {
-        val remoteDataSource = FakeRemoteFoodDataSource(results = emptyList())
+        val remoteDataSource = FakeProviderExecutor(results = emptyList())
         val viewModel = AddFoodViewModel(
             foodRepository = AddFoodFakeFoodRepository(),
             logRepository = AddFoodFakeLogRepository(),
             settingsRepository = FakeSettingsRepository(enabled = true),
-            foodCatalogProvider = remoteDataSource,
+            providerExecutor = remoteDataSource,
             userInitiatedNetworkGuard = UserInitiatedNetworkGuard(),
         )
         val collectJob = launch { viewModel.uiState.collect { } }
@@ -153,14 +159,14 @@ class AddFoodViewModelTest {
 
     @Test
     fun searchOnline_whenProviderThrows_exposesErrorState() = runTest {
-        val remoteDataSource = FakeRemoteFoodDataSource(
+        val remoteDataSource = FakeProviderExecutor(
             throwable = IllegalStateException("boom"),
         )
         val viewModel = AddFoodViewModel(
             foodRepository = AddFoodFakeFoodRepository(),
             logRepository = AddFoodFakeLogRepository(),
             settingsRepository = FakeSettingsRepository(enabled = true),
-            foodCatalogProvider = remoteDataSource,
+            providerExecutor = remoteDataSource,
             userInitiatedNetworkGuard = UserInitiatedNetworkGuard(),
         )
         val collectJob = launch { viewModel.uiState.collect { } }
@@ -180,12 +186,12 @@ class AddFoodViewModelTest {
 
     @Test
     fun updateSearchQuery_clearsPreviousOnlineResultsAndAttemptState() = runTest {
-        val remoteDataSource = FakeRemoteFoodDataSource()
+        val remoteDataSource = FakeProviderExecutor()
         val viewModel = AddFoodViewModel(
             foodRepository = AddFoodFakeFoodRepository(),
             logRepository = AddFoodFakeLogRepository(),
             settingsRepository = FakeSettingsRepository(enabled = true),
-            foodCatalogProvider = remoteDataSource,
+            providerExecutor = remoteDataSource,
             userInitiatedNetworkGuard = UserInitiatedNetworkGuard(),
         )
         val collectJob = launch { viewModel.uiState.collect { } }
@@ -207,10 +213,41 @@ class AddFoodViewModelTest {
         assertEquals(null, viewModel.uiState.value.onlineErrorMessage)
         collectJob.cancel()
     }
+
+    @Test
+    fun updateSearchQuery_doesNotClearRecentsOrFavorites() = runTest {
+        val favorite = fakeFood(id = "favorite-1", name = "Favorite Yogurt")
+        val recent = fakeFood(id = "recent-1", name = "Recent Oatmeal")
+        val viewModel = AddFoodViewModel(
+            foodRepository = AddFoodFakeFoodRepository(
+                foods = listOf(favorite, recent),
+                favorites = listOf(favorite),
+                recents = listOf(recent),
+            ),
+            logRepository = AddFoodFakeLogRepository(),
+            settingsRepository = FakeSettingsRepository(enabled = true),
+            providerExecutor = FakeProviderExecutor(),
+            userInitiatedNetworkGuard = UserInitiatedNetworkGuard(),
+        )
+        val collectJob = launch { viewModel.uiState.collect { } }
+        advanceUntilIdle()
+
+        viewModel.updateSearchQuery("oat")
+        advanceTimeBy(300)
+        advanceUntilIdle()
+
+        assertEquals(1, viewModel.uiState.value.favoriteFoods.size)
+        assertEquals("Favorite Yogurt", viewModel.uiState.value.favoriteFoods.first().name)
+        assertEquals(1, viewModel.uiState.value.recentLoggedFoods.size)
+        assertEquals("Recent Oatmeal", viewModel.uiState.value.recentLoggedFoods.first().name)
+        collectJob.cancel()
+    }
 }
 
 private class AddFoodFakeFoodRepository(
     private val foods: List<FoodItem> = emptyList(),
+    private val favorites: List<FoodItem> = emptyList(),
+    private val recents: List<FoodItem> = emptyList(),
 ) : FoodRepository {
     override suspend fun upsertFood(foodItem: FoodItem) {
         // no-op
@@ -233,11 +270,11 @@ private class AddFoodFakeFoodRepository(
     }
 
     override fun favoriteFoods(limit: Int): Flow<List<FoodItem>> {
-        return flowOf(emptyList())
+        return flowOf(favorites.take(limit))
     }
 
     override fun recentLoggedFoods(limit: Int): Flow<List<FoodItem>> {
-        return flowOf(emptyList())
+        return flowOf(recents.take(limit))
     }
 
     override fun allFoods(query: String): Flow<List<FoodItem>> {
@@ -305,7 +342,7 @@ private class FakeSettingsRepository(
     }
 }
 
-private class FakeRemoteFoodDataSource(
+private class FakeProviderExecutor(
     private val results: List<RemoteFoodCandidate> = listOf(
         RemoteFoodCandidate(
             source = RemoteFoodSource.OPEN_FOOD_FACTS,
@@ -322,13 +359,10 @@ private class FakeRemoteFoodDataSource(
     ),
     private val throwable: Throwable? = null,
     private val delayMs: Long = 0L,
-) : FoodCatalogProvider {
+) : ProviderExecutor {
     var searchCalls: Int = 0
 
-    override suspend fun search(
-        query: String,
-        token: UserInitiatedNetworkToken,
-    ): List<RemoteFoodCandidate> {
+    override suspend fun execute(request: ProviderExecutionRequest): ProviderExecutionReport {
         searchCalls += 1
         if (delayMs > 0) {
             delay(delayMs)
@@ -336,14 +370,28 @@ private class FakeRemoteFoodDataSource(
         throwable?.let { failure ->
             throw failure
         }
-        return results
-    }
-
-    override suspend fun lookupBarcode(
-        barcode: String,
-        token: UserInitiatedNetworkToken,
-    ): RemoteFoodCandidate? {
-        return null
+        val status = if (results.isEmpty()) ProviderStatus.EMPTY else ProviderStatus.AVAILABLE
+        return ProviderExecutionReport(
+            requestType = request.requestType,
+            sourceFilter = request.sourceFilter,
+            mergedCandidates = results.map { candidate ->
+                ProviderMergedCandidate(
+                    providerId = "test_provider",
+                    candidate = candidate.copy(providerKey = "test_provider"),
+                    dedupeKey = candidate.sourceId,
+                )
+            },
+            providerResults = listOf(
+                ProviderResult(
+                    providerId = "test_provider",
+                    capability = request.requestType.capability,
+                    status = status,
+                    items = results,
+                    elapsedMs = delayMs,
+                ),
+            ),
+            overallElapsedMs = delayMs,
+        )
     }
 }
 

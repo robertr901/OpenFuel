@@ -3,6 +3,7 @@ package com.openfuel.app.domain.model
 data class RemoteFoodCandidate(
     val source: RemoteFoodSource,
     val sourceId: String,
+    val providerKey: String? = null,
     val barcode: String?,
     val name: String,
     val brand: String?,

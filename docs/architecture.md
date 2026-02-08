@@ -58,6 +58,25 @@ domain (pure logic, calculations, unit helpers)
   - Static sample provider: deterministic non-network provider for debug diagnostics/instrumentation determinism
   - USDA/Nutritionix/Edamam: scaffolds only, disabled
 
+## Intelligence seam (Phase 10)
+- New domain boundary: `com.openfuel.app.domain.intelligence`.
+- `IntelligenceService` interface defines:
+  - `parseFoodText(input)` for rule-based extraction of food text intent
+  - `normaliseSearchQuery(input)` for deterministic query normalization
+- `RuleBasedIntelligenceService` is pure Kotlin (no Android types, no network calls, no ML dependencies).
+- Add Food integration is intentionally minimal:
+  - UI adds `Quick add (text)` helper dialog
+  - parsed preview items are user-selectable
+  - selecting an item only prefills the existing unified search query via the existing query update path
+- Guardrails:
+  - no automatic online search
+  - no automatic save/log
+  - no background execution
+  - helper copy explicitly instructs users to review before adding
+- Testability:
+  - deterministic unit tests cover parser/normalizer behavior
+  - deterministic instrumentation smoke test validates query prefill flow end-to-end offline
+
 ## Provider cache architecture
 - Storage: Room table `provider_search_cache`.
 - Cache key: normalized request input + provider id + request type.

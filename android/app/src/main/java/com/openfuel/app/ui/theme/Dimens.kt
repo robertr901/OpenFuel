@@ -6,6 +6,7 @@ object Dimens {
     val xxs = 2.dp
     val xs = 4.dp
     val s = 8.dp
+    val sm = 12.dp
     val m = 16.dp
     val l = 24.dp
     val xl = 32.dp

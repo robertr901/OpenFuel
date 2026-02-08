@@ -42,6 +42,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.openfuel.app.BuildConfig
@@ -408,7 +409,7 @@ fun AddFoodScreen(
                                     exit = fadeOut(),
                                 ) {
                                     Column(
-                                        verticalArrangement = Arrangement.spacedBy(Dimens.xxs),
+                                        verticalArrangement = Arrangement.spacedBy(Dimens.s),
                                     ) {
                                         if (uiState.onlineProviderResults.any { it.fromCache }) {
                                             Text(
@@ -549,7 +550,7 @@ private fun UnifiedSearchControls(
         }
         Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(Dimens.s),
+            horizontalArrangement = Arrangement.spacedBy(Dimens.sm),
         ) {
             OFPrimaryButton(
                 text = "Search online",
@@ -622,7 +623,7 @@ private fun QuickAddTextDialog(
         },
         text = {
             Column(
-                verticalArrangement = Arrangement.spacedBy(Dimens.s),
+                verticalArrangement = Arrangement.spacedBy(Dimens.sm),
                 modifier = Modifier.fillMaxWidth(),
             ) {
                 Text(
@@ -639,7 +640,7 @@ private fun QuickAddTextDialog(
                         .testTag("add_food_quick_add_text_input"),
                 )
                 Row(
-                    horizontalArrangement = Arrangement.spacedBy(Dimens.s),
+                    horizontalArrangement = Arrangement.spacedBy(Dimens.sm),
                     modifier = Modifier.fillMaxWidth(),
                 ) {
                     OFSecondaryButton(
@@ -668,7 +669,7 @@ private fun QuickAddTextDialog(
                         modifier = Modifier
                             .fillMaxWidth()
                             .testTag("add_food_quick_add_voice_listening"),
-                        horizontalArrangement = Arrangement.spacedBy(Dimens.s),
+                        horizontalArrangement = Arrangement.spacedBy(Dimens.sm),
                     ) {
                         CircularProgressIndicator()
                         Text(
@@ -694,7 +695,7 @@ private fun QuickAddTextDialog(
                     )
                 } else {
                     Column(
-                        verticalArrangement = Arrangement.spacedBy(Dimens.xs),
+                        verticalArrangement = Arrangement.spacedBy(Dimens.s),
                         modifier = Modifier
                             .fillMaxWidth()
                             .testTag("add_food_quick_add_text_preview_list"),
@@ -758,7 +759,7 @@ private fun QuickActionsCard(
         )
         Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(Dimens.s),
+            horizontalArrangement = Arrangement.spacedBy(Dimens.sm),
         ) {
             OFSecondaryButton(
                 text = "Scan barcode",
@@ -805,7 +806,7 @@ private fun QuickAddManualForm(
 
     Column(
         modifier = Modifier.fillMaxWidth(),
-        verticalArrangement = Arrangement.spacedBy(Dimens.s),
+        verticalArrangement = Arrangement.spacedBy(Dimens.sm),
     ) {
         OutlinedTextField(
             value = name,
@@ -825,7 +826,7 @@ private fun QuickAddManualForm(
                 .testTag("add_food_quick_calories_input"),
         )
         Row(
-            horizontalArrangement = Arrangement.spacedBy(Dimens.s),
+            horizontalArrangement = Arrangement.spacedBy(Dimens.sm),
             modifier = Modifier.fillMaxWidth(),
         ) {
             OutlinedTextField(
@@ -946,7 +947,7 @@ private fun SearchResultFoodRow(
     OFCard(modifier = Modifier.fillMaxWidth()) {
         Column(
             modifier = Modifier.fillMaxWidth(),
-            verticalArrangement = Arrangement.spacedBy(Dimens.s),
+            verticalArrangement = Arrangement.spacedBy(Dimens.sm),
         ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -964,7 +965,7 @@ private fun SearchResultFoodRow(
             }
             Text(
                 text = "${formatCalories(food.caloriesKcal)} kcal · ${formatMacro(food.proteinG)}p ${formatMacro(food.carbsG)}c ${formatMacro(food.fatG)}f",
-                style = MaterialTheme.typography.bodySmall,
+                style = instrumentTextStyle(),
             )
             MealTypeDropdown(
                 selected = selectedMeal,
@@ -972,7 +973,7 @@ private fun SearchResultFoodRow(
                 modifier = Modifier.fillMaxWidth(),
             )
             Row(
-                horizontalArrangement = Arrangement.spacedBy(Dimens.s),
+                horizontalArrangement = Arrangement.spacedBy(Dimens.sm),
                 modifier = Modifier.fillMaxWidth(),
             ) {
                 OFPrimaryButton(
@@ -999,7 +1000,7 @@ private fun OnlineResultRow(
     OFCard(modifier = modifier.fillMaxWidth()) {
         Column(
             modifier = Modifier.fillMaxWidth(),
-            verticalArrangement = Arrangement.spacedBy(Dimens.s),
+            verticalArrangement = Arrangement.spacedBy(Dimens.sm),
         ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -1031,7 +1032,7 @@ private fun OnlineResultRow(
             } else {
                 Text(
                     text = "${formatCalories(calories ?: 0.0)} kcal · ${formatMacro(protein ?: 0.0)}p ${formatMacro(carbs ?: 0.0)}c ${formatMacro(fat ?: 0.0)}f per 100g",
-                    style = MaterialTheme.typography.bodySmall,
+                    style = instrumentTextStyle(),
                 )
             }
             OFSecondaryButton(
@@ -1070,7 +1071,7 @@ private fun OnlineFoodPreviewDialog(
         onDismissRequest = onDismiss,
         title = { Text("Online food preview") },
         text = {
-            Column(verticalArrangement = Arrangement.spacedBy(Dimens.s)) {
+            Column(verticalArrangement = Arrangement.spacedBy(Dimens.sm)) {
                 Text(
                     text = food.name,
                     style = MaterialTheme.typography.titleMedium,
@@ -1089,19 +1090,19 @@ private fun OnlineFoodPreviewDialog(
                 )
                 Text(
                     text = "Calories: ${formatCalories(food.caloriesKcalPer100g ?: 0.0)} kcal",
-                    style = MaterialTheme.typography.bodySmall,
+                    style = instrumentTextStyle(),
                 )
                 Text(
                     text = "Protein: ${formatMacro(food.proteinGPer100g ?: 0.0)} g",
-                    style = MaterialTheme.typography.bodySmall,
+                    style = instrumentTextStyle(),
                 )
                 Text(
                     text = "Carbs: ${formatMacro(food.carbsGPer100g ?: 0.0)} g",
-                    style = MaterialTheme.typography.bodySmall,
+                    style = instrumentTextStyle(),
                 )
                 Text(
                     text = "Fat: ${formatMacro(food.fatGPer100g ?: 0.0)} g",
-                    style = MaterialTheme.typography.bodySmall,
+                    style = instrumentTextStyle(),
                 )
                 if (!food.servingSize.isNullOrBlank()) {
                     Text(
@@ -1135,7 +1136,7 @@ private fun OnlineFoodPreviewDialog(
             }
         },
         confirmButton = {
-            Row(horizontalArrangement = Arrangement.spacedBy(Dimens.s)) {
+            Row(horizontalArrangement = Arrangement.spacedBy(Dimens.sm)) {
                 Button(
                     onClick = {
                         onSave()
@@ -1164,3 +1165,9 @@ private fun OnlineFoodPreviewDialog(
         },
     )
 }
+
+@Composable
+private fun instrumentTextStyle() = MaterialTheme.typography.labelLarge.copy(
+    fontWeight = FontWeight.Medium,
+    fontFeatureSettings = "tnum",
+)

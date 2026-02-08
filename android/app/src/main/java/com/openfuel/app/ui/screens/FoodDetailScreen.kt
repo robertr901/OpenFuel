@@ -9,9 +9,9 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Favorite
-import androidx.compose.material.icons.filled.FavoriteBorder
+import androidx.compose.material.icons.automirrored.rounded.ArrowBack
+import androidx.compose.material.icons.rounded.Favorite
+import androidx.compose.material.icons.rounded.FavoriteBorder
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -66,7 +66,7 @@ fun FoodDetailScreen(
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
                         Icon(
-                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                            imageVector = Icons.AutoMirrored.Rounded.ArrowBack,
                             contentDescription = "Navigate back",
                         )
                     }
@@ -78,9 +78,9 @@ fun FoodDetailScreen(
                         ) {
                             Icon(
                                 imageVector = if (uiState.food?.isFavorite == true) {
-                                    Icons.Default.Favorite
+                                    Icons.Rounded.Favorite
                                 } else {
-                                    Icons.Default.FavoriteBorder
+                                    Icons.Rounded.FavoriteBorder
                                 },
                                 contentDescription = if (uiState.food?.isFavorite == true) {
                                     "Remove from favorites"

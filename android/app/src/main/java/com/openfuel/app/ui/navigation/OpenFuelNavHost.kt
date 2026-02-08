@@ -18,11 +18,11 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Insights
-import androidx.compose.material.icons.filled.History
-import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.filled.RestaurantMenu
-import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.rounded.History
+import androidx.compose.material.icons.rounded.Home
+import androidx.compose.material.icons.rounded.Insights
+import androidx.compose.material.icons.rounded.RestaurantMenu
+import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.material3.Icon
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
@@ -63,13 +63,13 @@ fun OpenFuelAppRoot() {
                 route = Routes.TODAY,
                 label = "Today",
                 testTag = "tab_today",
-                icon = { Icon(Icons.Default.Home, contentDescription = "Today tab") },
+                icon = { Icon(Icons.Rounded.Home, contentDescription = "Today tab") },
             ),
             TopLevelDestination(
                 route = Routes.HISTORY,
                 label = "History",
                 testTag = "tab_history",
-                icon = { Icon(Icons.Default.History, contentDescription = "History tab") },
+                icon = { Icon(Icons.Rounded.History, contentDescription = "History tab") },
             ),
             TopLevelDestination(
                 route = Routes.FOODS,
@@ -77,7 +77,7 @@ fun OpenFuelAppRoot() {
                 testTag = "tab_foods",
                 icon = {
                     Icon(
-                        imageVector = Icons.Default.RestaurantMenu,
+                        imageVector = Icons.Rounded.RestaurantMenu,
                         contentDescription = "Foods tab",
                     )
                 },
@@ -86,13 +86,13 @@ fun OpenFuelAppRoot() {
                 route = Routes.INSIGHTS,
                 label = "Insights",
                 testTag = "tab_insights",
-                icon = { Icon(Icons.Default.Insights, contentDescription = "Insights tab") },
+                icon = { Icon(Icons.Rounded.Insights, contentDescription = "Insights tab") },
             ),
             TopLevelDestination(
                 route = Routes.SETTINGS,
                 label = "Settings",
                 testTag = "tab_settings",
-                icon = { Icon(Icons.Default.Settings, contentDescription = "Settings tab") },
+                icon = { Icon(Icons.Rounded.Settings, contentDescription = "Settings tab") },
             ),
         )
     }

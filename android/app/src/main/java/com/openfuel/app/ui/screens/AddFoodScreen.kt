@@ -10,12 +10,14 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
+import androidx.compose.material.icons.rounded.Mic
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
@@ -620,10 +622,13 @@ private fun QuickAddTextDialog(
                 voiceUiState = when (result) {
                     is VoiceTranscribeResult.Success -> {
                         onInputChange(result.text)
-                        QuickAddVoiceUiState.Idle
+                        QuickAddVoiceUiState.Result("Voice text ready. Review before adding.")
                     }
                     VoiceTranscribeResult.Cancelled -> QuickAddVoiceUiState.Idle
-                    else -> QuickAddVoiceUiState.Error(
+                    is VoiceTranscribeResult.Unavailable -> QuickAddVoiceUiState.Unavailable(
+                        result.messageOrNull() ?: "Voice input unavailable on this device.",
+                    )
+                    is VoiceTranscribeResult.Failure -> QuickAddVoiceUiState.Error(
                         result.messageOrNull() ?: "Voice input failed. Please try again.",
                     )
                 }
@@ -649,41 +654,40 @@ private fun QuickAddTextDialog(
                 )
                 OutlinedTextField(
                     value = input,
-                    onValueChange = onInputChange,
+                    onValueChange = {
+                        onInputChange(it)
+                        if (voiceUiState is QuickAddVoiceUiState.Result) {
+                            voiceUiState = QuickAddVoiceUiState.Idle
+                        }
+                    },
                     label = { Text("Paste text") },
                     keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
                     keyboardActions = KeyboardActions(
                         onDone = { focusManager.clearFocus() },
                     ),
+                    trailingIcon = {
+                        IconButton(
+                            onClick = startVoiceCapture,
+                            enabled = voiceUiState !is QuickAddVoiceUiState.Listening,
+                            modifier = Modifier.testTag("add_food_quick_add_voice_button"),
+                        ) {
+                            if (voiceUiState is QuickAddVoiceUiState.Listening) {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(Dimens.l),
+                                    strokeWidth = Dimens.xxs,
+                                )
+                            } else {
+                                Icon(
+                                    imageVector = Icons.Rounded.Mic,
+                                    contentDescription = "Start voice input",
+                                )
+                            }
+                        }
+                    },
                     modifier = Modifier
                         .fillMaxWidth()
                         .testTag("add_food_quick_add_text_input"),
                 )
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(Dimens.sm),
-                    modifier = Modifier.fillMaxWidth(),
-                ) {
-                    OFSecondaryButton(
-                        text = "Voice",
-                        onClick = startVoiceCapture,
-                        enabled = voiceUiState !is QuickAddVoiceUiState.Listening,
-                        modifier = Modifier
-                            .weight(1f)
-                            .testTag("add_food_quick_add_voice_button"),
-                    )
-                    if (voiceUiState is QuickAddVoiceUiState.Listening) {
-                        OFSecondaryButton(
-                            text = "Cancel",
-                            onClick = {
-                                voiceJob?.cancel()
-                                voiceUiState = QuickAddVoiceUiState.Idle
-                            },
-                            modifier = Modifier
-                                .weight(1f)
-                                .testTag("add_food_quick_add_voice_cancel"),
-                        )
-                    }
-                }
                 if (voiceUiState is QuickAddVoiceUiState.Listening) {
                     Row(
                         modifier = Modifier
@@ -696,13 +700,41 @@ private fun QuickAddTextDialog(
                             .testTag("add_food_quick_add_voice_listening"),
                         horizontalArrangement = Arrangement.spacedBy(Dimens.sm),
                     ) {
-                        CircularProgressIndicator()
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(Dimens.l),
+                            strokeWidth = Dimens.xxs,
+                        )
                         Text(
                             text = "Listening...",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
+                        Spacer(modifier = Modifier.weight(1f))
+                        TextButton(
+                            onClick = {
+                                voiceJob?.cancel()
+                                voiceUiState = QuickAddVoiceUiState.Idle
+                            },
+                            modifier = Modifier.testTag("add_food_quick_add_voice_cancel"),
+                        ) {
+                            Text("Cancel")
+                        }
                     }
+                }
+                if (voiceUiState is QuickAddVoiceUiState.Result) {
+                    Text(
+                        text = (voiceUiState as QuickAddVoiceUiState.Result).message,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                if (voiceUiState is QuickAddVoiceUiState.Unavailable) {
+                    Text(
+                        text = (voiceUiState as QuickAddVoiceUiState.Unavailable).message,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.error,
+                        modifier = Modifier.testTag("add_food_quick_add_voice_error"),
+                    )
                 }
                 if (voiceUiState is QuickAddVoiceUiState.Error) {
                     Text(
@@ -774,6 +806,10 @@ private sealed interface QuickAddVoiceUiState {
     data object Idle : QuickAddVoiceUiState
 
     data object Listening : QuickAddVoiceUiState
+
+    data class Result(val message: String) : QuickAddVoiceUiState
+
+    data class Unavailable(val message: String) : QuickAddVoiceUiState
 
     data class Error(val message: String) : QuickAddVoiceUiState
 }

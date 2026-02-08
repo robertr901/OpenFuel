@@ -144,6 +144,19 @@ This roadmap separates product milestones (user outcomes) from implementation ph
 - Improved keyboard-first flow and TalkBack semantics in Add Food quick-add/voice interactions.
 - Extended deterministic instrumentation assertions for Add Food diagnostics expander behavior.
 
+## Phase 12b: Intelligence seam hardening (completed)
+**Completed**
+- Added deterministic golden corpus tests for `RuleBasedIntelligenceService` parse/normalize behavior.
+- Locked expected outputs for separators, punctuation, mixed-case units, comma-decimal quantities, brands, and garbage input.
+- Tightened `IntelligenceService` contract documentation around deterministic, non-throwing behavior.
+- Hardened parser edge handling for leading noise tokens and decimal-comma quantities without changing user-visible quick-add flow.
+- Reduced parser-internal duplication via helper cleanup with no behavior changes.
+- Preserved all guardrails:
+  - no provider executor changes
+  - no registry/cache schema changes
+  - no online guard or network behavior changes
+  - deterministic offline androidTest strategy remains unchanged
+
 ## Phase 12: On-device ML parser plug-in (still local-only)
 **Scope**
 - Introduce an optional `IntelligenceService` implementation that uses on-device ML, with rule-based as the default fallback.

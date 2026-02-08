@@ -1,0 +1,67 @@
+# Security Policy
+
+OpenFuel is a privacy-first, local-first nutrition tracker.
+
+## Security and Privacy Baseline
+- Local-first by default: personal meal logs stay on-device (Room + DataStore).
+- Online lookups are explicit-action only and guarded.
+- No telemetry, no ads, no trackers, no crash-reporting SDKs.
+- No secrets should be committed to this repository.
+
+## Threat Model Summary
+Threat model details are documented in `docs/threat-model.md`.
+
+High-level controls:
+- User-initiated guardrails on online requests (`UserInitiatedNetworkGuard`).
+- Explicit-action capture for barcode and voice flows.
+- Defensive handling of untrusted provider payloads and graceful UI failure states.
+- No background network sync of personal logs.
+
+## Permissions Inventory (AndroidManifest)
+Declared in `android/app/src/main/AndroidManifest.xml`:
+
+1. `android.permission.INTERNET`
+   - Used only for user-triggered online food lookups.
+2. `android.permission.CAMERA`
+   - Used only for explicit barcode scanning flow.
+
+Not declared:
+- `android.permission.RECORD_AUDIO`
+
+## Network Behavior Summary
+- Online provider requests are initiated from explicit UI actions:
+  - Add Food online search/refresh (`AddFoodViewModel.searchOnline`, `AddFoodViewModel.refreshOnline`).
+  - Barcode lookup (`ScanBarcodeViewModel.onBarcodeDetected`, `ScanBarcodeViewModel.retryLookup`).
+- `UserInitiatedNetworkGuard` issues and validates short-lived tokens before provider calls.
+- Online lookup setting gates execution; disabled setting returns local-safe UI states and blocks provider calls.
+- Online lookup default is currently `enabled = true` when no stored setting exists (`SettingsRepositoryImpl`), but requests still require explicit user action.
+
+## Voice Behavior Summary
+- Voice input uses the `VoiceTranscriber` seam and `RecognizerIntentVoiceTranscriber`.
+- Voice capture is explicit action only from Quick add UI.
+- No always-listening mode, no background capture service, no audio persistence.
+- Recognizer requests prefer offline recognition (`RecognizerIntent.EXTRA_PREFER_OFFLINE = true`).
+- Device/OEM recognizer behavior may vary; offline language packs may be required on some devices.
+
+## Data Storage Summary
+- Room database: `android/app/src/main/java/com/openfuel/app/data/db/OpenFuelDatabase.kt`
+  - Stores foods, meal entries, daily goals, and provider search cache metadata/payload.
+- DataStore settings: `android/app/src/main/java/com/openfuel/app/data/datastore/SettingsDataStore.kt`
+  - Stores app settings such as online lookup enablement and goals.
+- Export is explicit user action via Settings UI; data is serialized to user-shared JSON.
+
+## Logging Policy and Current Footprint
+- Policy:
+  - Do not log meal logs, queries, export contents, or other sensitive user content.
+  - Keep diagnostics local-only and minimal.
+- Current footprint:
+  - Main app source avoids `android.util.Log`/Timber logging calls.
+  - Provider diagnostics are local in-memory diagnostics state for debug surfaces.
+
+## Responsible Disclosure
+To report a security issue, contact: `security@openfuel.invalid` (placeholder).
+
+When reporting:
+- Include app version and reproduction steps.
+- Do not include sensitive personal data in reports.
+- Use coordinated disclosure and avoid public issue disclosure until a fix is available.

@@ -20,6 +20,12 @@ domain (pure logic, calculations, unit helpers)
 - `com.openfuel.app.data`: Room entities/DAO/db, repository implementations, DataStore
 - `com.openfuel.app.export`: export serialization + file writing
 
+## Current UI baseline
+- Add Food reflects the Phase 12a/12b/12c baseline:
+  - polished information hierarchy and accessibility improvements
+  - hardened deterministic intelligence seam behavior
+  - unified quick-add entry point with integrated explicit-action voice capture.
+
 ## Data flow
 1. UI events (e.g., log meal) call ViewModel intent methods.
 2. ViewModel updates StateFlow UI state and invokes repositories.

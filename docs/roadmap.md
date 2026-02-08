@@ -3,6 +3,7 @@
 This roadmap separates product milestones (user outcomes) from implementation phases (architecture and feature increments). The app is local-first by default. Online functionality is opt-in and user-initiated only.
 
 > Note: Phases 4–7 were intermediate iterations that are now fully represented in the milestones and completed phases below.
+> Verification commands in this document and companion docs are repo-relative; run Android gates from `android/`.
 
 ## Milestone 0: Foundation (MVP+ groundwork)
 **Scope**

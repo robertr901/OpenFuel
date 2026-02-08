@@ -209,9 +209,9 @@ private val GOLDEN_PARSE_CASES = listOf(
         expectedItems = listOf(
             ExpectedFoodTextItem(
                 rawName = "Add 250 ml orange juice",
-                normalisedName = "250 ml orange juice",
-                quantity = null,
-                unit = null,
+                normalisedName = "orange juice",
+                quantity = 250.0,
+                unit = QuantityUnit.MILLILITRE,
             ),
             ExpectedFoodTextItem(
                 rawName = "1 serving greek yogurt now",
@@ -221,7 +221,27 @@ private val GOLDEN_PARSE_CASES = listOf(
             ),
         ),
         expectedConfidence = Confidence.HIGH,
-        expectedWarnings = listOf("Missing quantity for \"250 ml orange juice\"."),
+        expectedWarnings = emptyList(),
+    ),
+    ParseGoldenCase(
+        name = "uppercase_and_comma_decimal_units",
+        input = "1,5 CUPS MILK and 250 ML ORANGE JUICE",
+        expectedItems = listOf(
+            ExpectedFoodTextItem(
+                rawName = "1,5 CUPS MILK",
+                normalisedName = "milk",
+                quantity = 1.5,
+                unit = QuantityUnit.CUP,
+            ),
+            ExpectedFoodTextItem(
+                rawName = "250 ML ORANGE JUICE",
+                normalisedName = "orange juice",
+                quantity = 250.0,
+                unit = QuantityUnit.MILLILITRE,
+            ),
+        ),
+        expectedConfidence = Confidence.HIGH,
+        expectedWarnings = emptyList(),
     ),
     ParseGoldenCase(
         name = "garbage_input_separators_only",
@@ -251,6 +271,10 @@ private val GOLDEN_NORMALISE_CASES = listOf(
     NormaliseGoldenCase(
         input = "2 Eggs + banana",
         expected = "2 eggs + banana",
+    ),
+    NormaliseGoldenCase(
+        input = " Add, banana!! ",
+        expected = "banana",
     ),
     NormaliseGoldenCase(
         input = "  ",

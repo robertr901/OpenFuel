@@ -27,6 +27,9 @@ enum class ProviderStatus {
     UNSUPPORTED_CAPABILITY,
     MISCONFIGURED,
     RATE_LIMITED,
+    NETWORK_UNAVAILABLE,
+    HTTP_ERROR,
+    PARSING_ERROR,
     TIMEOUT,
     GUARD_REJECTED,
     ERROR,
@@ -127,6 +130,13 @@ fun buildProviderDedupeKey(candidate: RemoteFoodCandidate): String {
     val name = normalizeProviderText(candidate.name)
     val brand = normalizeProviderText(candidate.brand.orEmpty())
     val servingSize = normalizeProviderText(candidate.servingSize.orEmpty())
+    val sourceScopedIdentity = "source:${candidate.source.name.lowercase(Locale.ROOT)}|${normalizeProviderText(candidate.sourceId)}"
+    if (name.isBlank()) {
+        return sourceScopedIdentity
+    }
+    if (brand.isBlank() && servingSize.isBlank()) {
+        return "$sourceScopedIdentity|$name"
+    }
     return "text:$name|$brand|$servingSize"
 }
 

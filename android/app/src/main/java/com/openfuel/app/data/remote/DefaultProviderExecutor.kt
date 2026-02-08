@@ -1,5 +1,7 @@
 package com.openfuel.app.data.remote
 
+import com.google.gson.JsonParseException
+import com.google.gson.stream.MalformedJsonException
 import com.openfuel.app.domain.model.RemoteFoodCandidate
 import com.openfuel.app.domain.search.SearchSourceFilter
 import com.openfuel.app.domain.service.FoodCatalogExecutionProvider
@@ -19,6 +21,9 @@ import com.openfuel.app.domain.service.buildProviderDedupeKey
 import com.openfuel.app.domain.service.normalizeProviderBarcode
 import com.openfuel.app.domain.service.normalizeProviderText
 import java.time.Clock
+import java.io.EOFException
+import java.io.IOException
+import java.net.SocketTimeoutException
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.async
@@ -26,6 +31,7 @@ import kotlinx.coroutines.supervisorScope
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeout
 import kotlinx.coroutines.Dispatchers
+import retrofit2.HttpException
 
 class DefaultProviderExecutor(
     private val providerSource: (ProviderExecutionRequest) -> List<FoodCatalogExecutionProvider>,
@@ -71,6 +77,10 @@ class DefaultProviderExecutor(
                         result.status in setOf(
                             ProviderStatus.AVAILABLE,
                             ProviderStatus.EMPTY,
+                            ProviderStatus.NETWORK_UNAVAILABLE,
+                            ProviderStatus.HTTP_ERROR,
+                            ProviderStatus.PARSING_ERROR,
+                            ProviderStatus.RATE_LIMITED,
                             ProviderStatus.ERROR,
                             ProviderStatus.TIMEOUT,
                         )
@@ -257,14 +267,15 @@ class DefaultProviderExecutor(
                 elapsedMs = elapsedSince(startedAtMs),
                 diagnostics = "Provider execution cancelled.",
             )
-        } catch (_: Exception) {
+        } catch (exception: Exception) {
+            val mappedFailure = mapFailure(exception)
             ProviderResult(
                 providerId = provider.descriptor.key,
                 capability = capability,
-                status = ProviderStatus.ERROR,
+                status = mappedFailure.status,
                 items = emptyList(),
                 elapsedMs = elapsedSince(startedAtMs),
-                diagnostics = "Provider execution failed.",
+                diagnostics = mappedFailure.diagnostics,
             )
         }
     }
@@ -310,4 +321,63 @@ class DefaultProviderExecutor(
     private fun elapsedSince(startedAtMs: Long): Long {
         return (clock.millis() - startedAtMs).coerceAtLeast(0L)
     }
+
+    private fun mapFailure(throwable: Throwable): MappedProviderFailure {
+        val root = throwable.rootCause()
+        return when {
+            root is UserInitiatedNetworkGuardViolationException -> MappedProviderFailure(
+                status = ProviderStatus.GUARD_REJECTED,
+                diagnostics = "Rejected by user-initiated network guard.",
+            )
+
+            root is HttpException && root.code() == 429 -> MappedProviderFailure(
+                status = ProviderStatus.RATE_LIMITED,
+                diagnostics = "Provider rate-limited the request (HTTP 429).",
+            )
+
+            root is SocketTimeoutException -> MappedProviderFailure(
+                status = ProviderStatus.TIMEOUT,
+                diagnostics = "Provider network timeout.",
+            )
+
+            root is HttpException -> MappedProviderFailure(
+                status = ProviderStatus.HTTP_ERROR,
+                diagnostics = "Provider returned HTTP ${root.code()}.",
+            )
+
+            root.isParsingFailure() -> MappedProviderFailure(
+                status = ProviderStatus.PARSING_ERROR,
+                diagnostics = "Provider response parsing failed.",
+            )
+
+            root is IOException -> MappedProviderFailure(
+                status = ProviderStatus.NETWORK_UNAVAILABLE,
+                diagnostics = "Network unavailable for provider request.",
+            )
+
+            else -> MappedProviderFailure(
+                status = ProviderStatus.ERROR,
+                diagnostics = "Provider execution failed.",
+            )
+        }
+    }
+
+    private fun Throwable.rootCause(): Throwable {
+        var current: Throwable = this
+        while (current.cause != null && current.cause !== current) {
+            current = current.cause!!
+        }
+        return current
+    }
+
+    private fun Throwable.isParsingFailure(): Boolean {
+        return this is JsonParseException ||
+            this is MalformedJsonException ||
+            this is EOFException
+    }
 }
+
+private data class MappedProviderFailure(
+    val status: ProviderStatus,
+    val diagnostics: String,
+)

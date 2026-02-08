@@ -1,4 +1,4 @@
-# Provider Contract (Phase 8)
+# Provider Contract (Phase 9)
 
 ## Purpose
 This document defines the canonical contract for remote nutrition catalog providers used by Unified Add Food.
@@ -34,6 +34,7 @@ Provider execution must never throw to UI layers. Failures are represented as st
 - Primary dedupe key:
   - barcode (if present, trimmed non-blank)
   - else normalized `name + brand + servingSize`
+  - fallback to source-scoped identity when brand/serving context is missing
 - Text normalization:
   - trim
   - collapse repeated whitespace
@@ -43,7 +44,18 @@ Provider execution must never throw to UI layers. Failures are represented as st
 - Friendly UX errors only.
 - No stack traces in UI.
 - No sensitive payload logging.
-- Common statuses: `DISABLED_BY_SETTINGS`, `DISABLED_BY_SOURCE_FILTER`, `MISCONFIGURED`, `UNSUPPORTED_CAPABILITY`, `RATE_LIMITED`, `TIMEOUT`, `ERROR`.
+- Common statuses:
+  - `DISABLED_BY_SETTINGS`
+  - `DISABLED_BY_SOURCE_FILTER`
+  - `MISCONFIGURED`
+  - `UNSUPPORTED_CAPABILITY`
+  - `GUARD_REJECTED`
+  - `NETWORK_UNAVAILABLE`
+  - `HTTP_ERROR`
+  - `PARSING_ERROR`
+  - `RATE_LIMITED`
+  - `TIMEOUT`
+  - `ERROR`
 
 ## Provenance
 - Merged candidates retain provider provenance via `providerKey`.
@@ -53,7 +65,11 @@ Provider execution must never throw to UI layers. Failures are represented as st
 - Cache key includes normalized input + request type + provider id.
 - Cache stores only public nutrition candidate fields.
 - Default TTL: 24h.
+- Cache row contract includes `cacheVersion`; current version is `1`.
+- Version bump policy: bump `cacheVersion` when serialized payload shape changes incompatibly.
 - Cache reads are allowed for fast-path results.
+- Version mismatch rows are purged and treated as cache misses.
+- Corrupted payload JSON is treated as cache miss and overwritten on next successful fetch.
 - No silent background network refresh; refresh requires explicit user action.
 
 ## Observability (local-only)

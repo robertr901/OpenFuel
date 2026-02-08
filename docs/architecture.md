@@ -28,7 +28,9 @@ domain (pure logic, calculations, unit helpers)
 5. Online lookups are routed through a provider abstraction and require explicit user action tokens.
 
 ## Search architecture (Unified Search)
-- `AddFoodScreen` presents one query input and explicit "Search online" action.
+- `AddFoodScreen` presents one query input and explicit online actions:
+  - `Search online` for cache-preferred lookup
+  - `Refresh online` for explicit cache bypass (`FORCE_REFRESH`)
 - `AddFoodViewModel` owns a single `UnifiedSearchState`:
   - local results update from debounced query (Room)
   - online results update only when the user explicitly requests online search
@@ -48,7 +50,9 @@ domain (pure logic, calculations, unit helpers)
 - Dedupe strategy:
   - barcode when present
   - else normalized `name + brand + servingSize`
+  - fallback to source-scoped identity when brand and serving context are missing
   - provenance retained per merged candidate (`providerId`)
+- Online result cards surface provenance labels (`OFF`, `Sample`, or provider key) for explainability.
 - Current providers:
   - OpenFoodFacts: network provider
   - Static sample provider: deterministic non-network provider for debug diagnostics/instrumentation determinism
@@ -59,16 +63,24 @@ domain (pure logic, calculations, unit helpers)
 - Cache key: normalized request input + provider id + request type.
 - Cached payload: public nutrition candidate fields only (no secrets, no personal logs).
 - TTL: 24h default (`ProviderExecutionPolicy.cacheTtl`).
+- Cache versioning:
+  - row field: `cacheVersion`
+  - current version: `1`
+  - bump policy: increment when serialized payload shape changes incompatibly
 - Fast path:
   - if fresh cache hit and request uses `CACHE_PREFERRED`, return immediately
   - no silent background refresh
   - refresh is explicit user action (`FORCE_REFRESH` policy path)
+- Safety:
+  - version mismatches are purged and treated as cache misses
+  - corrupted payload JSON is treated as cache miss and overwritten on next successful fetch
 
 ## Provider diagnostics (local-only)
 - `InMemoryProviderExecutionDiagnosticsStore` records latest execution report:
   - per-provider elapsed time, status, item count
   - overall elapsed time
   - cache hit/miss counts
+- Add Food debug diagnostics include execution count for deterministic verification of repeated explicit actions.
 - Exposed in debug Settings diagnostics UI only.
 - No remote telemetry, no server-side analytics, no personal-log upload.
 

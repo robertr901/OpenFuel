@@ -36,6 +36,21 @@ class ProviderExecutionModelsTest {
     }
 
     @Test
+    fun buildProviderDedupeKey_missingBrandAndServingFallsBackToSourceIdentity() {
+        val candidate = candidate(
+            sourceId = "off-123",
+            barcode = null,
+            name = "Protein Bar",
+            brand = null,
+            servingSize = null,
+        )
+
+        val key = buildProviderDedupeKey(candidate)
+
+        assertEquals("source:open_food_facts|off-123|protein bar", key)
+    }
+
+    @Test
     fun buildProviderCacheKey_normalizesProviderAndInput() {
         val textKey = buildProviderCacheKey(
             providerId = "  Open_Food_Facts ",
@@ -65,6 +80,7 @@ class ProviderExecutionModelsTest {
     }
 
     private fun candidate(
+        sourceId: String = "id",
         barcode: String?,
         name: String,
         brand: String?,
@@ -72,7 +88,7 @@ class ProviderExecutionModelsTest {
     ): RemoteFoodCandidate {
         return RemoteFoodCandidate(
             source = RemoteFoodSource.OPEN_FOOD_FACTS,
-            sourceId = "id",
+            sourceId = sourceId,
             barcode = barcode,
             name = name,
             brand = brand,

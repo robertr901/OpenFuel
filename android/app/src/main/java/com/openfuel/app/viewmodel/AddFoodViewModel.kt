@@ -8,6 +8,7 @@ import com.openfuel.app.domain.model.FoodUnit
 import com.openfuel.app.domain.model.MealEntry
 import com.openfuel.app.domain.model.MealType
 import com.openfuel.app.domain.model.RemoteFoodCandidate
+import com.openfuel.app.domain.model.toLocalFoodItem
 import com.openfuel.app.domain.repository.FoodRepository
 import com.openfuel.app.domain.repository.LogRepository
 import com.openfuel.app.domain.repository.SettingsRepository
@@ -131,6 +132,7 @@ class AddFoodViewModel(
             onlineResults = effectiveUnifiedSearch.onlineResults,
             onlineProviderResults = effectiveUnifiedSearch.providerResults,
             onlineExecutionElapsedMs = effectiveUnifiedSearch.onlineElapsedMs,
+            onlineExecutionCount = effectiveUnifiedSearch.onlineExecutionCount,
             isOnlineSearchInProgress = effectiveUnifiedSearch.onlineIsLoading,
             onlineErrorMessage = effectiveUnifiedSearch.onlineError,
             selectedOnlineFood = transient.selectedOnlineFood,
@@ -152,6 +154,7 @@ class AddFoodViewModel(
                 onlineError = null,
                 providerResults = emptyList(),
                 onlineElapsedMs = 0L,
+                onlineExecutionCount = 0,
             )
         }
         transientState.update { current ->
@@ -164,6 +167,14 @@ class AddFoodViewModel(
     }
 
     fun searchOnline() {
+        executeOnlineSearch(refreshPolicy = ProviderRefreshPolicy.CACHE_PREFERRED)
+    }
+
+    fun refreshOnline() {
+        executeOnlineSearch(refreshPolicy = ProviderRefreshPolicy.FORCE_REFRESH)
+    }
+
+    private fun executeOnlineSearch(refreshPolicy: ProviderRefreshPolicy) {
         if (!onlineLookupEnabledState.value) {
             unifiedSearchState.update { current ->
                 current.copy(
@@ -214,7 +225,7 @@ class AddFoodViewModel(
                         onlineLookupEnabled = onlineLookupEnabledState.value,
                         query = query,
                         token = token,
-                        refreshPolicy = ProviderRefreshPolicy.CACHE_PREFERRED,
+                        refreshPolicy = refreshPolicy,
                     ),
                 )
                 val results = report.mergedCandidates.map { merged -> merged.candidate }
@@ -230,6 +241,7 @@ class AddFoodViewModel(
                         onlineError = error,
                         providerResults = report.providerResults,
                         onlineElapsedMs = report.overallElapsedMs,
+                        onlineExecutionCount = current.onlineExecutionCount + 1,
                     )
                 }
             } catch (_: Exception) {
@@ -241,6 +253,7 @@ class AddFoodViewModel(
                         onlineError = "Online search failed. Check connection and try again.",
                         providerResults = emptyList(),
                         onlineElapsedMs = 0L,
+                        onlineExecutionCount = current.onlineExecutionCount + 1,
                     )
                 }
             }
@@ -381,6 +394,7 @@ data class AddFoodUiState(
     val onlineResults: List<RemoteFoodCandidate> = emptyList(),
     val onlineProviderResults: List<ProviderResult> = emptyList(),
     val onlineExecutionElapsedMs: Long = 0L,
+    val onlineExecutionCount: Int = 0,
     val isOnlineSearchInProgress: Boolean = false,
     val onlineErrorMessage: String? = null,
     val selectedOnlineFood: RemoteFoodCandidate? = null,
@@ -400,23 +414,6 @@ private data class UnifiedSearchComposedState(
     val onlineEnabled: Boolean,
 )
 
-private fun RemoteFoodCandidate.toLocalFoodItem(): FoodItem {
-    val maxCalories = 10_000.0
-    val maxMacro = 1_000.0
-    return FoodItem(
-        id = UUID.randomUUID().toString(),
-        name = name,
-        brand = brand,
-        barcode = barcode,
-        caloriesKcal = caloriesKcalPer100g?.coerceIn(0.0, maxCalories) ?: 0.0,
-        proteinG = proteinGPer100g?.coerceIn(0.0, maxMacro) ?: 0.0,
-        carbsG = carbsGPer100g?.coerceIn(0.0, maxMacro) ?: 0.0,
-        fatG = fatGPer100g?.coerceIn(0.0, maxMacro) ?: 0.0,
-        isFavorite = false,
-        createdAt = Instant.now(),
-    )
-}
-
 private fun deriveOnlineErrorMessage(
     providerResults: List<ProviderResult>,
     hasResults: Boolean,
@@ -425,6 +422,9 @@ private fun deriveOnlineErrorMessage(
         return null
     }
     val failedStatuses = setOf(
+        ProviderStatus.NETWORK_UNAVAILABLE,
+        ProviderStatus.HTTP_ERROR,
+        ProviderStatus.PARSING_ERROR,
         ProviderStatus.ERROR,
         ProviderStatus.TIMEOUT,
         ProviderStatus.GUARD_REJECTED,

@@ -8,6 +8,8 @@ import com.openfuel.app.domain.model.RemoteFoodCandidate
 import com.openfuel.app.domain.service.ProviderRequestType
 import java.time.Duration
 
+internal const val PROVIDER_CACHE_PAYLOAD_VERSION: Int = 1
+
 data class CachedProviderResult(
     val items: List<RemoteFoodCandidate>,
     val cachedAtEpochMs: Long,
@@ -37,12 +39,22 @@ class RoomProviderResultCache(
     private val listType = object : TypeToken<List<RemoteFoodCandidate>>() {}.type
 
     override suspend fun get(cacheKey: String, nowEpochMs: Long): CachedProviderResult? {
+        dao.deleteByVersionMismatch(PROVIDER_CACHE_PAYLOAD_VERSION)
         val entity = dao.getByKey(cacheKey) ?: return null
+        if (entity.cacheVersion != PROVIDER_CACHE_PAYLOAD_VERSION) {
+            dao.deleteByKey(cacheKey)
+            return null
+        }
         if (entity.expiresAtEpochMs <= nowEpochMs) {
             dao.deleteByKey(cacheKey)
             return null
         }
-        val items = gson.fromJson<List<RemoteFoodCandidate>>(entity.payloadJson, listType)
+        val items = runCatching {
+            gson.fromJson<List<RemoteFoodCandidate>>(entity.payloadJson, listType)
+        }.getOrElse {
+            dao.deleteByKey(cacheKey)
+            return null
+        } ?: emptyList()
         return CachedProviderResult(
             items = items,
             cachedAtEpochMs = entity.cachedAtEpochMs,
@@ -61,12 +73,14 @@ class RoomProviderResultCache(
     ) {
         val expiresAtEpochMs = cachedAtEpochMs + ttl.toMillis()
         val payloadJson = gson.toJson(items, listType)
+        dao.deleteByVersionMismatch(PROVIDER_CACHE_PAYLOAD_VERSION)
         dao.upsert(
             ProviderSearchCacheEntity(
                 cacheKey = cacheKey,
                 providerId = providerId,
                 requestType = requestType.name,
                 normalizedInput = normalizedInput,
+                cacheVersion = PROVIDER_CACHE_PAYLOAD_VERSION,
                 payloadJson = payloadJson,
                 cachedAtEpochMs = cachedAtEpochMs,
                 expiresAtEpochMs = expiresAtEpochMs,
@@ -76,6 +90,7 @@ class RoomProviderResultCache(
     }
 
     override suspend fun purgeExpired(nowEpochMs: Long) {
+        dao.deleteByVersionMismatch(PROVIDER_CACHE_PAYLOAD_VERSION)
         dao.deleteExpired(nowEpochMs)
     }
 }

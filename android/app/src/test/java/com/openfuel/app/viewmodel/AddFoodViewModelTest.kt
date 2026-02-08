@@ -18,6 +18,7 @@ import com.openfuel.app.domain.service.ProviderExecutionReport
 import com.openfuel.app.domain.service.ProviderExecutionRequest
 import com.openfuel.app.domain.service.ProviderExecutor
 import com.openfuel.app.domain.service.ProviderMergedCandidate
+import com.openfuel.app.domain.service.ProviderRefreshPolicy
 import com.openfuel.app.domain.service.ProviderResult
 import com.openfuel.app.domain.service.ProviderStatus
 import java.time.Instant
@@ -242,6 +243,104 @@ class AddFoodViewModelTest {
         assertEquals("Recent Oatmeal", viewModel.uiState.value.recentLoggedFoods.first().name)
         collectJob.cancel()
     }
+
+    @Test
+    fun refreshOnline_usesForceRefreshAndIncrementsExecutionCount() = runTest {
+        val remoteDataSource = FakeProviderExecutor()
+        val viewModel = AddFoodViewModel(
+            foodRepository = AddFoodFakeFoodRepository(),
+            logRepository = AddFoodFakeLogRepository(),
+            settingsRepository = FakeSettingsRepository(enabled = true),
+            providerExecutor = remoteDataSource,
+            userInitiatedNetworkGuard = UserInitiatedNetworkGuard(),
+        )
+        val collectJob = launch { viewModel.uiState.collect { } }
+
+        viewModel.updateSearchQuery("oat")
+        advanceTimeBy(300)
+        advanceUntilIdle()
+        viewModel.searchOnline()
+        advanceUntilIdle()
+        viewModel.refreshOnline()
+        advanceUntilIdle()
+
+        assertEquals(2, remoteDataSource.searchCalls)
+        assertEquals(2, viewModel.uiState.value.onlineExecutionCount)
+        assertEquals(ProviderRefreshPolicy.CACHE_PREFERRED, remoteDataSource.requests[0].refreshPolicy)
+        assertEquals(ProviderRefreshPolicy.FORCE_REFRESH, remoteDataSource.requests[1].refreshPolicy)
+        collectJob.cancel()
+    }
+
+    @Test
+    fun saveOnlineFood_blankNameAndBrand_persistsSanitizedItem() = runTest {
+        val foodRepository = AddFoodFakeFoodRepository()
+        val viewModel = AddFoodViewModel(
+            foodRepository = foodRepository,
+            logRepository = AddFoodFakeLogRepository(),
+            settingsRepository = FakeSettingsRepository(enabled = true),
+            providerExecutor = FakeProviderExecutor(),
+            userInitiatedNetworkGuard = UserInitiatedNetworkGuard(),
+        )
+
+        viewModel.saveOnlineFood(
+            food = RemoteFoodCandidate(
+                source = RemoteFoodSource.OPEN_FOOD_FACTS,
+                sourceId = "edge-case-1",
+                barcode = "  ",
+                name = "  ",
+                brand = " ",
+                caloriesKcalPer100g = null,
+                proteinGPer100g = null,
+                carbsGPer100g = null,
+                fatGPer100g = null,
+                servingSize = null,
+            ),
+        )
+        advanceUntilIdle()
+
+        assertEquals(1, foodRepository.upsertedFoods.size)
+        val saved = foodRepository.upsertedFoods.single()
+        assertEquals("Imported food", saved.name)
+        assertEquals(null, saved.brand)
+        assertEquals(null, saved.barcode)
+        assertEquals(0.0, saved.caloriesKcal, 0.0)
+    }
+
+    @Test
+    fun saveAndLogOnlineFood_partialNutrition_savesThenLogs() = runTest {
+        val foodRepository = AddFoodFakeFoodRepository()
+        val logRepository = AddFoodFakeLogRepository()
+        val viewModel = AddFoodViewModel(
+            foodRepository = foodRepository,
+            logRepository = logRepository,
+            settingsRepository = FakeSettingsRepository(enabled = true),
+            providerExecutor = FakeProviderExecutor(),
+            userInitiatedNetworkGuard = UserInitiatedNetworkGuard(),
+        )
+
+        viewModel.saveAndLogOnlineFood(
+            food = RemoteFoodCandidate(
+                source = RemoteFoodSource.STATIC_SAMPLE,
+                sourceId = "edge-case-2",
+                barcode = "123",
+                name = "Sample item",
+                brand = " ",
+                caloriesKcalPer100g = null,
+                proteinGPer100g = null,
+                carbsGPer100g = null,
+                fatGPer100g = null,
+                servingSize = "?? weird-unit",
+            ),
+            mealType = MealType.DINNER,
+            quantity = 1.0,
+            unit = FoodUnit.SERVING,
+        )
+        advanceUntilIdle()
+
+        assertEquals(1, foodRepository.upsertedFoods.size)
+        assertEquals(1, logRepository.loggedEntries.size)
+        assertEquals(foodRepository.upsertedFoods.single().id, logRepository.loggedEntries.single().foodItemId)
+    }
 }
 
 private class AddFoodFakeFoodRepository(
@@ -249,8 +348,10 @@ private class AddFoodFakeFoodRepository(
     private val favorites: List<FoodItem> = emptyList(),
     private val recents: List<FoodItem> = emptyList(),
 ) : FoodRepository {
+    val upsertedFoods = mutableListOf<FoodItem>()
+
     override suspend fun upsertFood(foodItem: FoodItem) {
-        // no-op
+        upsertedFoods += foodItem
     }
 
     override suspend fun getFoodById(id: String): FoodItem? {
@@ -303,8 +404,10 @@ private class AddFoodFakeFoodRepository(
 }
 
 private class AddFoodFakeLogRepository : LogRepository {
+    val loggedEntries = mutableListOf<MealEntry>()
+
     override suspend fun logMealEntry(entry: MealEntry) {
-        // no-op
+        loggedEntries += entry
     }
 
     override suspend fun updateMealEntry(entry: MealEntry) {
@@ -361,9 +464,11 @@ private class FakeProviderExecutor(
     private val delayMs: Long = 0L,
 ) : ProviderExecutor {
     var searchCalls: Int = 0
+    val requests = mutableListOf<ProviderExecutionRequest>()
 
     override suspend fun execute(request: ProviderExecutionRequest): ProviderExecutionReport {
         searchCalls += 1
+        requests += request
         if (delayMs > 0) {
             delay(delayMs)
         }

@@ -32,7 +32,7 @@ class OpenFuelDatabaseMigrationTest {
     }
 
     @Test
-    fun migrateFromV1ToV5_preservesRowsAndAddsExpectedColumns() {
+    fun migrateFromV1ToV6_preservesRowsAndAddsExpectedColumns() {
         createVersion1Database()
 
         database = Room.databaseBuilder(context, OpenFuelDatabase::class.java, dbName)
@@ -41,6 +41,7 @@ class OpenFuelDatabaseMigrationTest {
                 OpenFuelDatabase.MIGRATION_2_3,
                 OpenFuelDatabase.MIGRATION_3_4,
                 OpenFuelDatabase.MIGRATION_4_5,
+                OpenFuelDatabase.MIGRATION_5_6,
             )
             .allowMainThreadQueries()
             .build()
@@ -54,6 +55,7 @@ class OpenFuelDatabaseMigrationTest {
         assertIndexExists(migratedDb, table = "food_items", index = "index_food_items_barcode")
         assertColumnExists(migratedDb, table = "provider_search_cache", column = "cacheKey")
         assertColumnExists(migratedDb, table = "provider_search_cache", column = "expiresAtEpochMs")
+        assertColumnExists(migratedDb, table = "provider_search_cache", column = "cacheVersion")
         assertIndexExists(
             migratedDb,
             table = "provider_search_cache",

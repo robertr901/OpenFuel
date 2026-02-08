@@ -32,18 +32,54 @@ domain (pure logic, calculations, unit helpers)
 - `AddFoodViewModel` owns a single `UnifiedSearchState`:
   - local results update from debounced query (Room)
   - online results update only when the user explicitly requests online search
-  - query changes clear stale online state
-- `FoodCatalogProvider` is the provider contract used by the ViewModel.
-- `FoodCatalogProviderRegistry` controls active providers and exposes provider diagnostics metadata.
+  - query changes clear stale online state and provider execution metadata
+- `ProviderExecutor` is the online orchestration layer for both:
+  - Add Food text search
+  - barcode lookup
+- `FoodCatalogProviderRegistry` resolves providers for each request type with runtime gating:
+  - settings (`onlineLookupEnabled`)
+  - build/debug diagnostics mode
+  - provider capability support and configuration presence
+- Execution policy:
+  - bounded parallel execution (`supervisorScope`)
+  - strict per-provider timeout and global budget
+  - no exceptions leaked to UI; failures are returned as structured provider statuses
+  - deterministic merge: provider priority order + stable dedupe key
+- Dedupe strategy:
+  - barcode when present
+  - else normalized `name + brand + servingSize`
+  - provenance retained per merged candidate (`providerId`)
 - Current providers:
-  - OpenFoodFacts: active
-  - USDA/Nutritionix/Edamam: scaffolds only, disabled by default
+  - OpenFoodFacts: network provider
+  - Static sample provider: deterministic non-network provider for debug diagnostics/instrumentation determinism
+  - USDA/Nutritionix/Edamam: scaffolds only, disabled
+
+## Provider cache architecture
+- Storage: Room table `provider_search_cache`.
+- Cache key: normalized request input + provider id + request type.
+- Cached payload: public nutrition candidate fields only (no secrets, no personal logs).
+- TTL: 24h default (`ProviderExecutionPolicy.cacheTtl`).
+- Fast path:
+  - if fresh cache hit and request uses `CACHE_PREFERRED`, return immediately
+  - no silent background refresh
+  - refresh is explicit user action (`FORCE_REFRESH` policy path)
+
+## Provider diagnostics (local-only)
+- `InMemoryProviderExecutionDiagnosticsStore` records latest execution report:
+  - per-provider elapsed time, status, item count
+  - overall elapsed time
+  - cache hit/miss counts
+- Exposed in debug Settings diagnostics UI only.
+- No remote telemetry, no server-side analytics, no personal-log upload.
 
 ## Online guardrails
 - Network is optional and user-controllable via Settings.
 - Online lookup is enabled by default, but every network call must be explicitly user initiated.
 - `UserInitiatedNetworkGuard` issues short-lived tokens and validates them in remote data sources.
 - No background sync, no periodic jobs, and no silent network retries.
+- No silent no-op states:
+  - online-disabled actions return immediate user-visible messaging
+  - provider failures surface friendly copy plus debug diagnostics when available
 - Failing or partial online payloads must degrade to local-safe UI states (empty/error, no crashes).
 
 ## Offline-first strategy

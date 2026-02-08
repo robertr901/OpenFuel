@@ -10,7 +10,7 @@ class OpenFuelViewModelFactory(
     private val container: AppContainer,
 ) : ViewModelProvider.Factory {
     override fun <T : ViewModel> create(modelClass: Class<T>, extras: CreationExtras): T {
-        return when (modelClass) {
+        val viewModel: ViewModel = when (modelClass) {
             HomeViewModel::class.java -> HomeViewModel(
                 logRepository = container.logRepository,
                 goalsRepository = container.goalsRepository,
@@ -54,7 +54,8 @@ class OpenFuelViewModelFactory(
                 providerExecutionDiagnosticsStore = container.providerExecutionDiagnosticsStore,
             )
             else -> throw IllegalArgumentException("Unknown ViewModel class: ${modelClass.name}")
-        } as T
+        }
+        return modelClass.cast(viewModel)
     }
 
     override fun <T : ViewModel> create(modelClass: Class<T>): T {

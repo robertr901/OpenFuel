@@ -26,6 +26,7 @@ Each provider execution returns:
 - `items` (`RemoteFoodCandidate` list)
 - timing (`elapsedMs`)
 - optional diagnostics (local-only)
+- cache source marker (`fromCache`)
 
 Provider execution must never throw to UI layers. Failures are represented as structured statuses.
 
@@ -42,7 +43,11 @@ Provider execution must never throw to UI layers. Failures are represented as st
 - Friendly UX errors only.
 - No stack traces in UI.
 - No sensitive payload logging.
-- Common statuses: `DISABLED_BY_SETTINGS`, `MISCONFIGURED`, `RATE_LIMITED`, `TIMEOUT`, `ERROR`.
+- Common statuses: `DISABLED_BY_SETTINGS`, `DISABLED_BY_SOURCE_FILTER`, `MISCONFIGURED`, `UNSUPPORTED_CAPABILITY`, `RATE_LIMITED`, `TIMEOUT`, `ERROR`.
+
+## Provenance
+- Merged candidates retain provider provenance via `providerKey`.
+- UI-level stable ids include provenance to avoid collisions across providers.
 
 ## Caching policy
 - Cache key includes normalized input + request type + provider id.

@@ -81,6 +81,23 @@
 - Completed: Deterministic instrumentation coverage for unified search controls/filter behavior and online-disabled gating.
 - Completed: Mapping hardening for partial OpenFoodFacts payloads (stable derived IDs, sanitized nutrient values, missing-field tolerance).
 
+## Phase 8 — Provider execution architecture (completed)
+**Completed**
+- Multi-provider `ProviderExecutor` with deterministic merge/dedupe, structured statuses, guard-token enforcement, and timeout guardrails.
+- Real provider selection via `DefaultFoodCatalogProviderRegistry.providersFor(...)` with runtime gating for settings/build/capabilities.
+- Deterministic `StaticSampleCatalogProvider` added for multi-provider tests and instrumentation determinism.
+- Room-backed provider result cache with TTL (24h), explicit fast-path reads, and no silent background network refresh.
+- Local-only provider diagnostics pipeline (latest per-provider status/timing, overall timing, cache hit/miss) surfaced in debug Settings.
+- Add Food and Scan Barcode online actions now run through `ProviderExecutor`.
+- Deterministic instrumentation coverage expanded to assert online button triggers deterministic provider results.
+
+## Phase 9 — Next (planned)
+- Integrate additional real providers behind the same contract and execution policy.
+- Introduce production key-management strategy (no secrets in repo, secure runtime configuration path).
+- Add provider-specific rate-limit handling and richer retry UX with explicit user control.
+- Add user-visible explicit refresh control (`FORCE_REFRESH`) in Add Food UI.
+- Expand instrumentation around barcode multi-provider execution path and diagnostics rendering.
+
 ## Deferred from this worktree
 - Photo-based logging.
 - Cloud sync and multi-device support.

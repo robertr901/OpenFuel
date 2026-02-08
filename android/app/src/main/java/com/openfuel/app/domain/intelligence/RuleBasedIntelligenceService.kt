@@ -7,7 +7,7 @@ class RuleBasedIntelligenceService : IntelligenceService {
         const val WARNING_NO_RECOGNIZABLE_ITEMS = "No recognizable food items."
         const val DECIMAL_COMMA_PLACEHOLDER = "__DECIMAL_COMMA__"
 
-        val splitRegex = Regex("\\s*(?:,|\\+|\\band\\b)\\s*", RegexOption.IGNORE_CASE)
+        val itemSeparatorRegex = Regex("\\s*(?:,|\\+|\\band\\b)\\s*", RegexOption.IGNORE_CASE)
         val decimalCommaRegex = Regex("(?<=\\d),(?=\\d)")
         val leadingQuantityWithUnitRegex =
             Regex(
@@ -23,11 +23,7 @@ class RuleBasedIntelligenceService : IntelligenceService {
     override fun parseFoodText(input: String): FoodTextIntent {
         val chunks = splitIntoChunks(input)
         if (chunks.isEmpty()) {
-            return FoodTextIntent(
-                items = emptyList(),
-                confidence = Confidence.LOW,
-                warnings = listOf(WARNING_NO_RECOGNIZABLE_ITEMS),
-            )
+            return noRecognizableItemsIntent()
         }
 
         val warnings = mutableListOf<String>()
@@ -57,7 +53,7 @@ class RuleBasedIntelligenceService : IntelligenceService {
         return input
             .trim()
             .replace(decimalCommaRegex, DECIMAL_COMMA_PLACEHOLDER)
-            .split(splitRegex)
+            .split(itemSeparatorRegex)
             .map { it.replace(DECIMAL_COMMA_PLACEHOLDER, ",").trim() }
             .filter { it.isNotEmpty() }
     }
@@ -97,12 +93,12 @@ class RuleBasedIntelligenceService : IntelligenceService {
 
         val normalizedName = normalizeTextPreservingMeaning(candidateName)
         if (normalizedName.isBlank()) {
-            warnings += "Ignored ambiguous item: \"$trimmed\"."
+            warnings += ambiguousItemWarning(trimmed)
             return null
         }
 
         if (quantity == null && unit == null) {
-            warnings += "Missing quantity for \"$normalizedName\"."
+            warnings += missingQuantityWarning(normalizedName)
         }
 
         return FoodTextItem(
@@ -195,5 +191,21 @@ class RuleBasedIntelligenceService : IntelligenceService {
             "serving", "servings" -> QuantityUnit.SERVING
             else -> null
         }
+    }
+
+    private fun noRecognizableItemsIntent(): FoodTextIntent {
+        return FoodTextIntent(
+            items = emptyList(),
+            confidence = Confidence.LOW,
+            warnings = listOf(WARNING_NO_RECOGNIZABLE_ITEMS),
+        )
+    }
+
+    private fun missingQuantityWarning(normalizedName: String): String {
+        return "Missing quantity for \"$normalizedName\"."
+    }
+
+    private fun ambiguousItemWarning(rawName: String): String {
+        return "Ignored ambiguous item: \"$rawName\"."
     }
 }

@@ -1,5 +1,8 @@
 package com.openfuel.app.ui.screens
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -89,6 +92,8 @@ fun AddFoodScreen(
     val scope = rememberCoroutineScope()
     var searchInput by rememberSaveable { mutableStateOf(uiState.searchQuery) }
     var isQuickAddTextDialogVisible by rememberSaveable { mutableStateOf(false) }
+    var isManualQuickAddExpanded by rememberSaveable { mutableStateOf(false) }
+    var isDiagnosticsExpanded by rememberSaveable { mutableStateOf(false) }
     var quickAddTextInput by rememberSaveable { mutableStateOf("") }
     val applySearchQuery: (String) -> Unit = { newQuery ->
         searchInput = newQuery
@@ -132,7 +137,15 @@ fun AddFoodScreen(
             verticalArrangement = Arrangement.spacedBy(Dimens.l),
         ) {
             item {
-                QuickAddCard(
+                QuickActionsCard(
+                    isManualQuickAddExpanded = isManualQuickAddExpanded,
+                    onToggleManualQuickAdd = {
+                        isManualQuickAddExpanded = !isManualQuickAddExpanded
+                    },
+                    onOpenQuickAddText = {
+                        isQuickAddTextDialogVisible = true
+                    },
+                    onScanBarcode = onScanBarcode,
                     onQuickAdd = { input ->
                         handleQuickAdd(
                             input = input,
@@ -152,10 +165,6 @@ fun AddFoodScreen(
                     onSourceFilterChange = viewModel::setSourceFilter,
                     onSearchOnline = viewModel::searchOnline,
                     onRefreshOnline = viewModel::refreshOnline,
-                    onScanBarcode = onScanBarcode,
-                    onQuickAddText = {
-                        isQuickAddTextDialogVisible = true
-                    },
                 )
             }
 
@@ -358,16 +367,14 @@ fun AddFoodScreen(
                     }
                     if (BuildConfig.DEBUG && uiState.onlineProviderResults.isNotEmpty()) {
                         item {
-                            Column(
-                                verticalArrangement = Arrangement.spacedBy(Dimens.xxs),
+                            OFCard(
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .testTag("add_food_unified_provider_debug"),
                             ) {
-                                Text(
-                                    text = "Provider diagnostics",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                OFSectionHeader(
+                                    title = "Provider diagnostics",
+                                    subtitle = "Debug-only local execution details.",
                                 )
                                 Text(
                                     text = "Execution #${uiState.onlineExecutionCount}",
@@ -375,29 +382,54 @@ fun AddFoodScreen(
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                     modifier = Modifier.testTag("add_food_unified_provider_debug_execution_count"),
                                 )
-                                Text(
-                                    text = "Elapsed ${uiState.onlineExecutionElapsedMs} ms · cache ${uiState.onlineProviderResults.count { it.fromCache }} hit(s)",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                )
-                                if (uiState.onlineProviderResults.any { it.fromCache }) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                ) {
                                     Text(
-                                        text = "Cache hit",
+                                        text = "Elapsed ${uiState.onlineExecutionElapsedMs} ms · cache ${uiState.onlineProviderResults.count { it.fromCache }} hit(s)",
                                         style = MaterialTheme.typography.bodySmall,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                        modifier = Modifier.testTag("add_food_unified_debug_cache_hit"),
                                     )
-                                }
-                                uiState.onlineProviderResults.forEach { result ->
-                                    Text(
-                                        text = "${result.providerId}: ${result.status.name} · ${result.elapsedMs} ms · ${result.items.size} item(s)",
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = if (result.status in failedStatuses) {
-                                            MaterialTheme.colorScheme.error
-                                        } else {
-                                            MaterialTheme.colorScheme.onSurfaceVariant
+                                    TextButton(
+                                        onClick = {
+                                            isDiagnosticsExpanded = !isDiagnosticsExpanded
                                         },
-                                    )
+                                        modifier = Modifier.testTag("add_food_unified_provider_debug_toggle"),
+                                    ) {
+                                        Text(
+                                            text = if (isDiagnosticsExpanded) "Hide advanced" else "Show advanced",
+                                        )
+                                    }
+                                }
+                                AnimatedVisibility(
+                                    visible = isDiagnosticsExpanded,
+                                    enter = fadeIn(),
+                                    exit = fadeOut(),
+                                ) {
+                                    Column(
+                                        verticalArrangement = Arrangement.spacedBy(Dimens.xxs),
+                                    ) {
+                                        if (uiState.onlineProviderResults.any { it.fromCache }) {
+                                            Text(
+                                                text = "Cache hit",
+                                                style = MaterialTheme.typography.bodySmall,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                modifier = Modifier.testTag("add_food_unified_debug_cache_hit"),
+                                            )
+                                        }
+                                        uiState.onlineProviderResults.forEach { result ->
+                                            Text(
+                                                text = "${result.providerId}: ${result.status.name} · ${result.elapsedMs} ms · ${result.items.size} item(s)",
+                                                style = MaterialTheme.typography.bodySmall,
+                                                color = if (result.status in failedStatuses) {
+                                                    MaterialTheme.colorScheme.error
+                                                } else {
+                                                    MaterialTheme.colorScheme.onSurfaceVariant
+                                                },
+                                            )
+                                        }
+                                    }
                                 }
                             }
                         }
@@ -473,13 +505,11 @@ private fun UnifiedSearchControls(
     onSourceFilterChange: (SearchSourceFilter) -> Unit,
     onSearchOnline: () -> Unit,
     onRefreshOnline: () -> Unit,
-    onScanBarcode: () -> Unit,
-    onQuickAddText: () -> Unit,
 ) {
     OFCard {
         OFSectionHeader(
-            title = "Unified search",
-            subtitle = "Search your local foods first, then fetch online when needed.",
+            title = "Local search",
+            subtitle = "Search foods already saved on this device.",
         )
         OutlinedTextField(
             value = query,
@@ -488,13 +518,6 @@ private fun UnifiedSearchControls(
             modifier = Modifier
                 .fillMaxWidth()
                 .testTag("add_food_unified_query_input"),
-        )
-        OFSecondaryButton(
-            text = "Quick add (text)",
-            onClick = onQuickAddText,
-            modifier = Modifier
-                .fillMaxWidth()
-                .testTag("add_food_quick_add_text_button"),
         )
         SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
             SearchSourceFilter.entries.forEachIndexed { index, filter ->
@@ -537,21 +560,14 @@ private fun UnifiedSearchControls(
                     .testTag("add_food_unified_search_online"),
             )
             OFSecondaryButton(
-                text = "Scan barcode",
-                onClick = onScanBarcode,
+                text = "Refresh online",
+                onClick = onRefreshOnline,
+                enabled = query.isNotBlank() && !isOnlineSearchInProgress,
                 modifier = Modifier
                     .weight(1f)
-                    .testTag("add_food_unified_scan_barcode"),
+                    .testTag("add_food_unified_refresh_online"),
             )
         }
-        OFSecondaryButton(
-            text = "Refresh online",
-            onClick = onRefreshOnline,
-            enabled = query.isNotBlank() && !isOnlineSearchInProgress,
-            modifier = Modifier
-                .fillMaxWidth()
-                .testTag("add_food_unified_refresh_online"),
-        )
     }
 }
 
@@ -728,7 +744,56 @@ private fun quickAddPreviewLabel(item: FoodTextItem): String {
 }
 
 @Composable
-private fun QuickAddCard(
+private fun QuickActionsCard(
+    isManualQuickAddExpanded: Boolean,
+    onToggleManualQuickAdd: () -> Unit,
+    onOpenQuickAddText: () -> Unit,
+    onScanBarcode: () -> Unit,
+    onQuickAdd: (QuickAddInput) -> Unit,
+) {
+    OFCard {
+        OFSectionHeader(
+            title = "Quick actions",
+            subtitle = "Scan, quick-log, or parse text with explicit actions.",
+        )
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(Dimens.s),
+        ) {
+            OFSecondaryButton(
+                text = "Scan barcode",
+                onClick = onScanBarcode,
+                modifier = Modifier
+                    .weight(1f)
+                    .testTag("add_food_unified_scan_barcode"),
+            )
+            OFSecondaryButton(
+                text = if (isManualQuickAddExpanded) "Hide quick add" else "Quick add (manual)",
+                onClick = onToggleManualQuickAdd,
+                modifier = Modifier
+                    .weight(1f)
+                    .testTag("add_food_quick_manual_toggle"),
+            )
+        }
+        OFSecondaryButton(
+            text = "Quick add (text)",
+            onClick = onOpenQuickAddText,
+            modifier = Modifier
+                .fillMaxWidth()
+                .testTag("add_food_quick_add_text_button"),
+        )
+        AnimatedVisibility(
+            visible = isManualQuickAddExpanded,
+            enter = fadeIn(),
+            exit = fadeOut(),
+        ) {
+            QuickAddManualForm(onQuickAdd = onQuickAdd)
+        }
+    }
+}
+
+@Composable
+private fun QuickAddManualForm(
     onQuickAdd: (QuickAddInput) -> Unit,
 ) {
     var name by rememberSaveable { mutableStateOf("") }
@@ -738,88 +803,82 @@ private fun QuickAddCard(
     var fat by rememberSaveable { mutableStateOf("") }
     var mealType by rememberSaveable { mutableStateOf(MealType.BREAKFAST) }
 
-    OFCard {
-        OFSectionHeader(
-            title = "Quick add",
-            subtitle = "Fast manual entry for one-off meals.",
+    Column(
+        modifier = Modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(Dimens.s),
+    ) {
+        OutlinedTextField(
+            value = name,
+            onValueChange = { name = it },
+            label = { Text("Food name") },
+            modifier = Modifier
+                .fillMaxWidth()
+                .testTag("add_food_quick_name_input"),
         )
-        Column(
+        OutlinedTextField(
+            value = calories,
+            onValueChange = { calories = it },
+            label = { Text("Calories (kcal)") },
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+            modifier = Modifier
+                .fillMaxWidth()
+                .testTag("add_food_quick_calories_input"),
+        )
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(Dimens.s),
             modifier = Modifier.fillMaxWidth(),
-            verticalArrangement = Arrangement.spacedBy(Dimens.s),
         ) {
             OutlinedTextField(
-                value = name,
-                onValueChange = { name = it },
-                label = { Text("Food name") },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .testTag("add_food_quick_name_input"),
-            )
-            OutlinedTextField(
-                value = calories,
-                onValueChange = { calories = it },
-                label = { Text("Calories (kcal)") },
+                value = protein,
+                onValueChange = { protein = it },
+                label = { Text("Protein (g)") },
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .testTag("add_food_quick_calories_input"),
+                    .weight(1f)
+                    .testTag("add_food_quick_protein_input"),
             )
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(Dimens.s),
-                modifier = Modifier.fillMaxWidth(),
-            ) {
-                OutlinedTextField(
-                    value = protein,
-                    onValueChange = { protein = it },
-                    label = { Text("Protein (g)") },
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                    modifier = Modifier
-                        .weight(1f)
-                        .testTag("add_food_quick_protein_input"),
-                )
-                OutlinedTextField(
-                    value = carbs,
-                    onValueChange = { carbs = it },
-                    label = { Text("Carbs (g)") },
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                    modifier = Modifier
-                        .weight(1f)
-                        .testTag("add_food_quick_carbs_input"),
-                )
-                OutlinedTextField(
-                    value = fat,
-                    onValueChange = { fat = it },
-                    label = { Text("Fat (g)") },
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                    modifier = Modifier
-                        .weight(1f)
-                        .testTag("add_food_quick_fat_input"),
-                )
-            }
-            MealTypeDropdown(
-                selected = mealType,
-                onSelected = { mealType = it },
-                modifier = Modifier.fillMaxWidth(),
-            )
-            OFPrimaryButton(
-                text = "Log quick add",
-                onClick = {
-                    onQuickAdd(
-                        QuickAddInput(
-                            name = name,
-                            calories = calories,
-                            protein = protein,
-                            carbs = carbs,
-                            fat = fat,
-                            mealType = mealType,
-                        ),
-                    )
-                },
+            OutlinedTextField(
+                value = carbs,
+                onValueChange = { carbs = it },
+                label = { Text("Carbs (g)") },
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .testTag("add_food_quick_log_button"),
+                    .weight(1f)
+                    .testTag("add_food_quick_carbs_input"),
+            )
+            OutlinedTextField(
+                value = fat,
+                onValueChange = { fat = it },
+                label = { Text("Fat (g)") },
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                modifier = Modifier
+                    .weight(1f)
+                    .testTag("add_food_quick_fat_input"),
             )
         }
+        MealTypeDropdown(
+            selected = mealType,
+            onSelected = { mealType = it },
+            modifier = Modifier.fillMaxWidth(),
+        )
+        OFPrimaryButton(
+            text = "Log quick add",
+            onClick = {
+                onQuickAdd(
+                    QuickAddInput(
+                        name = name,
+                        calories = calories,
+                        protein = protein,
+                        carbs = carbs,
+                        fat = fat,
+                        mealType = mealType,
+                    ),
+                )
+            },
+            modifier = Modifier
+                .fillMaxWidth()
+                .testTag("add_food_quick_log_button"),
+        )
     }
 }
 

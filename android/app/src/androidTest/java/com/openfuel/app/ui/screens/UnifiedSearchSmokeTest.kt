@@ -3,7 +3,6 @@ package com.openfuel.app.ui.screens
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.hasTestTag
-import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollToNode
@@ -68,5 +67,21 @@ class UnifiedSearchSmokeTest {
                 .performScrollToNode(hasTestTag("add_food_unified_local_section"))
         }.exceptionOrNull()
         assertNotNull(localInOnlineFilterException)
+    }
+
+    @Test
+    fun unifiedSearch_onlineButtonUsesDeterministicProviderExecution() {
+        composeRule.onNodeWithTag("screen_today").assertIsDisplayed()
+        composeRule.onNodeWithTag("home_add_food_fab").performClick()
+        composeRule.waitForIdle()
+
+        composeRule.onNodeWithTag("screen_add_food").assertIsDisplayed()
+        composeRule.onNodeWithTag("add_food_unified_query_input").performTextInput("oat")
+        composeRule.onNodeWithTag("add_food_unified_search_online").performClick()
+        composeRule.waitForIdle()
+
+        composeRule.onNodeWithTag("add_food_unified_results_list")
+            .performScrollToNode(hasTestTag("add_food_unified_online_result_sample-oatmeal-1"))
+        composeRule.onNodeWithTag("add_food_unified_online_result_sample-oatmeal-1").assertIsDisplayed()
     }
 }

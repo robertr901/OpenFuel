@@ -7,6 +7,7 @@ import com.openfuel.app.domain.service.ProviderExecutionPolicy
 import com.openfuel.app.domain.service.ProviderExecutionReport
 import com.openfuel.app.domain.service.ProviderExecutionRequest
 import com.openfuel.app.domain.service.ProviderExecutor
+import com.openfuel.app.domain.service.ProviderExecutionDiagnosticsStore
 import com.openfuel.app.domain.service.ProviderMergedCandidate
 import com.openfuel.app.domain.service.ProviderRequestType
 import com.openfuel.app.domain.service.ProviderResult
@@ -29,6 +30,7 @@ import kotlinx.coroutines.Dispatchers
 class DefaultProviderExecutor(
     private val providerSource: (ProviderExecutionRequest) -> List<FoodCatalogExecutionProvider>,
     private val cache: ProviderResultCache? = null,
+    private val diagnosticsStore: ProviderExecutionDiagnosticsStore? = null,
     private val policy: ProviderExecutionPolicy = ProviderExecutionPolicy(),
     private val clock: Clock = Clock.systemUTC(),
 ) : ProviderExecutor {
@@ -74,7 +76,7 @@ class DefaultProviderExecutor(
                         )
                 },
             )
-            ProviderExecutionReport(
+            val report = ProviderExecutionReport(
                 requestType = request.requestType,
                 sourceFilter = request.sourceFilter,
                 mergedCandidates = mergedCandidates,
@@ -82,6 +84,8 @@ class DefaultProviderExecutor(
                 overallElapsedMs = elapsedSince(startedAtMs),
                 cacheStats = cacheStats,
             )
+            diagnosticsStore?.record(report)
+            report
         }
     }
 

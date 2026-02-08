@@ -8,6 +8,8 @@ import com.openfuel.app.domain.repository.SettingsRepository
 import com.openfuel.app.domain.service.EntitlementService
 import com.openfuel.app.domain.service.FoodCatalogProviderDescriptor
 import com.openfuel.app.domain.service.FoodCatalogProviderRegistry
+import com.openfuel.app.domain.service.ProviderExecutionSnapshot
+import com.openfuel.app.domain.service.ProviderExecutionDiagnosticsStore
 import com.openfuel.app.domain.util.GoalValidation
 import com.openfuel.app.export.ExportManager
 import java.io.File
@@ -26,6 +28,7 @@ class SettingsViewModel(
     private val goalsRepository: GoalsRepository,
     private val exportManager: ExportManager,
     private val foodCatalogProviderRegistry: FoodCatalogProviderRegistry,
+    private val providerExecutionDiagnosticsStore: ProviderExecutionDiagnosticsStore,
     private val clock: Clock = Clock.systemDefaultZone(),
 ) : ViewModel() {
     private val exportState = MutableStateFlow<ExportState>(ExportState.Idle)
@@ -35,14 +38,18 @@ class SettingsViewModel(
         entitlementService.getEntitlementState(),
         exportState,
         goalsRepository.goalForDate(today()),
-    ) { onlineLookupEnabled, entitlementState, exportStateValue, dailyGoal ->
+        providerExecutionDiagnosticsStore.latestExecution,
+    ) { onlineLookupEnabled, entitlementState, exportStateValue, dailyGoal, providerExecutionSnapshot ->
         SettingsUiState(
             onlineLookupEnabled = onlineLookupEnabled,
             isPro = entitlementState.isPro,
             showDebugProToggle = entitlementState.canToggleDebugOverride,
             showSecurityWarning = entitlementState.canToggleDebugOverride &&
                 (entitlementState.securityPosture.isEmulator || entitlementState.securityPosture.hasTestKeys),
-            providerDiagnostics = foodCatalogProviderRegistry.providerDiagnostics(),
+            providerDiagnostics = foodCatalogProviderRegistry.providerDiagnostics(
+                onlineLookupEnabled = onlineLookupEnabled,
+            ),
+            lastProviderExecution = providerExecutionSnapshot,
             exportState = exportStateValue,
             dailyGoal = dailyGoal,
         )
@@ -55,6 +62,7 @@ class SettingsViewModel(
             showDebugProToggle = false,
             showSecurityWarning = false,
             providerDiagnostics = emptyList(),
+            lastProviderExecution = null,
             exportState = ExportState.Idle,
             dailyGoal = null,
         ),
@@ -136,6 +144,7 @@ data class SettingsUiState(
     val showDebugProToggle: Boolean,
     val showSecurityWarning: Boolean,
     val providerDiagnostics: List<FoodCatalogProviderDescriptor>,
+    val lastProviderExecution: ProviderExecutionSnapshot?,
     val exportState: ExportState,
     val dailyGoal: DailyGoal?,
 )

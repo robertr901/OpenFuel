@@ -39,11 +39,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.openfuel.app.BuildConfig
 import com.openfuel.app.domain.model.FoodItem
 import com.openfuel.app.domain.model.FoodUnit
 import com.openfuel.app.domain.model.MealType
 import com.openfuel.app.domain.model.RemoteFoodCandidate
 import com.openfuel.app.domain.search.SearchSourceFilter
+import com.openfuel.app.domain.service.ProviderStatus
 import com.openfuel.app.ui.components.MealTypeDropdown
 import com.openfuel.app.ui.components.OFCard
 import com.openfuel.app.ui.components.OFEmptyState
@@ -269,12 +271,23 @@ fun AddFoodScreen(
 
                     if (uiState.isOnlineSearchInProgress) {
                         item {
-                            Row(
+                            Column(
                                 modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.Center,
+                                verticalArrangement = Arrangement.spacedBy(Dimens.s),
                             ) {
-                                CircularProgressIndicator(
-                                    modifier = Modifier.testTag("add_food_unified_online_loading"),
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.Center,
+                                ) {
+                                    CircularProgressIndicator(
+                                        modifier = Modifier.testTag("add_food_unified_online_loading"),
+                                    )
+                                }
+                                Text(
+                                    text = "Searching online catalogs...",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.testTag("add_food_unified_online_loading_text"),
                                 )
                             }
                         }
@@ -305,6 +318,57 @@ fun AddFoodScreen(
                             OnlineResultRow(
                                 food = food,
                                 onOpenPreview = { viewModel.openOnlineFoodPreview(food) },
+                                modifier = Modifier.testTag("add_food_unified_online_result_${food.sourceId}"),
+                            )
+                        }
+                    }
+
+                    val failedStatuses = setOf(
+                        ProviderStatus.ERROR,
+                        ProviderStatus.TIMEOUT,
+                        ProviderStatus.GUARD_REJECTED,
+                        ProviderStatus.RATE_LIMITED,
+                    )
+                    val failedProviders = uiState.onlineProviderResults.filter { result ->
+                        result.status in failedStatuses
+                    }
+                    if (BuildConfig.DEBUG && uiState.onlineProviderResults.isNotEmpty()) {
+                        item {
+                            Column(
+                                verticalArrangement = Arrangement.spacedBy(Dimens.xxs),
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .testTag("add_food_unified_provider_debug"),
+                            ) {
+                                Text(
+                                    text = "Provider diagnostics",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                                Text(
+                                    text = "Elapsed ${uiState.onlineExecutionElapsedMs} ms · cache ${uiState.onlineProviderResults.count { it.fromCache }} hit(s)",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                                uiState.onlineProviderResults.forEach { result ->
+                                    Text(
+                                        text = "${result.providerId}: ${result.status.name} · ${result.elapsedMs} ms · ${result.items.size} item(s)",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = if (result.status in failedStatuses) {
+                                            MaterialTheme.colorScheme.error
+                                        } else {
+                                            MaterialTheme.colorScheme.onSurfaceVariant
+                                        },
+                                    )
+                                }
+                            }
+                        }
+                    } else if (failedProviders.isNotEmpty() && uiState.onlineErrorMessage == null) {
+                        item {
+                            Text(
+                                text = "Some providers were unavailable. Showing available results.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.error,
                             )
                         }
                     }
@@ -627,8 +691,9 @@ private fun SearchResultFoodRow(
 private fun OnlineResultRow(
     food: RemoteFoodCandidate,
     onOpenPreview: () -> Unit,
+    modifier: Modifier = Modifier,
 ) {
-    OFCard(modifier = Modifier.fillMaxWidth()) {
+    OFCard(modifier = modifier.fillMaxWidth()) {
         Column(
             modifier = Modifier.fillMaxWidth(),
             verticalArrangement = Arrangement.spacedBy(Dimens.s),

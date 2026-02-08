@@ -51,6 +51,7 @@ class OpenFuelViewModelFactory(
                 goalsRepository = container.goalsRepository,
                 exportManager = container.exportManager,
                 foodCatalogProviderRegistry = container.foodCatalogProviderRegistry,
+                providerExecutionDiagnosticsStore = container.providerExecutionDiagnosticsStore,
             )
             else -> throw IllegalArgumentException("Unknown ViewModel class: ${modelClass.name}")
         } as T

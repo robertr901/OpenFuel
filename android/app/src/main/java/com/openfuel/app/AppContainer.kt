@@ -30,6 +30,7 @@ import com.openfuel.app.domain.service.EntitlementService
 import com.openfuel.app.domain.service.FoodCatalogProvider
 import com.openfuel.app.domain.service.FoodCatalogProviderDescriptor
 import com.openfuel.app.domain.service.FoodCatalogProviderRegistry
+import com.openfuel.app.domain.service.InMemoryProviderExecutionDiagnosticsStore
 import com.openfuel.app.domain.service.ProviderExecutor
 import com.openfuel.app.export.ExportManager
 import okhttp3.OkHttpClient
@@ -146,6 +147,7 @@ class AppContainer(
         debugDiagnosticsEnabled = BuildConfig.DEBUG,
     )
     val activeFoodCatalogProvider: FoodCatalogProvider = foodCatalogProviderRegistry.primaryTextSearchProvider()
+    val providerExecutionDiagnosticsStore = InMemoryProviderExecutionDiagnosticsStore()
     val providerExecutor: ProviderExecutor = DefaultProviderExecutor(
         providerSource = { request ->
             foodCatalogProviderRegistry.providersFor(
@@ -154,6 +156,7 @@ class AppContainer(
             )
         },
         cache = RoomProviderResultCache(database.providerSearchCacheDao()),
+        diagnosticsStore = providerExecutionDiagnosticsStore,
     )
     val networkGuard: UserInitiatedNetworkGuard = userInitiatedNetworkGuard
 

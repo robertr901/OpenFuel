@@ -4,6 +4,7 @@ import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertTextContains
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.hasTestTag
+import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollToNode
@@ -98,5 +99,34 @@ class UnifiedSearchSmokeTest {
             .performScrollToNode(hasTestTag("add_food_unified_provider_debug"))
         composeRule.onNodeWithTag("add_food_unified_provider_debug_execution_count")
             .assertTextContains("Execution #2")
+    }
+
+    @Test
+    fun quickAddText_prefillsUnifiedSearchQuery() {
+        composeRule.onNodeWithTag("screen_today").assertIsDisplayed()
+        composeRule.onNodeWithTag("home_add_food_fab").performClick()
+        composeRule.waitForIdle()
+
+        composeRule.onNodeWithTag("screen_add_food").assertIsDisplayed()
+        composeRule.onNodeWithTag("add_food_quick_add_text_button").performClick()
+        composeRule.onNodeWithTag("add_food_quick_add_text_input").performTextInput("2 eggs and banana")
+        composeRule.waitForIdle()
+
+        composeRule.onNodeWithTag("add_food_quick_add_text_preview_list").assertIsDisplayed()
+        composeRule.onNodeWithTag("add_food_quick_add_text_preview_item_0").assertIsDisplayed()
+        composeRule.onNodeWithTag("add_food_quick_add_text_preview_item_1").assertIsDisplayed()
+        composeRule.onNode(
+            hasTestTag("add_food_quick_add_text_preview_item_0")
+                .and(hasText("eggs", substring = true)),
+        ).assertIsDisplayed()
+        composeRule.onNode(
+            hasTestTag("add_food_quick_add_text_preview_item_1")
+                .and(hasText("banana", substring = true)),
+        ).assertIsDisplayed()
+
+        composeRule.onNodeWithTag("add_food_quick_add_text_preview_item_0").performClick()
+        composeRule.waitForIdle()
+
+        composeRule.onNodeWithTag("add_food_unified_query_input").assertTextContains("eggs")
     }
 }

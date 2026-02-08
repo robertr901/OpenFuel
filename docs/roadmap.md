@@ -104,11 +104,18 @@
 - Dedupe fallback avoids hiding distinct results when brand/serving context is missing.
 - Deterministic instrumentation coverage expanded for refresh execution behavior under test runner deterministic providers.
 
-## Phase 10 — Next
-- Integrate additional real providers behind the same contract and execution policy.
-- Introduce production key-management strategy (no secrets in repo, secure runtime configuration path).
-- Add provider-specific retry UX for rate-limit and transient HTTP failures while preserving explicit-action networking.
-- Expand deterministic instrumentation coverage for barcode refresh/provenance rendering paths.
+## Phase 10 — Intelligence seam (completed)
+**Completed**
+- Added a new domain intelligence boundary (`IntelligenceService`) with a pure Kotlin rule-based implementation.
+- Added deterministic `FoodTextIntent` parsing models (`FoodTextItem`, `QuantityUnit`, `Confidence`) with no Android dependencies.
+- Added Add Food `Quick add (text)` helper UI with preview list and explicit user selection.
+- Selecting a quick-add preview item now prefills the existing unified search query only; no auto-save, auto-log, or auto-online search.
+- Added deterministic instrumentation coverage for quick-add text parsing preview and query prefill behavior.
+
+## Phase 11/12 candidates
+- Voice-to-text capture behind an explicit user button, routed through the same intelligence seam.
+- Optional on-device ML parser swap-in behind the `IntelligenceService` interface (local-only, no cloud inference).
+- Optional OCR ingredient capture behind explicit action with local-only processing and strict privacy UX.
 
 ## Deferred from this worktree
 - Photo-based logging.

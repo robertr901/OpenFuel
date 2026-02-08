@@ -12,6 +12,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -26,6 +27,7 @@ import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -40,6 +42,8 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.openfuel.app.BuildConfig
+import com.openfuel.app.domain.intelligence.FoodTextItem
+import com.openfuel.app.domain.intelligence.IntelligenceService
 import com.openfuel.app.domain.model.FoodItem
 import com.openfuel.app.domain.model.FoodUnit
 import com.openfuel.app.domain.model.MealType
@@ -67,6 +71,7 @@ import kotlinx.coroutines.launch
 @Composable
 fun AddFoodScreen(
     viewModel: AddFoodViewModel,
+    intelligenceService: IntelligenceService,
     onNavigateBack: () -> Unit,
     onOpenFoodDetail: (String) -> Unit,
     onScanBarcode: () -> Unit,
@@ -75,6 +80,12 @@ fun AddFoodScreen(
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
     var searchInput by rememberSaveable { mutableStateOf(uiState.searchQuery) }
+    var isQuickAddTextDialogVisible by rememberSaveable { mutableStateOf(false) }
+    var quickAddTextInput by rememberSaveable { mutableStateOf("") }
+    val applySearchQuery: (String) -> Unit = { newQuery ->
+        searchInput = newQuery
+        viewModel.updateSearchQuery(newQuery)
+    }
 
     LaunchedEffect(uiState.searchQuery) {
         if (uiState.searchQuery != searchInput) {
@@ -129,14 +140,14 @@ fun AddFoodScreen(
                     query = searchInput,
                     sourceFilter = uiState.sourceFilter,
                     isOnlineSearchInProgress = uiState.isOnlineSearchInProgress,
-                    onQueryChange = { newQuery ->
-                        searchInput = newQuery
-                        viewModel.updateSearchQuery(newQuery)
-                    },
+                    onQueryChange = applySearchQuery,
                     onSourceFilterChange = viewModel::setSourceFilter,
                     onSearchOnline = viewModel::searchOnline,
                     onRefreshOnline = viewModel::refreshOnline,
                     onScanBarcode = onScanBarcode,
+                    onQuickAddText = {
+                        isQuickAddTextDialogVisible = true
+                    },
                 )
             }
 
@@ -400,6 +411,22 @@ fun AddFoodScreen(
         }
     }
 
+    if (isQuickAddTextDialogVisible) {
+        QuickAddTextDialog(
+            input = quickAddTextInput,
+            intelligenceService = intelligenceService,
+            onInputChange = { quickAddTextInput = it },
+            onDismiss = { isQuickAddTextDialogVisible = false },
+            onSelectItem = { candidate ->
+                val normalized = intelligenceService.normaliseSearchQuery(candidate)
+                if (normalized.isNotBlank()) {
+                    applySearchQuery(normalized)
+                }
+                isQuickAddTextDialogVisible = false
+            },
+        )
+    }
+
     val selectedOnlineFood = uiState.selectedOnlineFood
     if (selectedOnlineFood != null) {
         OnlineFoodPreviewDialog(
@@ -438,6 +465,7 @@ private fun UnifiedSearchControls(
     onSearchOnline: () -> Unit,
     onRefreshOnline: () -> Unit,
     onScanBarcode: () -> Unit,
+    onQuickAddText: () -> Unit,
 ) {
     OFCard {
         OFSectionHeader(
@@ -451,6 +479,13 @@ private fun UnifiedSearchControls(
             modifier = Modifier
                 .fillMaxWidth()
                 .testTag("add_food_unified_query_input"),
+        )
+        OFSecondaryButton(
+            text = "Quick add (text)",
+            onClick = onQuickAddText,
+            modifier = Modifier
+                .fillMaxWidth()
+                .testTag("add_food_quick_add_text_button"),
         )
         SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
             SearchSourceFilter.entries.forEachIndexed { index, filter ->
@@ -508,6 +543,87 @@ private fun UnifiedSearchControls(
                 .fillMaxWidth()
                 .testTag("add_food_unified_refresh_online"),
         )
+    }
+}
+
+@Composable
+private fun QuickAddTextDialog(
+    input: String,
+    intelligenceService: IntelligenceService,
+    onInputChange: (String) -> Unit,
+    onDismiss: () -> Unit,
+    onSelectItem: (String) -> Unit,
+) {
+    val intent = intelligenceService.parseFoodText(input)
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Text("Quick add (text)")
+        },
+        text = {
+            Column(
+                verticalArrangement = Arrangement.spacedBy(Dimens.s),
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Text(
+                    text = "Helper only. Review before adding.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                OutlinedTextField(
+                    value = input,
+                    onValueChange = onInputChange,
+                    label = { Text("Paste text") },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .testTag("add_food_quick_add_text_input"),
+                )
+                if (intent.items.isEmpty()) {
+                    Text(
+                        text = "Try: 2 eggs and banana",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                } else {
+                    Column(
+                        verticalArrangement = Arrangement.spacedBy(Dimens.xs),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .testTag("add_food_quick_add_text_preview_list"),
+                    ) {
+                        intent.items.forEachIndexed { index, item ->
+                            val label = quickAddPreviewLabel(item)
+                            OFSecondaryButton(
+                                text = label,
+                                onClick = {
+                                    onSelectItem(item.normalisedName.ifBlank { item.rawName })
+                                },
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .testTag("add_food_quick_add_text_preview_item_$index"),
+                            )
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Close")
+            }
+        },
+    )
+}
+
+private fun quickAddPreviewLabel(item: FoodTextItem): String {
+    val name = item.normalisedName.ifBlank { item.rawName.trim() }
+    val quantityText = item.quantity?.toString()
+    val unitText = item.unit?.name?.lowercase()
+    return when {
+        quantityText != null && unitText != null -> "$name ($quantityText $unitText)"
+        quantityText != null -> "$name ($quantityText)"
+        unitText != null -> "$name ($unitText)"
+        else -> name
     }
 }
 

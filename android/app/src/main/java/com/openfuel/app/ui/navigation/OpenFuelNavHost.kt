@@ -165,6 +165,7 @@ fun OpenFuelAppRoot() {
                 val viewModel: AddFoodViewModel = viewModel(factory = viewModelFactory)
                 AddFoodScreen(
                     viewModel = viewModel,
+                    intelligenceService = container.intelligenceService,
                     onNavigateBack = { navController.popBackStack() },
                     onOpenFoodDetail = { foodId -> navController.navigate(Routes.foodDetailRoute(foodId)) },
                     onScanBarcode = { navController.navigate(Routes.SCAN_BARCODE) },

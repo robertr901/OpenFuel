@@ -5,6 +5,7 @@ Status: bootstrapping.
 ## Changelog
 - 2026-02-08: Completed Phase 8 provider execution architecture (multi-provider executor, deterministic stub provider path for tests, Room cache with TTL, local-only diagnostics).
 - 2026-02-08: Completed Phase 9 provider reliability and UX polish (structured provider error statuses, cache versioning/invalidation, explicit refresh control, provenance surfacing, save/log hardening, deterministic refresh instrumentation coverage).
+- 2026-02-08: Completed Phase 10 intelligence seam and Quick add text helper (local-only rule-based parsing, explicit query prefill, deterministic offline tests).
 
 ## Deterministic Android Tests
 Run from `/Users/robertross/Projects/OpenFuel/android`:
@@ -16,6 +17,12 @@ Run from `/Users/robertross/Projects/OpenFuel/android`:
 ```
 
 `connectedDebugAndroidTest` uses `OpenFuelAndroidTestRunner`, which overrides the app container with deterministic providers only (`forceDeterministicProvidersOnly = true`). This keeps instrumentation tests offline and reproducible by disabling live Open Food Facts network execution in androidTest runs.
+
+## Quick add (text) helper
+- Available from Add Food as `Quick add (text)`.
+- Input examples: `2 eggs and banana`, `200g chicken`, `1.5 cups milk`.
+- The helper only parses text and prefills the existing unified search query when you tap a preview item.
+- It does not auto-log, auto-save, or auto-run online search.
 
 ## Phase 9 Manual QA Checklist
 1. In Settings, keep Online food lookup enabled and open Add Food.

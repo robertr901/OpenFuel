@@ -91,12 +91,24 @@
 - Add Food and Scan Barcode online actions now run through `ProviderExecutor`.
 - Deterministic instrumentation coverage expanded to assert online button triggers deterministic provider results.
 
-## Phase 9 — Next (planned)
+## Phase 9 — Real provider, cache refresh, and UX polish (completed)
+**Completed**
+- OpenFoodFacts provider execution remains active in production builds when online lookup is enabled.
+- Provider failure mapping now distinguishes `NETWORK_UNAVAILABLE`, `HTTP_ERROR`, `PARSING_ERROR`, `RATE_LIMITED`, and `GUARD_REJECTED`.
+- Provider cache now includes explicit payload versioning (`cacheVersion`) with safe invalidation on version mismatch.
+- Corrupted cache payloads are treated as misses and overwritten on the next successful fetch.
+- Add Food now includes explicit `Refresh online` action that uses `FORCE_REFRESH` with no silent background network refresh.
+- Online result cards now surface provider provenance labels (`OFF`, `Sample`, provider key fallback).
+- Debug diagnostics now expose deterministic execution count and cache-hit indicator for repeated explicit actions.
+- Save and Save+Log flows now normalize partial online candidates safely (default name, trimmed brand/barcode, bounded nutrients).
+- Dedupe fallback avoids hiding distinct results when brand/serving context is missing.
+- Deterministic instrumentation coverage expanded for refresh execution behavior under test runner deterministic providers.
+
+## Phase 10 — Next
 - Integrate additional real providers behind the same contract and execution policy.
 - Introduce production key-management strategy (no secrets in repo, secure runtime configuration path).
-- Add provider-specific rate-limit handling and richer retry UX with explicit user control.
-- Add user-visible explicit refresh control (`FORCE_REFRESH`) in Add Food UI.
-- Expand instrumentation around barcode multi-provider execution path and diagnostics rendering.
+- Add provider-specific retry UX for rate-limit and transient HTTP failures while preserving explicit-action networking.
+- Expand deterministic instrumentation coverage for barcode refresh/provenance rendering paths.
 
 ## Deferred from this worktree
 - Photo-based logging.

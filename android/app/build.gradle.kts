@@ -15,6 +15,7 @@ android {
         targetSdk = 35
         versionCode = 1
         versionName = "1.0"
+        buildConfigField("String", "PRO_PRODUCT_ID", "\"openfuel_pro\"")
 
         testInstrumentationRunner = "com.openfuel.app.OpenFuelAndroidTestRunner"
     }
@@ -67,6 +68,7 @@ dependencies {
     implementation(libs.androidx.camera.lifecycle)
     implementation(libs.androidx.camera.view)
     implementation(libs.google.mlkit.barcode.scanning)
+    implementation(libs.google.play.billing.ktx)
     implementation(libs.kotlinx.coroutines.android)
     ksp(libs.androidx.room.compiler)
     testImplementation(libs.junit)

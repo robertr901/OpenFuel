@@ -1,5 +1,6 @@
 package com.openfuel.app.data.entitlement
 
+import com.openfuel.app.domain.model.EntitlementActionResult
 import com.openfuel.app.domain.model.EntitlementSource
 import com.openfuel.app.domain.model.EntitlementState
 import com.openfuel.app.domain.repository.EntitlementsRepository
@@ -28,6 +29,16 @@ class DebugEntitlementService(
 
     override suspend fun refreshEntitlements() {
         // Local debug override has no remote refresh dependency.
+    }
+
+    override suspend fun purchasePro(): EntitlementActionResult {
+        entitlementsRepository.setIsPro(true)
+        return EntitlementActionResult.Success("Pro unlocked (debug override).")
+    }
+
+    override suspend fun restorePurchases(): EntitlementActionResult {
+        entitlementsRepository.setIsPro(true)
+        return EntitlementActionResult.Success("Pro restored (debug override).")
     }
 
     override suspend fun setDebugProOverride(enabled: Boolean) {

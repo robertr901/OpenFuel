@@ -2,7 +2,7 @@ package com.openfuel.app.domain.model
 
 enum class EntitlementSource {
     DEBUG_OVERRIDE,
-    RELEASE_PLACEHOLDER,
+    PLAY_BILLING,
 }
 
 data class EntitlementState(

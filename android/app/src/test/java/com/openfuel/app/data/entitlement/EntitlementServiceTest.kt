@@ -1,5 +1,6 @@
 package com.openfuel.app.data.entitlement
 
+import com.openfuel.app.domain.model.EntitlementActionResult
 import com.openfuel.app.domain.model.EntitlementSource
 import com.openfuel.app.domain.model.SecurityPosture
 import com.openfuel.app.domain.repository.EntitlementsRepository
@@ -36,18 +37,62 @@ class EntitlementServiceTest {
     }
 
     @Test
-    fun placeholderService_remainsFreeAndIgnoresOverride() = runTest {
-        val service = PlaceholderPlayBillingEntitlementService(
+    fun playBillingService_refreshUpdatesRepositoryWhenGatewaySucceeds() = runTest {
+        val repository = FakeEntitlementsRepository(initialValue = false)
+        val billingGateway = FakeBillingGateway(
+            refreshResult = BillingRefreshResult(isEntitled = true),
+        )
+        val service = PlayBillingEntitlementService(
+            entitlementsRepository = repository,
             securityPostureProvider = FakeSecurityPostureProvider(),
+            billingGateway = billingGateway,
+            proProductId = "openfuel_pro",
         )
 
-        val initial = service.getEntitlementState().first()
-        assertFalse(initial.isPro)
-        assertEquals(EntitlementSource.RELEASE_PLACEHOLDER, initial.source)
-        assertFalse(initial.canToggleDebugOverride)
+        service.refreshEntitlements()
 
-        service.setDebugProOverride(true)
+        val refreshed = service.getEntitlementState().first()
+        assertTrue(refreshed.isPro)
+        assertEquals(EntitlementSource.PLAY_BILLING, refreshed.source)
+        assertFalse(refreshed.canToggleDebugOverride)
+    }
 
+    @Test
+    fun playBillingService_purchaseSuccess_unlocksPro() = runTest {
+        val repository = FakeEntitlementsRepository(initialValue = false)
+        val billingGateway = FakeBillingGateway(
+            purchaseResult = BillingPurchaseResult.Success,
+            refreshResult = BillingRefreshResult(isEntitled = true),
+        )
+        val service = PlayBillingEntitlementService(
+            entitlementsRepository = repository,
+            securityPostureProvider = FakeSecurityPostureProvider(),
+            billingGateway = billingGateway,
+            proProductId = "openfuel_pro",
+        )
+
+        val result = service.purchasePro()
+
+        assertTrue(result is EntitlementActionResult.Success)
+        assertTrue(service.getEntitlementState().first().isPro)
+    }
+
+    @Test
+    fun playBillingService_purchaseCancelled_keepsExistingEntitlement() = runTest {
+        val repository = FakeEntitlementsRepository(initialValue = false)
+        val service = PlayBillingEntitlementService(
+            entitlementsRepository = repository,
+            securityPostureProvider = FakeSecurityPostureProvider(),
+            billingGateway = FakeBillingGateway(
+                purchaseResult = BillingPurchaseResult.Cancelled,
+                refreshResult = BillingRefreshResult(isEntitled = false),
+            ),
+            proProductId = "openfuel_pro",
+        )
+
+        val result = service.purchasePro()
+
+        assertTrue(result is EntitlementActionResult.Cancelled)
         assertFalse(service.getEntitlementState().first().isPro)
     }
 }
@@ -65,5 +110,18 @@ private class FakeEntitlementsRepository(
 
     override suspend fun setIsPro(enabled: Boolean) {
         state.value = enabled
+    }
+}
+
+private class FakeBillingGateway(
+    private val refreshResult: BillingRefreshResult,
+    private val purchaseResult: BillingPurchaseResult = BillingPurchaseResult.Error("Not configured"),
+) : BillingGateway {
+    override suspend fun refreshEntitlement(productId: String): BillingRefreshResult {
+        return refreshResult
+    }
+
+    override suspend fun launchPurchaseFlow(productId: String): BillingPurchaseResult {
+        return purchaseResult
     }
 }

@@ -4,7 +4,8 @@ import android.app.Activity
 import android.app.Application
 import android.content.Context
 import com.openfuel.app.data.entitlement.DebugEntitlementService
-import com.openfuel.app.data.entitlement.PlaceholderPlayBillingEntitlementService
+import com.openfuel.app.data.entitlement.PlayBillingEntitlementService
+import com.openfuel.app.data.entitlement.PlayBillingGateway
 import com.openfuel.app.data.datastore.settingsDataStore
 import com.openfuel.app.data.db.OpenFuelDatabase
 import com.openfuel.app.data.remote.DefaultFoodCatalogProviderRegistry
@@ -70,7 +71,15 @@ class AppContainer(
     val entitlementService: EntitlementService = if (BuildConfig.DEBUG) {
         DebugEntitlementService(entitlementsRepository, securityPostureProvider)
     } else {
-        PlaceholderPlayBillingEntitlementService(securityPostureProvider)
+        PlayBillingEntitlementService(
+            entitlementsRepository = entitlementsRepository,
+            securityPostureProvider = securityPostureProvider,
+            billingGateway = PlayBillingGateway(
+                context = context.applicationContext,
+                currentActivityProvider = { currentActivityRef.get()?.get() },
+            ),
+            proProductId = BuildConfig.PRO_PRODUCT_ID,
+        )
     }
     val remoteFoodDataSource: RemoteFoodDataSource = OpenFoodFactsRemoteFoodDataSource.create(
         okHttpClient = onlineHttpClient,

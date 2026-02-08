@@ -3,6 +3,7 @@ package com.openfuel.app.ui.screens
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertTextContains
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
+import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.onNodeWithTag
@@ -144,6 +145,16 @@ class UnifiedSearchSmokeTest {
         composeRule.onNodeWithTag("screen_add_food").assertIsDisplayed()
         composeRule.onNodeWithTag("add_food_quick_add_text_button").performClick()
         composeRule.onNodeWithTag("add_food_quick_add_voice_button").performClick()
+        composeRule.waitUntil(timeoutMillis = 5_000) {
+            composeRule.onAllNodesWithTag("add_food_quick_add_voice_listening")
+                .fetchSemanticsNodes().isNotEmpty()
+        }
+        composeRule.onNodeWithTag("add_food_quick_add_voice_listening").assertIsDisplayed()
+        composeRule.onNodeWithTag("add_food_quick_add_voice_cancel").assertIsDisplayed()
+        composeRule.waitUntil(timeoutMillis = 5_000) {
+            composeRule.onAllNodesWithTag("add_food_quick_add_voice_listening")
+                .fetchSemanticsNodes().isEmpty()
+        }
         composeRule.waitForIdle()
 
         composeRule.onNodeWithTag("add_food_quick_add_text_input")

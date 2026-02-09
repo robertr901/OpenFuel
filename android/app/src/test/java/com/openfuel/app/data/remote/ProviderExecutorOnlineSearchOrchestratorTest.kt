@@ -304,6 +304,133 @@ class ProviderExecutorOnlineSearchOrchestratorTest {
         assertEquals(1, result.summary.successfulProviders)
         assertEquals(0, result.summary.failedProviders)
     }
+
+    @Test
+    fun search_whenTimeout_mapsToFriendlyTimeoutMessage() = runTest {
+        val report = ProviderExecutionReport(
+            requestType = ProviderRequestType.TEXT_SEARCH,
+            sourceFilter = SearchSourceFilter.ONLINE_ONLY,
+            mergedCandidates = emptyList(),
+            providerResults = listOf(
+                ProviderResult(
+                    providerId = "open_food_facts",
+                    capability = ProviderRequestType.TEXT_SEARCH.capability,
+                    status = ProviderStatus.TIMEOUT,
+                    items = emptyList(),
+                    elapsedMs = 101L,
+                    diagnostics = "Provider execution timed out.",
+                ),
+            ),
+            overallElapsedMs = 110L,
+        )
+        val providers = listOf(
+            executionProvider(key = "open_food_facts", displayName = "Open Food Facts", priority = 10),
+        )
+        val orchestrator = ProviderExecutorOnlineSearchOrchestrator(
+            providerExecutor = FakeProviderExecutor(report),
+            providerRegistry = FakeFoodCatalogProviderRegistry(providers),
+        )
+        val guard = UserInitiatedNetworkGuard()
+
+        val result = orchestrator.search(
+            request = OnlineSearchRequest(
+                query = "oats",
+                token = guard.issueToken("test_search"),
+                onlineLookupEnabled = true,
+                refreshPolicy = ProviderRefreshPolicy.CACHE_PREFERRED,
+            ),
+        )
+
+        assertEquals(OnlineProviderRunStatus.FAILED, result.providerRuns.single().status)
+        assertEquals("Timed out (check connection).", result.providerRuns.single().message)
+    }
+
+    @Test
+    fun search_whenNetworkUnavailable_mapsToNoConnectionMessage() = runTest {
+        val report = ProviderExecutionReport(
+            requestType = ProviderRequestType.TEXT_SEARCH,
+            sourceFilter = SearchSourceFilter.ONLINE_ONLY,
+            mergedCandidates = emptyList(),
+            providerResults = listOf(
+                ProviderResult(
+                    providerId = "nutritionix",
+                    capability = ProviderRequestType.TEXT_SEARCH.capability,
+                    status = ProviderStatus.NETWORK_UNAVAILABLE,
+                    items = emptyList(),
+                    elapsedMs = 55L,
+                    diagnostics = "Network unavailable for provider request.",
+                ),
+            ),
+            overallElapsedMs = 60L,
+        )
+        val providers = listOf(
+            executionProvider(key = "nutritionix", displayName = "Nutritionix", priority = 10),
+        )
+        val orchestrator = ProviderExecutorOnlineSearchOrchestrator(
+            providerExecutor = FakeProviderExecutor(report),
+            providerRegistry = FakeFoodCatalogProviderRegistry(providers),
+        )
+        val guard = UserInitiatedNetworkGuard()
+
+        val result = orchestrator.search(
+            request = OnlineSearchRequest(
+                query = "oats",
+                token = guard.issueToken("test_search"),
+                onlineLookupEnabled = true,
+                refreshPolicy = ProviderRefreshPolicy.CACHE_PREFERRED,
+            ),
+        )
+
+        assertEquals(OnlineProviderRunStatus.FAILED, result.providerRuns.single().status)
+        assertEquals("No connection.", result.providerRuns.single().message)
+    }
+
+    @Test
+    fun search_whenHttpOrParsingError_mapsToServiceErrorMessage() = runTest {
+        val report = ProviderExecutionReport(
+            requestType = ProviderRequestType.TEXT_SEARCH,
+            sourceFilter = SearchSourceFilter.ONLINE_ONLY,
+            mergedCandidates = emptyList(),
+            providerResults = listOf(
+                ProviderResult(
+                    providerId = "provider_http",
+                    capability = ProviderRequestType.TEXT_SEARCH.capability,
+                    status = ProviderStatus.HTTP_ERROR,
+                    items = emptyList(),
+                    elapsedMs = 30L,
+                ),
+                ProviderResult(
+                    providerId = "provider_parse",
+                    capability = ProviderRequestType.TEXT_SEARCH.capability,
+                    status = ProviderStatus.PARSING_ERROR,
+                    items = emptyList(),
+                    elapsedMs = 31L,
+                ),
+            ),
+            overallElapsedMs = 40L,
+        )
+        val providers = listOf(
+            executionProvider(key = "provider_http", displayName = "Provider HTTP", priority = 10),
+            executionProvider(key = "provider_parse", displayName = "Provider Parse", priority = 20),
+        )
+        val orchestrator = ProviderExecutorOnlineSearchOrchestrator(
+            providerExecutor = FakeProviderExecutor(report),
+            providerRegistry = FakeFoodCatalogProviderRegistry(providers),
+        )
+        val guard = UserInitiatedNetworkGuard()
+
+        val result = orchestrator.search(
+            request = OnlineSearchRequest(
+                query = "oats",
+                token = guard.issueToken("test_search"),
+                onlineLookupEnabled = true,
+                refreshPolicy = ProviderRefreshPolicy.CACHE_PREFERRED,
+            ),
+        )
+
+        assertEquals("Service error.", result.providerRuns[0].message)
+        assertEquals("Service error.", result.providerRuns[1].message)
+    }
 }
 
 private class FakeProviderExecutor(

@@ -221,7 +221,19 @@ This roadmap separates product milestones (user outcomes) from implementation ph
 - No heavy background processing. Any indexing runs on explicit screen open or app idle with strict time budget.
 - No health advice, no nutritional recommendations, no medical claims.
 
-## Phase 16: Optional camera text capture (OCR) and accessibility polish (local-only)
+## Phase 16: Unified search + USDA provider integration (completed)
+**Completed**
+- Kept one Add Food query field and one unified results list with clear Local and Online sections.
+- Preserved explicit-action online behavior:
+  - local results update as the user types
+  - online results execute only on `Search online` / `Refresh online` / explicit barcode lookup action.
+- Added USDA FoodData Central provider implementation behind the existing provider seam and registry.
+- Added local API key configuration path via `android/local.properties` (`USDA_API_KEY`) with no secrets committed.
+- Added graceful missing-key handling with clear user-visible messaging and no crashes.
+- Added deterministic USDA parsing/mapping unit tests (no live network dependency).
+- Added deterministic coverage that online provider execution does not run until explicit user action.
+
+## Phase 17: Optional camera text capture (OCR) and accessibility polish (local-only)
 **Scope**
 - Add an explicit “Scan text” action inside Quick add to OCR a receipt/label/ingredients list.
 - Requires camera permission; request only when the user taps “Scan text”, with a clear rationale.

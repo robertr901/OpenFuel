@@ -75,8 +75,9 @@ domain (pure logic, calculations, unit helpers)
 - Online result cards surface provenance labels (`OFF`, `Sample`, or provider key) for explainability.
 - Current providers:
   - OpenFoodFacts: network provider
+  - USDA FoodData Central: network provider (requires local `USDA_API_KEY` configuration)
   - Static sample provider: deterministic non-network provider for debug diagnostics/instrumentation determinism
-  - USDA/Nutritionix/Edamam: scaffolds only, disabled
+  - Nutritionix/Edamam: scaffolds only, disabled
 
 ## Intelligence seam (Phase 10)
 - New domain boundary: `com.openfuel.app.domain.intelligence`.
@@ -166,9 +167,14 @@ domain (pure logic, calculations, unit helpers)
 - Online lookup is enabled by default, but every network call must be explicitly user initiated.
 - `UserInitiatedNetworkGuard` issues short-lived tokens and validates them in remote data sources.
 - No background sync, no periodic jobs, and no silent network retries.
+- No provider polling loops and no automatic online refreshes.
 - No silent no-op states:
   - online-disabled actions return immediate user-visible messaging
   - provider failures surface friendly copy plus debug diagnostics when available
+- USDA key handling:
+  - API key is read from `BuildConfig.USDA_API_KEY` (populated via `android/local.properties`).
+  - Missing key disables USDA execution gracefully and surfaces clear user messaging.
+  - Keys are never committed to source control.
 - Failing or partial online payloads must degrade to local-safe UI states (empty/error, no crashes).
 
 ## Offline-first strategy

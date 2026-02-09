@@ -6,6 +6,7 @@ import com.openfuel.app.domain.search.OnlineSearchOrchestrator
 import com.openfuel.app.domain.search.OnlineSearchRequest
 import com.openfuel.app.domain.search.OnlineSearchResult
 import com.openfuel.app.domain.search.OnlineSearchSummary
+import com.openfuel.app.domain.model.RemoteFoodCandidate
 import com.openfuel.app.domain.search.SearchSourceFilter
 import com.openfuel.app.domain.service.FoodCatalogExecutionProvider
 import com.openfuel.app.domain.service.FoodCatalogProviderRegistry
@@ -14,6 +15,9 @@ import com.openfuel.app.domain.service.ProviderExecutor
 import com.openfuel.app.domain.service.ProviderRequestType
 import com.openfuel.app.domain.service.ProviderResult
 import com.openfuel.app.domain.service.ProviderStatus
+import com.openfuel.app.domain.service.buildProviderDedupeKey
+import com.openfuel.app.domain.service.normalizeProviderBarcode
+import com.openfuel.app.domain.service.normalizeProviderText
 
 class ProviderExecutorOnlineSearchOrchestrator(
     private val providerExecutor: ProviderExecutor,
@@ -67,9 +71,13 @@ class ProviderExecutorOnlineSearchOrchestrator(
             run.providerId.endsWith("_stub")
         }
 
-        val candidates = report.mergedCandidates.map { merged ->
-            merged.candidate.copy(providerKey = merged.providerId)
-        }
+        val priorityByProviderId = sortedProviders
+            .mapIndexed { index, provider -> provider.descriptor.key to index }
+            .toMap()
+        val candidates = mergeCandidates(
+            providerResults = report.providerResults,
+            priorityByProviderId = priorityByProviderId,
+        )
         val summary = OnlineSearchSummary(
             totalCandidates = candidates.size,
             successfulProviders = providerRuns.count { run ->
@@ -94,6 +102,137 @@ class ProviderExecutorOnlineSearchOrchestrator(
         )
     }
 }
+
+private fun mergeCandidates(
+    providerResults: List<ProviderResult>,
+    priorityByProviderId: Map<String, Int>,
+): List<RemoteFoodCandidate> {
+    val buckets = LinkedHashMap<String, CandidateBucket>()
+    val sortedResults = providerResults.sortedWith(
+        compareBy<ProviderResult> { result ->
+            priorityByProviderId[result.providerId] ?: Int.MAX_VALUE
+        }.thenBy { result -> result.providerId },
+    )
+
+    sortedResults.forEach { result ->
+        if (result.status != ProviderStatus.AVAILABLE && result.status != ProviderStatus.EMPTY) {
+            return@forEach
+        }
+        result.items.forEach { candidate ->
+            val key = dedupeIdentityKey(candidate)
+            val bucket = buckets[key.identity]
+            if (bucket == null) {
+                buckets[key.identity] = CandidateBucket(
+                    key = key,
+                    selectedProviderId = result.providerId,
+                    selectedCandidate = candidate,
+                    contributingProviders = linkedSetOf(result.providerId),
+                )
+            } else {
+                bucket.contributingProviders += result.providerId
+                if (shouldSelectIncoming(
+                        existing = bucket.selectedCandidate,
+                        existingProviderId = bucket.selectedProviderId,
+                        incoming = candidate,
+                        incomingProviderId = result.providerId,
+                        priorityByProviderId = priorityByProviderId,
+                    )
+                ) {
+                    bucket.selectedCandidate = candidate
+                    bucket.selectedProviderId = result.providerId
+                }
+            }
+        }
+    }
+
+    return buckets.values
+        .sortedWith(
+            compareBy<CandidateBucket> { bucket -> bucket.key.rank }
+                .thenBy { bucket -> bucket.key.identity }
+                .thenBy { bucket -> priorityByProviderId[bucket.selectedProviderId] ?: Int.MAX_VALUE }
+                .thenBy { bucket -> bucket.selectedProviderId }
+                .thenBy { bucket -> "${bucket.selectedCandidate.source}:${bucket.selectedCandidate.sourceId}" },
+        )
+        .map { bucket ->
+            bucket.selectedCandidate.copy(providerKey = bucket.selectedProviderId)
+        }
+}
+
+private fun shouldSelectIncoming(
+    existing: RemoteFoodCandidate,
+    existingProviderId: String,
+    incoming: RemoteFoodCandidate,
+    incomingProviderId: String,
+    priorityByProviderId: Map<String, Int>,
+): Boolean {
+    val incomingRichness = candidateRichnessScore(incoming)
+    val existingRichness = candidateRichnessScore(existing)
+    if (incomingRichness != existingRichness) {
+        return incomingRichness > existingRichness
+    }
+    val incomingPriority = priorityByProviderId[incomingProviderId] ?: Int.MAX_VALUE
+    val existingPriority = priorityByProviderId[existingProviderId] ?: Int.MAX_VALUE
+    if (incomingPriority != existingPriority) {
+        return incomingPriority < existingPriority
+    }
+    val incomingIdentity = "${incoming.source}:${incoming.sourceId}"
+    val existingIdentity = "${existing.source}:${existing.sourceId}"
+    if (incomingIdentity != existingIdentity) {
+        return incomingIdentity < existingIdentity
+    }
+    return incomingProviderId < existingProviderId
+}
+
+private fun candidateRichnessScore(candidate: RemoteFoodCandidate): Int {
+    var score = 0
+    if (candidate.caloriesKcalPer100g != null) score += 2
+    if (candidate.proteinGPer100g != null) score += 1
+    if (candidate.carbsGPer100g != null) score += 1
+    if (candidate.fatGPer100g != null) score += 1
+    if (!candidate.servingSize.isNullOrBlank()) score += 1
+    if (!candidate.barcode.isNullOrBlank()) score += 1
+    return score
+}
+
+private fun dedupeIdentityKey(candidate: RemoteFoodCandidate): CandidateIdentityKey {
+    val barcode = normalizeProviderBarcode(candidate.barcode)
+    if (!barcode.isNullOrBlank()) {
+        return CandidateIdentityKey(
+            rank = 0,
+            identity = "barcode:$barcode",
+        )
+    }
+    val normalizedName = normalizeProviderText(candidate.name)
+    if (normalizedName.isNotBlank()) {
+        val normalizedBrand = normalizeProviderText(candidate.brand.orEmpty())
+        if (normalizedBrand.isNotBlank()) {
+            return CandidateIdentityKey(
+                rank = 1,
+                identity = "name:$normalizedName|brand:$normalizedBrand",
+            )
+        }
+        return CandidateIdentityKey(
+            rank = 1,
+            identity = "name:$normalizedName",
+        )
+    }
+    return CandidateIdentityKey(
+        rank = 2,
+        identity = "fuzzy:${buildProviderDedupeKey(candidate)}",
+    )
+}
+
+private data class CandidateIdentityKey(
+    val rank: Int,
+    val identity: String,
+)
+
+private data class CandidateBucket(
+    val key: CandidateIdentityKey,
+    var selectedProviderId: String,
+    var selectedCandidate: RemoteFoodCandidate,
+    val contributingProviders: LinkedHashSet<String>,
+)
 
 private fun ProviderResult?.toOnlineProviderRun(
     providerId: String,

@@ -1149,10 +1149,12 @@ private fun provenanceLabel(food: RemoteFoodCandidate): String {
     return when {
         providerKey.equals("open_food_facts", ignoreCase = true) -> "OFF"
         providerKey.equals("usda_fdc", ignoreCase = true) -> "USDA"
+        providerKey.equals("nutritionix", ignoreCase = true) -> "Nutritionix"
         providerKey.equals("static_sample", ignoreCase = true) -> "Sample"
         providerKey.isNotBlank() -> providerKey
         food.source == RemoteFoodSource.OPEN_FOOD_FACTS -> "OFF"
         food.source == RemoteFoodSource.USDA_FOODDATA_CENTRAL -> "USDA"
+        food.source == RemoteFoodSource.NUTRITIONIX -> "Nutritionix"
         food.source == RemoteFoodSource.STATIC_SAMPLE -> "Sample"
         else -> "Online"
     }

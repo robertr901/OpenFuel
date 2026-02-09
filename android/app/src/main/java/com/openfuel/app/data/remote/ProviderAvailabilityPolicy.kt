@@ -55,3 +55,33 @@ fun resolveUsdaAvailability(
         statusReason = "Configured.",
     )
 }
+
+fun resolveNutritionixAvailability(
+    forceDeterministicProvidersOnly: Boolean,
+    providerEnabledByFlag: Boolean,
+    appId: String,
+    apiKey: String,
+): ProviderAvailability {
+    if (!providerEnabledByFlag) {
+        return ProviderAvailability(
+            enabled = false,
+            statusReason = "Disabled by local provider flag.",
+        )
+    }
+    if (appId.isBlank() || apiKey.isBlank()) {
+        return ProviderAvailability(
+            enabled = false,
+            statusReason = "Nutritionix credentials missing. Add NUTRITIONIX_APP_ID and NUTRITIONIX_API_KEY in local.properties.",
+        )
+    }
+    if (forceDeterministicProvidersOnly) {
+        return ProviderAvailability(
+            enabled = false,
+            statusReason = "Disabled in deterministic test mode.",
+        )
+    }
+    return ProviderAvailability(
+        enabled = true,
+        statusReason = "Configured.",
+    )
+}

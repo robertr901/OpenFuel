@@ -233,23 +233,28 @@ This roadmap separates product milestones (user outcomes) from implementation ph
 - Added deterministic USDA parsing/mapping unit tests (no live network dependency).
 - Added deterministic coverage that online provider execution does not run until explicit user action.
 
-## Phase 17: Optional camera text capture (OCR) and accessibility polish (local-only)
-**Scope**
-- Add an explicit “Scan text” action inside Quick add to OCR a receipt/label/ingredients list.
-- Requires camera permission; request only when the user taps “Scan text”, with a clear rationale.
-- OCR runs locally only (ML Kit on-device text recognition if available, or equivalent).
-- Extracted text is shown to the user for editing before parsing (never auto-log).
-- Pipe edited text through `IntelligenceService.parseFoodText(...)`.
-- Accessibility and resilience:
-  - Keyboard-first flows for quick add.
-  - Better error states: offline speech unavailable, OCR unavailable, permission denied, etc.
+## Phase 17: Multi-provider online search orchestration (completed)
+**Completed**
+- Added deterministic `OnlineSearchOrchestrator` execution contract for explicit online actions.
+- Surfaced `Online sources` disclosure in Add Food with per-provider statuses (`ok`, `empty`, `failed`, `disabled`, `needs setup`).
+- Added provider-availability flags in `android/local.properties` for Open Food Facts and USDA.
+- Preserved explicit-action-only online behavior (no online execution on typing, no background polling/silent refresh).
 
-**Acceptance criteria**
-- No automatic image retention. If images are used, process in memory and discard immediately.
-- No network calls. No telemetry. No background capture.
-- Instrumentation tests verify UI wiring and state transitions without depending on real camera frames (use fake inputs).
+## Phase 18: Provider integrations hardening (completed)
+**Completed**
+- Added a real Nutritionix provider integration behind existing provider seams (`NutritionixRemoteFoodDataSource` + `NutritionixCatalogProvider`).
+- Added local credentials/config support via `android/local.properties`:
+  - `ONLINE_PROVIDER_NUTRITIONIX_ENABLED`
+  - `NUTRITIONIX_APP_ID`
+  - `NUTRITIONIX_API_KEY`
+- Extended provider availability policy with explicit `needs setup` behavior for missing Nutritionix credentials.
+- Hardened deterministic multi-provider merge in orchestrator:
+  - key precedence `barcode` > `exact name(+brand)` > `fuzzy`
+  - richer nutrition payload preferred on duplicates
+  - deterministic tie-break by provider priority and stable identity.
+- Preserved explicit-action guardrails, deterministic tests, and no schema/migration changes.
 
-## Longer-term (Phase 17+ ideas, not planned yet)
+## Phase 19+: ideas (not planned yet)
 - Optional on-device embeddings for better local matching and dedupe (local-only).
 - Private export/import improvements (encrypted export, user-controlled keys).
 - Multi-device sync only if end-to-end encrypted and user-owned (explicitly not in scope yet).

@@ -19,13 +19,14 @@
   - Pro-gated paywall lock and restore flows using fake/debug entitlement wiring in tests.
 
 ## Provider verification checklist (manual, release-oriented)
-- With provider defaults enabled and missing `USDA_API_KEY`:
+- With provider defaults enabled and missing `USDA_API_KEY` and/or Nutritionix credentials:
   - Tapping `Search online` remains stable.
-  - `Online sources` shows USDA as `needs setup` with clear messaging.
-- With valid `USDA_API_KEY` configured:
+  - `Online sources` shows missing-config providers as `needs setup` with clear messaging.
+- With valid `USDA_API_KEY`, `NUTRITIONIX_APP_ID`, and `NUTRITIONIX_API_KEY` configured:
   - Tapping `Search online` can return USDA-backed candidates.
+  - Tapping `Search online` can return Nutritionix-backed candidates.
   - Tapping `Refresh online` performs a second explicit online execution (no silent background refresh).
-- With `ONLINE_PROVIDER_OPEN_FOOD_FACTS_ENABLED=false` or `ONLINE_PROVIDER_USDA_ENABLED=false`:
+- With `ONLINE_PROVIDER_OPEN_FOOD_FACTS_ENABLED=false`, `ONLINE_PROVIDER_USDA_ENABLED=false`, or `ONLINE_PROVIDER_NUTRITIONIX_ENABLED=false`:
   - `Online sources` shows the disabled provider as `disabled`.
   - Other enabled providers still run and render results/failures independently.
 - Airplane mode:

@@ -66,18 +66,20 @@ domain (pure logic, calculations, unit helpers)
   - bounded parallel execution (`supervisorScope`)
   - strict per-provider timeout and global budget
   - no exceptions leaked to UI; failures are returned as structured provider statuses
-  - deterministic merge: provider priority order + stable dedupe key
+  - deterministic merge: stable key precedence (`barcode` > `exact name(+brand)` > `fuzzy`) with deterministic tie-breaking
 - Dedupe strategy:
   - barcode when present
-  - else normalized `name + brand + servingSize`
-  - fallback to source-scoped identity when brand and serving context are missing
+  - else normalized exact name key (name with optional brand)
+  - fallback fuzzy key from canonical provider dedupe helper
+  - for duplicate keys, richer nutrition payload wins; tie-break by provider priority then stable identity
   - provenance retained per merged candidate (`providerId`)
 - Online result cards surface provenance labels (`OFF`, `Sample`, or provider key) for explainability.
 - Current providers:
   - OpenFoodFacts: network provider
   - USDA FoodData Central: network provider (requires local `USDA_API_KEY` configuration)
+  - Nutritionix: network provider (requires local `NUTRITIONIX_APP_ID` and `NUTRITIONIX_API_KEY`)
   - Static sample provider: deterministic non-network provider for debug diagnostics/instrumentation determinism
-  - Nutritionix/Edamam: scaffolds only, disabled
+  - Edamam: scaffold only, disabled
 
 ## Intelligence seam (Phase 10)
 - New domain boundary: `com.openfuel.app.domain.intelligence`.
@@ -175,6 +177,10 @@ domain (pure logic, calculations, unit helpers)
   - API key is read from `BuildConfig.USDA_API_KEY` (populated via `android/local.properties`).
   - Missing key disables USDA execution gracefully and surfaces clear user messaging.
   - Keys are never committed to source control.
+- Nutritionix key handling:
+  - Credentials are read from `BuildConfig.NUTRITIONIX_APP_ID` and `BuildConfig.NUTRITIONIX_API_KEY` (populated via `android/local.properties`).
+  - Missing credentials disable Nutritionix execution gracefully and surface clear `needs setup` messaging.
+  - Credentials are never committed to source control.
 - Failing or partial online payloads must degrade to local-safe UI states (empty/error, no crashes).
 
 ## Offline-first strategy

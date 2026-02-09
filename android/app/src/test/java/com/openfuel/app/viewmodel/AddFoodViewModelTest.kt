@@ -19,6 +19,7 @@ import com.openfuel.app.domain.service.ProviderExecutionRequest
 import com.openfuel.app.domain.service.ProviderExecutor
 import com.openfuel.app.domain.service.ProviderMergedCandidate
 import com.openfuel.app.domain.service.ProviderRefreshPolicy
+import com.openfuel.app.domain.service.ProviderRequestType
 import com.openfuel.app.domain.service.ProviderResult
 import com.openfuel.app.domain.service.ProviderStatus
 import java.time.Instant
@@ -206,7 +207,7 @@ class AddFoodViewModelTest {
         viewModel.searchOnline()
         advanceUntilIdle()
 
-        assertEquals("Online search failed. Check connection and try again.", viewModel.uiState.value.onlineErrorMessage)
+        assertEquals("No connection.", viewModel.uiState.value.onlineErrorMessage)
         assertTrue(viewModel.uiState.value.onlineResults.isEmpty())
         assertFalse(viewModel.uiState.value.isOnlineSearchInProgress)
         collectJob.cancel()
@@ -234,10 +235,49 @@ class AddFoodViewModelTest {
         viewModel.searchOnline()
         advanceUntilIdle()
 
-        assertEquals(
-            "USDA API key missing. Add USDA_API_KEY in local.properties.",
-            viewModel.uiState.value.onlineErrorMessage,
+        assertEquals("Source needs setup. See statuses below.", viewModel.uiState.value.onlineErrorMessage)
+        assertTrue(viewModel.uiState.value.onlineResults.isEmpty())
+        collectJob.cancel()
+    }
+
+    @Test
+    fun searchOnline_whenMultipleProvidersFail_showsSingleSummaryMessage() = runTest {
+        val remoteDataSource = MultiStatusProviderExecutor(
+            providerResults = listOf(
+                ProviderResult(
+                    providerId = "usda_fdc",
+                    capability = ProviderRequestType.TEXT_SEARCH.capability,
+                    status = ProviderStatus.DISABLED_BY_SETTINGS,
+                    items = emptyList(),
+                    elapsedMs = 0L,
+                    diagnostics = "USDA API key missing. Add USDA_API_KEY in local.properties.",
+                ),
+                ProviderResult(
+                    providerId = "open_food_facts",
+                    capability = ProviderRequestType.TEXT_SEARCH.capability,
+                    status = ProviderStatus.TIMEOUT,
+                    items = emptyList(),
+                    elapsedMs = 0L,
+                    diagnostics = "Provider execution timed out.",
+                ),
+            ),
         )
+        val viewModel = AddFoodViewModel(
+            foodRepository = AddFoodFakeFoodRepository(),
+            logRepository = AddFoodFakeLogRepository(),
+            settingsRepository = FakeSettingsRepository(enabled = true),
+            providerExecutor = remoteDataSource,
+            userInitiatedNetworkGuard = UserInitiatedNetworkGuard(),
+        )
+        val collectJob = launch { viewModel.uiState.collect { } }
+
+        viewModel.updateSearchQuery("oat")
+        advanceTimeBy(300)
+        advanceUntilIdle()
+        viewModel.searchOnline()
+        advanceUntilIdle()
+
+        assertEquals("Some sources failed. See statuses below.", viewModel.uiState.value.onlineErrorMessage)
         assertTrue(viewModel.uiState.value.onlineResults.isEmpty())
         collectJob.cancel()
     }
@@ -597,6 +637,20 @@ private class StatusOnlyProviderExecutor(
                     diagnostics = diagnostics,
                 ),
             ),
+            overallElapsedMs = 0L,
+        )
+    }
+}
+
+private class MultiStatusProviderExecutor(
+    private val providerResults: List<ProviderResult>,
+) : ProviderExecutor {
+    override suspend fun execute(request: ProviderExecutionRequest): ProviderExecutionReport {
+        return ProviderExecutionReport(
+            requestType = request.requestType,
+            sourceFilter = request.sourceFilter,
+            mergedCandidates = emptyList(),
+            providerResults = providerResults,
             overallElapsedMs = 0L,
         )
     }

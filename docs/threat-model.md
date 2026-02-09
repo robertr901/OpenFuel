@@ -8,12 +8,12 @@ This threat model covers:
 - Export (local file generation)
 - Optional online lookups (explicit user action only)
 - Quick add helpers (text/voice) as local-only input features
+- Entitlements/paywall flows (explicit purchase/restore actions)
 
 Out of scope (for now):
 - Cloud sync
 - Accounts/authentication
 - Telemetry/analytics
-- Payments/billing
 
 ## Assets to protect
 - Meal logs (personal diet history)

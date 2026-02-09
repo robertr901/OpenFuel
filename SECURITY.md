@@ -17,6 +17,7 @@ High-level controls:
 - Explicit-action capture for barcode and voice flows.
 - Defensive handling of untrusted provider payloads and graceful UI failure states.
 - No background network sync of personal logs.
+- Deterministic release gates are enforced in CI (`.github/workflows/android-gates.yml`).
 
 ## Permissions Inventory (AndroidManifest)
 Declared in `android/app/src/main/AndroidManifest.xml`:

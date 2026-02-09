@@ -189,6 +189,7 @@ private fun candidateRichnessScore(candidate: RemoteFoodCandidate): Int {
     if (candidate.proteinGPer100g != null) score += 1
     if (candidate.carbsGPer100g != null) score += 1
     if (candidate.fatGPer100g != null) score += 1
+    if (!candidate.brand.isNullOrBlank()) score += 1
     if (!candidate.servingSize.isNullOrBlank()) score += 1
     if (!candidate.barcode.isNullOrBlank()) score += 1
     return score
@@ -205,19 +206,32 @@ private fun dedupeIdentityKey(candidate: RemoteFoodCandidate): CandidateIdentity
     val normalizedName = normalizeProviderText(candidate.name)
     if (normalizedName.isNotBlank()) {
         val normalizedBrand = normalizeProviderText(candidate.brand.orEmpty())
-        if (normalizedBrand.isNotBlank()) {
+        val normalizedServing = normalizeProviderText(candidate.servingSize.orEmpty())
+        if (normalizedBrand.isNotBlank() && normalizedServing.isNotBlank()) {
             return CandidateIdentityKey(
                 rank = 1,
+                identity = "name:$normalizedName|brand:$normalizedBrand|serving:$normalizedServing",
+            )
+        }
+        if (normalizedBrand.isNotBlank()) {
+            return CandidateIdentityKey(
+                rank = 2,
                 identity = "name:$normalizedName|brand:$normalizedBrand",
             )
         }
+        if (normalizedServing.isNotBlank()) {
+            return CandidateIdentityKey(
+                rank = 2,
+                identity = "name:$normalizedName|serving:$normalizedServing",
+            )
+        }
         return CandidateIdentityKey(
-            rank = 1,
+            rank = 3,
             identity = "name:$normalizedName",
         )
     }
     return CandidateIdentityKey(
-        rank = 2,
+        rank = 4,
         identity = "fuzzy:${buildProviderDedupeKey(candidate)}",
     )
 }

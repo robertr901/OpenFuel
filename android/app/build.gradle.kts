@@ -16,6 +16,16 @@ val localProperties = Properties().apply {
 val usdaApiKey = (localProperties.getProperty("USDA_API_KEY") ?: "")
     .replace("\\", "\\\\")
     .replace("\"", "\\\"")
+val openFoodFactsProviderEnabled = localProperties
+    .getProperty("ONLINE_PROVIDER_OPEN_FOOD_FACTS_ENABLED")
+    ?.trim()
+    ?.equals("true", ignoreCase = true)
+    ?: true
+val usdaProviderEnabled = localProperties
+    .getProperty("ONLINE_PROVIDER_USDA_ENABLED")
+    ?.trim()
+    ?.equals("true", ignoreCase = true)
+    ?: true
 
 android {
     namespace = "com.openfuel.app"
@@ -29,6 +39,8 @@ android {
         versionName = "1.0"
         buildConfigField("String", "PRO_PRODUCT_ID", "\"openfuel_pro\"")
         buildConfigField("String", "USDA_API_KEY", "\"$usdaApiKey\"")
+        buildConfigField("boolean", "ONLINE_PROVIDER_OPEN_FOOD_FACTS_ENABLED", openFoodFactsProviderEnabled.toString())
+        buildConfigField("boolean", "ONLINE_PROVIDER_USDA_ENABLED", usdaProviderEnabled.toString())
 
         testInstrumentationRunner = "com.openfuel.app.OpenFuelAndroidTestRunner"
     }

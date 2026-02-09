@@ -20,6 +20,8 @@ import com.openfuel.app.data.remote.UsdaFoodDataCentralCatalogProvider
 import com.openfuel.app.data.remote.UsdaFoodDataCentralDataSource
 import com.openfuel.app.data.remote.UsdaFoodDataSource
 import com.openfuel.app.data.remote.UserInitiatedNetworkGuard
+import com.openfuel.app.data.remote.resolveOpenFoodFactsAvailability
+import com.openfuel.app.data.remote.resolveUsdaAvailability
 import com.openfuel.app.data.voice.RecognizerIntentVoiceTranscriber
 import com.openfuel.app.data.security.LocalSecurityPostureProvider
 import com.openfuel.app.data.repository.EntitlementsRepositoryImpl
@@ -89,6 +91,15 @@ class AppContainer(
         userInitiatedNetworkGuard = userInitiatedNetworkGuard,
     )
     private val usdaApiKey: String = BuildConfig.USDA_API_KEY.trim()
+    private val openFoodFactsAvailability = resolveOpenFoodFactsAvailability(
+        forceDeterministicProvidersOnly = forceDeterministicProvidersOnly,
+        providerEnabledByFlag = BuildConfig.ONLINE_PROVIDER_OPEN_FOOD_FACTS_ENABLED,
+    )
+    private val usdaAvailability = resolveUsdaAvailability(
+        forceDeterministicProvidersOnly = forceDeterministicProvidersOnly,
+        providerEnabledByFlag = BuildConfig.ONLINE_PROVIDER_USDA_ENABLED,
+        apiKey = usdaApiKey,
+    )
     private val usdaFoodDataSource: UsdaFoodDataSource = UsdaFoodDataCentralDataSource.create(
         okHttpClient = onlineHttpClient,
         userInitiatedNetworkGuard = userInitiatedNetworkGuard,
@@ -111,12 +122,8 @@ class AppContainer(
                     supportsBarcode = true,
                     supportsTextSearch = true,
                     termsOfUseLink = "https://world.openfoodfacts.org/terms-of-use",
-                    enabled = !forceDeterministicProvidersOnly,
-                    statusReason = if (forceDeterministicProvidersOnly) {
-                        "Disabled in deterministic test mode."
-                    } else {
-                        "Configured."
-                    },
+                    enabled = openFoodFactsAvailability.enabled,
+                    statusReason = openFoodFactsAvailability.statusReason,
                 ),
                 provider = foodCatalogProvider,
             ),
@@ -142,14 +149,10 @@ class AppContainer(
                     supportsBarcode = true,
                     supportsTextSearch = true,
                     termsOfUseLink = "https://fdc.nal.usda.gov/api-guide/",
-                    enabled = !forceDeterministicProvidersOnly && usdaApiKey.isNotBlank(),
-                    statusReason = when {
-                        forceDeterministicProvidersOnly -> "Disabled in deterministic test mode."
-                        usdaApiKey.isBlank() -> "USDA API key missing. Add USDA_API_KEY in local.properties."
-                        else -> "Configured."
-                    },
+                    enabled = usdaAvailability.enabled,
+                    statusReason = usdaAvailability.statusReason,
                 ),
-                provider = if (!forceDeterministicProvidersOnly && usdaApiKey.isNotBlank()) {
+                provider = if (usdaAvailability.enabled) {
                     usdaFoodCatalogProvider
                 } else {
                     null

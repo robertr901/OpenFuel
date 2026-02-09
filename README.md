@@ -11,6 +11,7 @@ Status: bootstrapping.
 - 2026-02-08: Completed Phase 13 security/docs release hardening (security evidence docs, deterministic verification guidance, documentation consistency checks).
 - 2026-02-08: Completed Phase 14 monetisation foundations (release Play Billing entitlements, calm paywall UX with restore, Pro advanced export JSON/CSV with optional redaction).
 - 2026-02-09: Completed Phase 16 unified search + first real USDA provider integration (explicit-action online only, deterministic offline-friendly tests).
+- 2026-02-09: Completed Phase 17 multi-provider online search orchestration (deterministic provider runs, per-provider status disclosure, isolated provider failures, explicit-action online only).
 
 ## Deterministic Android Verification
 Run from repo root:
@@ -24,13 +25,15 @@ cd android
 
 `./gradlew :app:connectedDebugAndroidTest` is part of the primary release gate. It uses `OpenFuelAndroidTestRunner`, which overrides the app container with deterministic providers and fake voice transcription. This keeps instrumentation tests offline and reproducible by disabling live Open Food Facts execution and avoiding system microphone/speech UI dependencies.
 
-## USDA provider setup (local development)
-OpenFuel includes a real USDA FoodData Central provider behind explicit-action online controls.
+## Online provider setup (local development)
+OpenFuel includes multi-provider online search behind explicit-action controls.
 
 1. Open `android/local.properties`.
-2. Add your key:
+2. Configure providers and USDA key:
 
 ```properties
+ONLINE_PROVIDER_OPEN_FOOD_FACTS_ENABLED=true
+ONLINE_PROVIDER_USDA_ENABLED=true
 USDA_API_KEY=your_usda_key_here
 ```
 
@@ -48,6 +51,7 @@ If `USDA_API_KEY` is missing, the app stays stable and shows a clear provider co
   - `Search online`
   - `Refresh online`
   - barcode scan lookup action
+- Add Food shows an `Online sources` summary for each explicit run so users can see which providers succeeded, failed, were disabled, or need setup.
 - There are no background provider refresh jobs, no telemetry, and no analytics SDKs.
 
 ## Pro entitlements and advanced export

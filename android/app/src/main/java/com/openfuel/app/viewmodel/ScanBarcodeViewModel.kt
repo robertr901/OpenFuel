@@ -224,6 +224,14 @@ private fun deriveBarcodeError(
     providerResults: List<ProviderResult>,
     hasResult: Boolean,
 ): String? {
+    val hasMissingUsdaKey = providerResults.any { result ->
+        result.providerId.equals("usda_fdc", ignoreCase = true) &&
+            result.status == ProviderStatus.DISABLED_BY_SETTINGS &&
+            result.diagnostics?.contains("API key missing", ignoreCase = true) == true
+    }
+    if (hasMissingUsdaKey && !hasResult) {
+        return "USDA provider is not configured. Add USDA_API_KEY in local.properties."
+    }
     val failedStatuses = setOf(
         ProviderStatus.NETWORK_UNAVAILABLE,
         ProviderStatus.HTTP_ERROR,

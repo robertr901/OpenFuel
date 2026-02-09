@@ -186,6 +186,63 @@ class AddFoodViewModelTest {
     }
 
     @Test
+    fun searchOnline_whenNetworkUnavailable_showsFriendlyErrorWithoutCrash() = runTest {
+        val remoteDataSource = StatusOnlyProviderExecutor(
+            providerId = "open_food_facts",
+            status = ProviderStatus.NETWORK_UNAVAILABLE,
+        )
+        val viewModel = AddFoodViewModel(
+            foodRepository = AddFoodFakeFoodRepository(),
+            logRepository = AddFoodFakeLogRepository(),
+            settingsRepository = FakeSettingsRepository(enabled = true),
+            providerExecutor = remoteDataSource,
+            userInitiatedNetworkGuard = UserInitiatedNetworkGuard(),
+        )
+        val collectJob = launch { viewModel.uiState.collect { } }
+
+        viewModel.updateSearchQuery("banana")
+        advanceTimeBy(300)
+        advanceUntilIdle()
+        viewModel.searchOnline()
+        advanceUntilIdle()
+
+        assertEquals("Online search failed. Check connection and try again.", viewModel.uiState.value.onlineErrorMessage)
+        assertTrue(viewModel.uiState.value.onlineResults.isEmpty())
+        assertFalse(viewModel.uiState.value.isOnlineSearchInProgress)
+        collectJob.cancel()
+    }
+
+    @Test
+    fun searchOnline_whenUsdaKeyMissing_andNoResults_showsConfigurationMessage() = runTest {
+        val remoteDataSource = StatusOnlyProviderExecutor(
+            providerId = "usda_fdc",
+            status = ProviderStatus.DISABLED_BY_SETTINGS,
+            diagnostics = "USDA API key missing. Add USDA_API_KEY in local.properties.",
+        )
+        val viewModel = AddFoodViewModel(
+            foodRepository = AddFoodFakeFoodRepository(),
+            logRepository = AddFoodFakeLogRepository(),
+            settingsRepository = FakeSettingsRepository(enabled = true),
+            providerExecutor = remoteDataSource,
+            userInitiatedNetworkGuard = UserInitiatedNetworkGuard(),
+        )
+        val collectJob = launch { viewModel.uiState.collect { } }
+
+        viewModel.updateSearchQuery("oats")
+        advanceTimeBy(300)
+        advanceUntilIdle()
+        viewModel.searchOnline()
+        advanceUntilIdle()
+
+        assertEquals(
+            "USDA provider is not configured. Add USDA_API_KEY in local.properties.",
+            viewModel.uiState.value.onlineErrorMessage,
+        )
+        assertTrue(viewModel.uiState.value.onlineResults.isEmpty())
+        collectJob.cancel()
+    }
+
+    @Test
     fun updateSearchQuery_clearsPreviousOnlineResultsAndAttemptState() = runTest {
         val remoteDataSource = FakeProviderExecutor()
         val viewModel = AddFoodViewModel(
@@ -518,4 +575,29 @@ private fun fakeFood(
         isReportedIncorrect = false,
         createdAt = Instant.parse("2024-01-01T00:00:00Z"),
     )
+}
+
+private class StatusOnlyProviderExecutor(
+    private val providerId: String,
+    private val status: ProviderStatus,
+    private val diagnostics: String? = null,
+) : ProviderExecutor {
+    override suspend fun execute(request: ProviderExecutionRequest): ProviderExecutionReport {
+        return ProviderExecutionReport(
+            requestType = request.requestType,
+            sourceFilter = request.sourceFilter,
+            mergedCandidates = emptyList(),
+            providerResults = listOf(
+                ProviderResult(
+                    providerId = providerId,
+                    capability = request.requestType.capability,
+                    status = status,
+                    items = emptyList(),
+                    elapsedMs = 0L,
+                    diagnostics = diagnostics,
+                ),
+            ),
+            overallElapsedMs = 0L,
+        )
+    }
 }

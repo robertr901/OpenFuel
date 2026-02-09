@@ -4,6 +4,18 @@ All notable changes to OpenFuel are documented here.
 
 ## Unreleased
 
+### Phase 16: Unified search + USDA provider integration
+- Introduced shared unified search sectioning model for Local and Online result blocks in Add Food (single query field, single list).
+- Added a real USDA FoodData Central provider implementation behind the existing provider seam:
+  - Retrofit-based USDA client wrapper
+  - deterministic response mapping into canonical `RemoteFoodCandidate`
+  - barcode lookup path via explicit action only.
+- Added local API key configuration support via `android/local.properties` (`USDA_API_KEY`) and `BuildConfig.USDA_API_KEY`.
+- Added graceful missing-key handling with clear user-visible messaging and no crashes.
+- Added deterministic unit coverage for USDA mapping/provider delegation and online failure/configuration message flows.
+- Added deterministic instrumentation coverage to verify no online provider execution occurs before explicit user action.
+- No changes to provider cache schema/migrations, online guard token enforcement semantics, telemetry posture, or background networking behavior.
+
 ### Phase 14: Entitlements/paywall/advanced export foundations
 - Replaced release entitlement placeholder with Play Billing-backed entitlement wiring behind the existing `EntitlementService` seam.
 - Added deterministic paywall UX on Pro-gated surfaces with explicit `Upgrade`, `Restore purchases`, and dismiss actions.
@@ -46,10 +58,12 @@ Run from `android/` before release or PR merge:
    - `./gradlew assembleDebug`
    - `./gradlew :app:connectedDebugAndroidTest`
 2. Quick manual QA:
-   - Verify Add Food local search, quick add, and barcode navigation flows.
-   - Verify online lookup remains explicit action only (`Search online` / `Refresh online`).
-   - Verify online-disabled setting blocks network actions with clear user feedback.
-   - Verify Pro-gated surfaces show paywall when locked and `Restore purchases` updates unlocked state.
+  - Verify Add Food local search, quick add, and barcode navigation flows.
+  - Verify online lookup remains explicit action only (`Search online` / `Refresh online`).
+  - Verify missing `USDA_API_KEY` shows a clear configuration message and does not crash.
+  - Verify airplane mode returns friendly online failure copy while local search remains usable.
+  - Verify online-disabled setting blocks network actions with clear user feedback.
+  - Verify Pro-gated surfaces show paywall when locked and `Restore purchases` updates unlocked state.
    - Verify advanced export JSON/CSV plus optional redaction output before sharing.
 3. Privacy/permissions checks:
    - Confirm no telemetry/analytics/crash-reporting SDKs were added.

@@ -16,6 +16,9 @@ import com.openfuel.app.data.remote.ProviderEntry
 import com.openfuel.app.data.remote.RoomProviderResultCache
 import com.openfuel.app.data.remote.RemoteFoodDataSource
 import com.openfuel.app.data.remote.StaticSampleCatalogProvider
+import com.openfuel.app.data.remote.UsdaFoodDataCentralCatalogProvider
+import com.openfuel.app.data.remote.UsdaFoodDataCentralDataSource
+import com.openfuel.app.data.remote.UsdaFoodDataSource
 import com.openfuel.app.data.remote.UserInitiatedNetworkGuard
 import com.openfuel.app.data.voice.RecognizerIntentVoiceTranscriber
 import com.openfuel.app.data.security.LocalSecurityPostureProvider
@@ -85,8 +88,17 @@ class AppContainer(
         okHttpClient = onlineHttpClient,
         userInitiatedNetworkGuard = userInitiatedNetworkGuard,
     )
+    private val usdaApiKey: String = BuildConfig.USDA_API_KEY.trim()
+    private val usdaFoodDataSource: UsdaFoodDataSource = UsdaFoodDataCentralDataSource.create(
+        okHttpClient = onlineHttpClient,
+        userInitiatedNetworkGuard = userInitiatedNetworkGuard,
+        apiKey = usdaApiKey,
+    )
     val foodCatalogProvider: FoodCatalogProvider = OpenFoodFactsCatalogProvider(
         remoteFoodDataSource = remoteFoodDataSource,
+    )
+    private val usdaFoodCatalogProvider: FoodCatalogProvider = UsdaFoodDataCentralCatalogProvider(
+        dataSource = usdaFoodDataSource,
     )
     private val staticSampleCatalogProvider: FoodCatalogProvider = StaticSampleCatalogProvider()
     val foodCatalogProviderRegistry: FoodCatalogProviderRegistry = DefaultFoodCatalogProviderRegistry(
@@ -124,16 +136,24 @@ class AppContainer(
             ),
             ProviderEntry(
                 metadata = FoodCatalogProviderDescriptor(
-                    key = "usda_stub",
-                    displayName = "USDA (stub)",
+                    key = "usda_fdc",
+                    displayName = "USDA FoodData Central",
                     priority = 20,
-                    supportsBarcode = false,
+                    supportsBarcode = true,
                     supportsTextSearch = true,
-                    termsOfUseLink = "https://fdc.nal.usda.gov/",
-                    enabled = false,
-                    statusReason = "Disabled. API integration not implemented in this phase.",
+                    termsOfUseLink = "https://fdc.nal.usda.gov/api-guide/",
+                    enabled = !forceDeterministicProvidersOnly && usdaApiKey.isNotBlank(),
+                    statusReason = when {
+                        forceDeterministicProvidersOnly -> "Disabled in deterministic test mode."
+                        usdaApiKey.isBlank() -> "USDA API key missing. Add USDA_API_KEY in local.properties."
+                        else -> "Configured."
+                    },
                 ),
-                provider = null,
+                provider = if (!forceDeterministicProvidersOnly && usdaApiKey.isNotBlank()) {
+                    usdaFoodCatalogProvider
+                } else {
+                    null
+                },
             ),
             ProviderEntry(
                 metadata = FoodCatalogProviderDescriptor(

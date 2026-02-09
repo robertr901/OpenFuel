@@ -421,6 +421,14 @@ private fun deriveOnlineErrorMessage(
     if (providerResults.isEmpty()) {
         return null
     }
+    val hasMissingUsdaKey = providerResults.any { result ->
+        result.providerId.equals("usda_fdc", ignoreCase = true) &&
+            result.status == ProviderStatus.DISABLED_BY_SETTINGS &&
+            result.diagnostics?.contains("API key missing", ignoreCase = true) == true
+    }
+    if (hasMissingUsdaKey && !hasResults) {
+        return "USDA provider is not configured. Add USDA_API_KEY in local.properties."
+    }
     val failedStatuses = setOf(
         ProviderStatus.NETWORK_UNAVAILABLE,
         ProviderStatus.HTTP_ERROR,

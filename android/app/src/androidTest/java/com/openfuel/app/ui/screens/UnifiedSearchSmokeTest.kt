@@ -2,6 +2,7 @@ package com.openfuel.app.ui.screens
 
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertTextContains
+import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.hasTestTag
@@ -105,6 +106,25 @@ class UnifiedSearchSmokeTest {
             .performScrollToNode(hasTestTag("add_food_unified_provider_debug"))
         composeRule.onNodeWithTag("add_food_unified_provider_debug_execution_count")
             .assertTextContains("Execution #2")
+    }
+
+    @Test
+    fun unifiedSearch_doesNotExecuteOnlineUntilExplicitAction() {
+        composeRule.onNodeWithTag("screen_today").assertIsDisplayed()
+        composeRule.onNodeWithTag("home_add_food_fab").performClick()
+        composeRule.waitForIdle()
+
+        composeRule.onNodeWithTag("screen_add_food").assertIsDisplayed()
+        composeRule.onNodeWithTag("add_food_unified_query_input").performTextInput("oat")
+        composeRule.waitForIdle()
+
+        composeRule.onNodeWithTag("add_food_unified_results_list")
+            .performScrollToNode(hasTestTag("add_food_unified_online_idle_hint"))
+        composeRule.onNodeWithTag("add_food_unified_online_idle_hint").assertIsDisplayed()
+        composeRule.onAllNodesWithTag("add_food_unified_online_result_sample-oatmeal-1")
+            .assertCountEquals(0)
+        composeRule.onAllNodesWithTag("add_food_unified_provider_debug_execution_count")
+            .assertCountEquals(0)
     }
 
     @Test

@@ -10,6 +10,7 @@ Status: bootstrapping.
 - 2026-02-08: Completed Phase 12a Add Food UX/a11y polish, Phase 12b intelligence seam hardening, and Phase 12c unified quick-add + voice EUX refinement.
 - 2026-02-08: Completed Phase 13 security/docs release hardening (security evidence docs, deterministic verification guidance, documentation consistency checks).
 - 2026-02-08: Completed Phase 14 monetisation foundations (release Play Billing entitlements, calm paywall UX with restore, Pro advanced export JSON/CSV with optional redaction).
+- 2026-02-09: Completed Phase 16 unified search + first real USDA provider integration (explicit-action online only, deterministic offline-friendly tests).
 
 ## Deterministic Android Verification
 Run from repo root:
@@ -22,6 +23,32 @@ cd android
 ```
 
 `./gradlew :app:connectedDebugAndroidTest` is part of the primary release gate. It uses `OpenFuelAndroidTestRunner`, which overrides the app container with deterministic providers and fake voice transcription. This keeps instrumentation tests offline and reproducible by disabling live Open Food Facts execution and avoiding system microphone/speech UI dependencies.
+
+## USDA provider setup (local development)
+OpenFuel includes a real USDA FoodData Central provider behind explicit-action online controls.
+
+1. Open `android/local.properties`.
+2. Add your key:
+
+```properties
+USDA_API_KEY=your_usda_key_here
+```
+
+3. Rebuild:
+
+```bash
+cd android
+./gradlew assembleDebug
+```
+
+If `USDA_API_KEY` is missing, the app stays stable and shows a clear provider configuration message when USDA is selected in the online execution path. No key is committed to the repository.
+
+## Online privacy boundary (explicit action only)
+- Data leaves the device only when the user explicitly taps online actions:
+  - `Search online`
+  - `Refresh online`
+  - barcode scan lookup action
+- There are no background provider refresh jobs, no telemetry, and no analytics SDKs.
 
 ## Pro entitlements and advanced export
 - Pro unlock is backed by Play Billing in release builds through the entitlement service seam.

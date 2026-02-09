@@ -73,6 +73,24 @@ class DocumentationConsistencyTest {
         )
     }
 
+    @Test
+    fun ciWorkflow_containsAllReleaseGateCommands() {
+        val workflow = readRepoFile(".github/workflows/android-gates.yml")
+
+        assertTrue(
+            "CI workflow must run unit tests.",
+            workflow.contains("./gradlew test"),
+        )
+        assertTrue(
+            "CI workflow must build assembleDebug.",
+            workflow.contains("./gradlew assembleDebug"),
+        )
+        assertTrue(
+            "CI workflow must run connectedDebugAndroidTest.",
+            workflow.contains("./gradlew :app:connectedDebugAndroidTest"),
+        )
+    }
+
     private fun readRepoFile(relativePath: String): String {
         val bytes = Files.readAllBytes(repoRoot.resolve(relativePath))
         return bytes.toString(Charsets.UTF_8)

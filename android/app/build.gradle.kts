@@ -16,6 +16,12 @@ val localProperties = Properties().apply {
 val usdaApiKey = (localProperties.getProperty("USDA_API_KEY") ?: "")
     .replace("\\", "\\\\")
     .replace("\"", "\\\"")
+val nutritionixAppId = (localProperties.getProperty("NUTRITIONIX_APP_ID") ?: "")
+    .replace("\\", "\\\\")
+    .replace("\"", "\\\"")
+val nutritionixApiKey = (localProperties.getProperty("NUTRITIONIX_API_KEY") ?: "")
+    .replace("\\", "\\\\")
+    .replace("\"", "\\\"")
 val openFoodFactsProviderEnabled = localProperties
     .getProperty("ONLINE_PROVIDER_OPEN_FOOD_FACTS_ENABLED")
     ?.trim()
@@ -23,6 +29,11 @@ val openFoodFactsProviderEnabled = localProperties
     ?: true
 val usdaProviderEnabled = localProperties
     .getProperty("ONLINE_PROVIDER_USDA_ENABLED")
+    ?.trim()
+    ?.equals("true", ignoreCase = true)
+    ?: true
+val nutritionixProviderEnabled = localProperties
+    .getProperty("ONLINE_PROVIDER_NUTRITIONIX_ENABLED")
     ?.trim()
     ?.equals("true", ignoreCase = true)
     ?: true
@@ -39,8 +50,11 @@ android {
         versionName = "1.0"
         buildConfigField("String", "PRO_PRODUCT_ID", "\"openfuel_pro\"")
         buildConfigField("String", "USDA_API_KEY", "\"$usdaApiKey\"")
+        buildConfigField("String", "NUTRITIONIX_APP_ID", "\"$nutritionixAppId\"")
+        buildConfigField("String", "NUTRITIONIX_API_KEY", "\"$nutritionixApiKey\"")
         buildConfigField("boolean", "ONLINE_PROVIDER_OPEN_FOOD_FACTS_ENABLED", openFoodFactsProviderEnabled.toString())
         buildConfigField("boolean", "ONLINE_PROVIDER_USDA_ENABLED", usdaProviderEnabled.toString())
+        buildConfigField("boolean", "ONLINE_PROVIDER_NUTRITIONIX_ENABLED", nutritionixProviderEnabled.toString())
 
         testInstrumentationRunner = "com.openfuel.app.OpenFuelAndroidTestRunner"
     }

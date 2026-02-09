@@ -18,4 +18,5 @@ enum class RemoteFoodSource {
     OPEN_FOOD_FACTS,
     STATIC_SAMPLE,
     USDA_FOODDATA_CENTRAL,
+    NUTRITIONIX,
 }

@@ -304,6 +304,282 @@ class ProviderExecutorOnlineSearchOrchestratorTest {
         assertEquals(1, result.summary.successfulProviders)
         assertEquals(0, result.summary.failedProviders)
     }
+
+    @Test
+    fun search_whenNameMatchesButServingSizeDiffers_keepsDistinctCandidates() = runTest {
+        val smallServing = RemoteFoodCandidate(
+            source = RemoteFoodSource.OPEN_FOOD_FACTS,
+            sourceId = "off-250ml",
+            providerKey = null,
+            barcode = null,
+            name = "Almond Milk",
+            brand = null,
+            caloriesKcalPer100g = 40.0,
+            proteinGPer100g = 1.0,
+            carbsGPer100g = 3.0,
+            fatGPer100g = 2.0,
+            servingSize = "250 ml",
+        )
+        val largeServing = RemoteFoodCandidate(
+            source = RemoteFoodSource.NUTRITIONIX,
+            sourceId = "nix-1l",
+            providerKey = null,
+            barcode = null,
+            name = "Almond Milk",
+            brand = null,
+            caloriesKcalPer100g = 42.0,
+            proteinGPer100g = 1.1,
+            carbsGPer100g = 3.1,
+            fatGPer100g = 2.1,
+            servingSize = "1 l",
+        )
+        val report = ProviderExecutionReport(
+            requestType = ProviderRequestType.TEXT_SEARCH,
+            sourceFilter = SearchSourceFilter.ONLINE_ONLY,
+            mergedCandidates = emptyList(),
+            providerResults = listOf(
+                ProviderResult(
+                    providerId = "provider_a",
+                    capability = ProviderRequestType.TEXT_SEARCH.capability,
+                    status = ProviderStatus.AVAILABLE,
+                    items = listOf(smallServing),
+                    elapsedMs = 11L,
+                ),
+                ProviderResult(
+                    providerId = "provider_b",
+                    capability = ProviderRequestType.TEXT_SEARCH.capability,
+                    status = ProviderStatus.AVAILABLE,
+                    items = listOf(largeServing),
+                    elapsedMs = 12L,
+                ),
+            ),
+            overallElapsedMs = 25L,
+        )
+        val providers = listOf(
+            executionProvider(key = "provider_a", displayName = "Provider A", priority = 10),
+            executionProvider(key = "provider_b", displayName = "Provider B", priority = 20),
+        )
+        val orchestrator = ProviderExecutorOnlineSearchOrchestrator(
+            providerExecutor = FakeProviderExecutor(report),
+            providerRegistry = FakeFoodCatalogProviderRegistry(providers),
+        )
+        val guard = UserInitiatedNetworkGuard()
+
+        val result = orchestrator.search(
+            request = OnlineSearchRequest(
+                query = "almond milk",
+                token = guard.issueToken("test_search"),
+                onlineLookupEnabled = true,
+                refreshPolicy = ProviderRefreshPolicy.CACHE_PREFERRED,
+            ),
+        )
+
+        assertEquals(2, result.candidates.size)
+        assertTrue(result.candidates.any { candidate -> candidate.sourceId == "off-250ml" })
+        assertTrue(result.candidates.any { candidate -> candidate.sourceId == "nix-1l" })
+    }
+
+    @Test
+    fun search_whenBarcodeMatchesButNamesConflict_prefersRicherPayloadDeterministically() = runTest {
+        val providerACandidate = RemoteFoodCandidate(
+            source = RemoteFoodSource.OPEN_FOOD_FACTS,
+            sourceId = "off-coke-zero",
+            providerKey = null,
+            barcode = "0123456789",
+            name = "Coke Zero",
+            brand = "Coca-Cola",
+            caloriesKcalPer100g = 1.0,
+            proteinGPer100g = null,
+            carbsGPer100g = null,
+            fatGPer100g = null,
+            servingSize = "330 ml",
+        )
+        val providerBCandidate = RemoteFoodCandidate(
+            source = RemoteFoodSource.NUTRITIONIX,
+            sourceId = "nix-coca-cola-zero-sugar",
+            providerKey = null,
+            barcode = "0123456789",
+            name = "Coca Cola Zero Sugar",
+            brand = "Coca-Cola",
+            caloriesKcalPer100g = 1.0,
+            proteinGPer100g = 0.1,
+            carbsGPer100g = 0.2,
+            fatGPer100g = 0.3,
+            servingSize = "330 ml",
+        )
+        val report = ProviderExecutionReport(
+            requestType = ProviderRequestType.TEXT_SEARCH,
+            sourceFilter = SearchSourceFilter.ONLINE_ONLY,
+            mergedCandidates = emptyList(),
+            providerResults = listOf(
+                ProviderResult(
+                    providerId = "provider_a",
+                    capability = ProviderRequestType.TEXT_SEARCH.capability,
+                    status = ProviderStatus.AVAILABLE,
+                    items = listOf(providerACandidate),
+                    elapsedMs = 9L,
+                ),
+                ProviderResult(
+                    providerId = "provider_b",
+                    capability = ProviderRequestType.TEXT_SEARCH.capability,
+                    status = ProviderStatus.AVAILABLE,
+                    items = listOf(providerBCandidate),
+                    elapsedMs = 10L,
+                ),
+            ),
+            overallElapsedMs = 20L,
+        )
+        val providers = listOf(
+            executionProvider(key = "provider_a", displayName = "Provider A", priority = 10),
+            executionProvider(key = "provider_b", displayName = "Provider B", priority = 20),
+        )
+        val orchestrator = ProviderExecutorOnlineSearchOrchestrator(
+            providerExecutor = FakeProviderExecutor(report),
+            providerRegistry = FakeFoodCatalogProviderRegistry(providers),
+        )
+        val guard = UserInitiatedNetworkGuard()
+
+        val result = orchestrator.search(
+            request = OnlineSearchRequest(
+                query = "coke zero",
+                token = guard.issueToken("test_search"),
+                onlineLookupEnabled = true,
+                refreshPolicy = ProviderRefreshPolicy.CACHE_PREFERRED,
+            ),
+        )
+
+        assertEquals(1, result.candidates.size)
+        val selected = result.candidates.single()
+        assertEquals("provider_b", selected.providerKey)
+        assertEquals("nix-coca-cola-zero-sugar", selected.sourceId)
+    }
+
+    @Test
+    fun search_whenTimeout_mapsToFriendlyTimeoutMessage() = runTest {
+        val report = ProviderExecutionReport(
+            requestType = ProviderRequestType.TEXT_SEARCH,
+            sourceFilter = SearchSourceFilter.ONLINE_ONLY,
+            mergedCandidates = emptyList(),
+            providerResults = listOf(
+                ProviderResult(
+                    providerId = "open_food_facts",
+                    capability = ProviderRequestType.TEXT_SEARCH.capability,
+                    status = ProviderStatus.TIMEOUT,
+                    items = emptyList(),
+                    elapsedMs = 101L,
+                    diagnostics = "Provider execution timed out.",
+                ),
+            ),
+            overallElapsedMs = 110L,
+        )
+        val providers = listOf(
+            executionProvider(key = "open_food_facts", displayName = "Open Food Facts", priority = 10),
+        )
+        val orchestrator = ProviderExecutorOnlineSearchOrchestrator(
+            providerExecutor = FakeProviderExecutor(report),
+            providerRegistry = FakeFoodCatalogProviderRegistry(providers),
+        )
+        val guard = UserInitiatedNetworkGuard()
+
+        val result = orchestrator.search(
+            request = OnlineSearchRequest(
+                query = "oats",
+                token = guard.issueToken("test_search"),
+                onlineLookupEnabled = true,
+                refreshPolicy = ProviderRefreshPolicy.CACHE_PREFERRED,
+            ),
+        )
+
+        assertEquals(OnlineProviderRunStatus.FAILED, result.providerRuns.single().status)
+        assertEquals("Timed out (check connection).", result.providerRuns.single().message)
+    }
+
+    @Test
+    fun search_whenNetworkUnavailable_mapsToNoConnectionMessage() = runTest {
+        val report = ProviderExecutionReport(
+            requestType = ProviderRequestType.TEXT_SEARCH,
+            sourceFilter = SearchSourceFilter.ONLINE_ONLY,
+            mergedCandidates = emptyList(),
+            providerResults = listOf(
+                ProviderResult(
+                    providerId = "nutritionix",
+                    capability = ProviderRequestType.TEXT_SEARCH.capability,
+                    status = ProviderStatus.NETWORK_UNAVAILABLE,
+                    items = emptyList(),
+                    elapsedMs = 55L,
+                    diagnostics = "Network unavailable for provider request.",
+                ),
+            ),
+            overallElapsedMs = 60L,
+        )
+        val providers = listOf(
+            executionProvider(key = "nutritionix", displayName = "Nutritionix", priority = 10),
+        )
+        val orchestrator = ProviderExecutorOnlineSearchOrchestrator(
+            providerExecutor = FakeProviderExecutor(report),
+            providerRegistry = FakeFoodCatalogProviderRegistry(providers),
+        )
+        val guard = UserInitiatedNetworkGuard()
+
+        val result = orchestrator.search(
+            request = OnlineSearchRequest(
+                query = "oats",
+                token = guard.issueToken("test_search"),
+                onlineLookupEnabled = true,
+                refreshPolicy = ProviderRefreshPolicy.CACHE_PREFERRED,
+            ),
+        )
+
+        assertEquals(OnlineProviderRunStatus.FAILED, result.providerRuns.single().status)
+        assertEquals("No connection.", result.providerRuns.single().message)
+    }
+
+    @Test
+    fun search_whenHttpOrParsingError_mapsToServiceErrorMessage() = runTest {
+        val report = ProviderExecutionReport(
+            requestType = ProviderRequestType.TEXT_SEARCH,
+            sourceFilter = SearchSourceFilter.ONLINE_ONLY,
+            mergedCandidates = emptyList(),
+            providerResults = listOf(
+                ProviderResult(
+                    providerId = "provider_http",
+                    capability = ProviderRequestType.TEXT_SEARCH.capability,
+                    status = ProviderStatus.HTTP_ERROR,
+                    items = emptyList(),
+                    elapsedMs = 30L,
+                ),
+                ProviderResult(
+                    providerId = "provider_parse",
+                    capability = ProviderRequestType.TEXT_SEARCH.capability,
+                    status = ProviderStatus.PARSING_ERROR,
+                    items = emptyList(),
+                    elapsedMs = 31L,
+                ),
+            ),
+            overallElapsedMs = 40L,
+        )
+        val providers = listOf(
+            executionProvider(key = "provider_http", displayName = "Provider HTTP", priority = 10),
+            executionProvider(key = "provider_parse", displayName = "Provider Parse", priority = 20),
+        )
+        val orchestrator = ProviderExecutorOnlineSearchOrchestrator(
+            providerExecutor = FakeProviderExecutor(report),
+            providerRegistry = FakeFoodCatalogProviderRegistry(providers),
+        )
+        val guard = UserInitiatedNetworkGuard()
+
+        val result = orchestrator.search(
+            request = OnlineSearchRequest(
+                query = "oats",
+                token = guard.issueToken("test_search"),
+                onlineLookupEnabled = true,
+                refreshPolicy = ProviderRefreshPolicy.CACHE_PREFERRED,
+            ),
+        )
+
+        assertEquals("Service error.", result.providerRuns[0].message)
+        assertEquals("Service error.", result.providerRuns[1].message)
+    }
 }
 
 private class FakeProviderExecutor(

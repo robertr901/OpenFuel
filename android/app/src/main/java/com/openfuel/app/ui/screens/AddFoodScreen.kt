@@ -386,9 +386,6 @@ fun AddFoodScreen(
                                 ProviderStatus.GUARD_REJECTED,
                                 ProviderStatus.RATE_LIMITED,
                             )
-                            val failedProviders = uiState.onlineProviderResults.filter { result ->
-                                result.status in failedStatuses
-                            }
                             if (BuildConfig.DEBUG && uiState.onlineProviderResults.isNotEmpty()) {
                                 item {
                                     OFCard(
@@ -453,14 +450,6 @@ fun AddFoodScreen(
                                             }
                                         }
                                     }
-                                }
-                            } else if (failedProviders.isNotEmpty() && uiState.onlineErrorMessage == null) {
-                                item {
-                                    Text(
-                                        text = "Some providers were unavailable. Showing available results.",
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = MaterialTheme.colorScheme.error,
-                                    )
                                 }
                             }
                         }

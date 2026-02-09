@@ -3,9 +3,14 @@ package com.openfuel.app.data.remote
 import com.google.gson.annotations.SerializedName
 import com.openfuel.app.domain.model.RemoteFoodCandidate
 import com.openfuel.app.domain.model.RemoteFoodSource
+import java.io.IOException
+import java.net.SocketTimeoutException
 import okhttp3.OkHttpClient
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.delay
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
+import retrofit2.HttpException
 import retrofit2.http.GET
 import retrofit2.http.Path
 import retrofit2.http.Query
@@ -13,6 +18,7 @@ import java.util.Locale
 
 private const val OPEN_FOOD_FACTS_SEARCH_FIELDS =
     "code,_id,id,product_name,product_name_en,generic_name,brands,serving_size,nutriments"
+private const val OPEN_FOOD_FACTS_RETRY_BACKOFF_MS = 200L
 
 interface RemoteFoodDataSource {
     suspend fun searchByText(
@@ -40,10 +46,12 @@ class OpenFoodFactsRemoteFoodDataSource internal constructor(
         if (trimmedQuery.isBlank()) {
             return emptyList()
         }
-        return api.searchFoods(
-            query = trimmedQuery,
-            pageSize = pageSize,
-        ).products.orEmpty()
+        return executeGetWithSingleRetry {
+            api.searchFoods(
+                query = trimmedQuery,
+                pageSize = pageSize,
+            )
+        }.products.orEmpty()
             .mapNotNull { product -> product.toRemoteFoodCandidate() }
             .distinctBy { candidate ->
                 candidate.barcode ?: "${candidate.source}:${candidate.sourceId}"
@@ -59,11 +67,27 @@ class OpenFoodFactsRemoteFoodDataSource internal constructor(
         if (trimmedBarcode.isBlank()) {
             return null
         }
-        val response = api.lookupByBarcode(trimmedBarcode)
+        val response = executeGetWithSingleRetry {
+            api.lookupByBarcode(trimmedBarcode)
+        }
         if (response.status != 1) {
             return null
         }
         return response.product?.toRemoteFoodCandidate()
+    }
+
+    private suspend fun <T> executeGetWithSingleRetry(
+        block: suspend () -> T,
+    ): T {
+        return try {
+            block()
+        } catch (throwable: Throwable) {
+            if (throwable is CancellationException || !throwable.isRetryableGetFailure()) {
+                throw throwable
+            }
+            delay(OPEN_FOOD_FACTS_RETRY_BACKOFF_MS)
+            block()
+        }
     }
 
     companion object {
@@ -86,6 +110,24 @@ class OpenFoodFactsRemoteFoodDataSource internal constructor(
             )
         }
     }
+}
+
+private fun Throwable.isRetryableGetFailure(): Boolean {
+    val root = rootCause()
+    return when (root) {
+        is SocketTimeoutException -> true
+        is IOException -> true
+        is HttpException -> root.code() in setOf(408, 425, 429, 500, 502, 503, 504)
+        else -> false
+    }
+}
+
+private fun Throwable.rootCause(): Throwable {
+    var current: Throwable = this
+    while (current.cause != null && current.cause !== current) {
+        current = current.cause!!
+    }
+    return current
 }
 
 internal interface OpenFoodFactsApi {

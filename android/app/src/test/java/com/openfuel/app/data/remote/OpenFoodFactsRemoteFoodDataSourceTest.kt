@@ -1,6 +1,7 @@
 package com.openfuel.app.data.remote
 
 import com.google.gson.Gson
+import java.net.SocketTimeoutException
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
@@ -221,12 +222,83 @@ class OpenFoodFactsRemoteFoodDataSourceTest {
         assertNull(result.carbsGPer100g)
         assertNull(result.fatGPer100g)
     }
+
+    @Test
+    fun searchByText_retriesOnceOnTimeoutAndReturnsResults() = runTest {
+        val response = Gson().fromJson(
+            """
+            {
+              "products": [
+                {
+                  "id": "retry-case-1",
+                  "product_name": "Retry Oats"
+                }
+              ]
+            }
+            """.trimIndent(),
+            OpenFoodFactsSearchResponse::class.java,
+        )
+        val guard = UserInitiatedNetworkGuard()
+        val fakeApi = FakeOpenFoodFactsApi(
+            searchResponse = response,
+            searchFailures = mutableListOf(SocketTimeoutException("timeout")),
+        )
+        val dataSource = OpenFoodFactsRemoteFoodDataSource(
+            api = fakeApi,
+            userInitiatedNetworkGuard = guard,
+            pageSize = 10,
+        )
+
+        val results = dataSource.searchByText(
+            query = "retry oats",
+            token = guard.issueToken("test_search"),
+        )
+
+        assertEquals(2, fakeApi.searchCallCount)
+        assertEquals(1, results.size)
+        assertEquals("retry-case-1", results.single().sourceId)
+    }
+
+    @Test
+    fun searchByText_whenRetryAlsoFails_throwsAfterSingleRetry() = runTest {
+        val response = Gson().fromJson(
+            """{ "products": [] }""",
+            OpenFoodFactsSearchResponse::class.java,
+        )
+        val guard = UserInitiatedNetworkGuard()
+        val fakeApi = FakeOpenFoodFactsApi(
+            searchResponse = response,
+            searchFailures = mutableListOf(
+                SocketTimeoutException("first timeout"),
+                SocketTimeoutException("second timeout"),
+            ),
+        )
+        val dataSource = OpenFoodFactsRemoteFoodDataSource(
+            api = fakeApi,
+            userInitiatedNetworkGuard = guard,
+            pageSize = 10,
+        )
+
+        val result = runCatching {
+            dataSource.searchByText(
+                query = "retry fail",
+                token = guard.issueToken("test_search"),
+            )
+        }
+
+        assertTrue(result.isFailure)
+        assertTrue(result.exceptionOrNull() is SocketTimeoutException)
+        assertEquals(2, fakeApi.searchCallCount)
+    }
 }
 
 private class FakeOpenFoodFactsApi(
     private val searchResponse: OpenFoodFactsSearchResponse,
+    private val searchFailures: MutableList<Throwable> = mutableListOf(),
 ) : OpenFoodFactsApi {
     var lastSearchFields: String = ""
+        private set
+    var searchCallCount: Int = 0
         private set
 
     override suspend fun searchFoods(
@@ -237,6 +309,10 @@ private class FakeOpenFoodFactsApi(
         fields: String,
         pageSize: Int,
     ): OpenFoodFactsSearchResponse {
+        searchCallCount += 1
+        if (searchFailures.isNotEmpty()) {
+            throw searchFailures.removeAt(0)
+        }
         lastSearchFields = fields
         return searchResponse
     }

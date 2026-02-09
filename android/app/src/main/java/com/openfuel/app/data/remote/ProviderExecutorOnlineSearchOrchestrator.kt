@@ -189,6 +189,7 @@ private fun candidateRichnessScore(candidate: RemoteFoodCandidate): Int {
     if (candidate.proteinGPer100g != null) score += 1
     if (candidate.carbsGPer100g != null) score += 1
     if (candidate.fatGPer100g != null) score += 1
+    if (!candidate.brand.isNullOrBlank()) score += 1
     if (!candidate.servingSize.isNullOrBlank()) score += 1
     if (!candidate.barcode.isNullOrBlank()) score += 1
     return score
@@ -205,19 +206,32 @@ private fun dedupeIdentityKey(candidate: RemoteFoodCandidate): CandidateIdentity
     val normalizedName = normalizeProviderText(candidate.name)
     if (normalizedName.isNotBlank()) {
         val normalizedBrand = normalizeProviderText(candidate.brand.orEmpty())
-        if (normalizedBrand.isNotBlank()) {
+        val normalizedServing = normalizeProviderText(candidate.servingSize.orEmpty())
+        if (normalizedBrand.isNotBlank() && normalizedServing.isNotBlank()) {
             return CandidateIdentityKey(
                 rank = 1,
+                identity = "name:$normalizedName|brand:$normalizedBrand|serving:$normalizedServing",
+            )
+        }
+        if (normalizedBrand.isNotBlank()) {
+            return CandidateIdentityKey(
+                rank = 2,
                 identity = "name:$normalizedName|brand:$normalizedBrand",
             )
         }
+        if (normalizedServing.isNotBlank()) {
+            return CandidateIdentityKey(
+                rank = 2,
+                identity = "name:$normalizedName|serving:$normalizedServing",
+            )
+        }
         return CandidateIdentityKey(
-            rank = 1,
+            rank = 3,
             identity = "name:$normalizedName",
         )
     }
     return CandidateIdentityKey(
-        rank = 2,
+        rank = 4,
         identity = "fuzzy:${buildProviderDedupeKey(candidate)}",
     )
 }
@@ -299,11 +313,11 @@ private fun ProviderResult.toOnlineRunMessage(
         OnlineProviderRunStatus.SKIPPED_MISSING_CONFIG -> diagnostics ?: "Needs setup."
         OnlineProviderRunStatus.SKIPPED_DISABLED -> diagnostics ?: "Disabled."
         OnlineProviderRunStatus.FAILED -> when (this.status) {
-            ProviderStatus.NETWORK_UNAVAILABLE -> "Network unavailable."
+            ProviderStatus.NETWORK_UNAVAILABLE -> "No connection."
             ProviderStatus.HTTP_ERROR -> "Service error."
-            ProviderStatus.PARSING_ERROR -> "Response parsing failed."
+            ProviderStatus.PARSING_ERROR -> "Service error."
             ProviderStatus.RATE_LIMITED -> "Rate limited."
-            ProviderStatus.TIMEOUT -> "Request timed out."
+            ProviderStatus.TIMEOUT -> "Timed out (check connection)."
             ProviderStatus.GUARD_REJECTED -> "Network guard rejected request."
             ProviderStatus.ERROR -> "Provider failed."
             else -> diagnostics ?: "Provider failed."

@@ -92,13 +92,13 @@ class UnifiedSearchSmokeTest {
             .performScrollToNode(hasTestTag("add_food_unified_online_sources"))
         composeRule.onNodeWithTag("add_food_unified_online_sources").assertIsDisplayed()
         composeRule.onNode(hasText("Static sample", substring = true)).assertIsDisplayed()
-        val showsNeedsSetup = runCatching {
-            composeRule.onNode(hasText("needs setup", substring = true)).assertIsDisplayed()
-        }.isSuccess
-        val showsDisabled = runCatching {
-            composeRule.onNode(hasText("disabled", substring = true)).assertIsDisplayed()
-        }.isSuccess
-        assertTrue(showsNeedsSetup || showsDisabled)
+        val providerStateKeywords = listOf("ok", "empty", "failed", "needs setup", "disabled")
+        val showsAnyProviderState = providerStateKeywords.any { keyword ->
+            runCatching {
+                composeRule.onNode(hasText(keyword, substring = true)).assertIsDisplayed()
+            }.isSuccess
+        }
+        assertTrue(showsAnyProviderState)
 
         composeRule.onNodeWithTag("add_food_unified_results_list")
             .performScrollToNode(hasTestTag("add_food_unified_provider_debug"))

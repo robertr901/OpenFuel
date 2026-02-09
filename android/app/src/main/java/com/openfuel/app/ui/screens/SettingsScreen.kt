@@ -47,6 +47,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.core.content.FileProvider
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.openfuel.app.BuildConfig
+import com.openfuel.app.domain.service.FoodCatalogProviderDescriptor
 import com.openfuel.app.domain.model.DailyGoal
 import com.openfuel.app.domain.util.GoalValidation
 import com.openfuel.app.export.ExportFormat
@@ -187,6 +188,29 @@ fun SettingsScreen(
                         )
                     },
                 )
+            }
+            val onlineProviderSetup = uiState.providerDiagnostics.filterNot { provider ->
+                provider.key == "static_sample" || provider.key.endsWith("_stub")
+            }
+            if (onlineProviderSetup.isNotEmpty()) {
+                OFCard(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .testTag("settings_online_provider_setup_section"),
+                ) {
+                    OFSectionHeader(
+                        title = "Online provider setup",
+                        subtitle = "Local status only. Secrets are never displayed.",
+                    )
+                    onlineProviderSetup.forEach { provider ->
+                        val setupState = providerSetupState(provider)
+                        OFRow(
+                            title = provider.displayName,
+                            subtitle = "$setupState · ${provider.statusReason}",
+                            testTag = "settings_online_provider_setup_row_${provider.key}",
+                        )
+                    }
+                }
             }
             if (uiState.showDebugProToggle) {
                 OFCard(modifier = Modifier.fillMaxWidth()) {
@@ -591,4 +615,20 @@ private fun parseOptionalDouble(raw: String): Double? {
 
 private fun valueToInput(value: Double): String {
     return if (value <= 0.0) "" else formatMacro(value)
+}
+
+private fun providerSetupState(provider: FoodCatalogProviderDescriptor): String {
+    if (provider.enabled) {
+        return "Configured"
+    }
+    val reason = provider.statusReason.lowercase(Locale.ROOT)
+    return if (
+        reason.contains("api key missing") ||
+        reason.contains("credentials missing") ||
+        reason.contains("needs setup")
+    ) {
+        "Needs setup"
+    } else {
+        "Disabled"
+    }
 }

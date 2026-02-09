@@ -13,6 +13,7 @@ Status: bootstrapping.
 - 2026-02-09: Completed Phase 16 unified search + first real USDA provider integration (explicit-action online only, deterministic offline-friendly tests).
 - 2026-02-09: Completed Phase 17 multi-provider online search orchestration (deterministic provider runs, per-provider status disclosure, isolated provider failures, explicit-action online only).
 - 2026-02-09: Completed Phase 18 provider integration hardening (Nutritionix real integration, deterministic multi-provider merge improvements, explicit-action online safeguards unchanged).
+- 2026-02-09: Completed Phase 19 online provider reliability hardening (Open Food Facts timeout/retry resilience, clearer provider setup/status UX, deterministic merge refinements, explicit-action networking unchanged).
 
 ## Deterministic Android Verification
 Run from repo root:
@@ -50,6 +51,8 @@ cd android
 
 If `USDA_API_KEY` or Nutritionix credentials are missing, the app stays stable and shows a clear provider `needs setup` message in `Online sources`. No keys are committed to the repository.
 
+Settings now includes an `Online provider setup` section that shows local status for each provider (`Configured`, `Needs setup`, `Disabled`) without revealing secret values.
+
 ## Online privacy boundary (explicit action only)
 - Data leaves the device only when the user explicitly taps online actions:
   - `Search online`
@@ -57,6 +60,12 @@ If `USDA_API_KEY` or Nutritionix credentials are missing, the app stays stable a
   - barcode scan lookup action
 - Add Food shows an `Online sources` summary for each explicit run so users can see which providers succeeded, failed, were disabled, or need setup.
 - There are no background provider refresh jobs, no telemetry, and no analytics SDKs.
+
+## Open Food Facts timeout troubleshooting
+- Ensure the request was explicitly triggered with `Search online` or `Refresh online`.
+- Check device connectivity (airplane mode / captive portal / DNS reachability).
+- If Open Food Facts is slow, use `Refresh online` to retry explicitly.
+- Use `Online sources` and provider diagnostics to verify whether OFF returned `Timed out (check connection).`, `No connection.`, or `Service error.`.
 
 ## Pro entitlements and advanced export
 - Pro unlock is backed by Play Billing in release builds through the entitlement service seam.

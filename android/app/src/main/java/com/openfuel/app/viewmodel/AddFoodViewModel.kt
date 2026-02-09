@@ -245,7 +245,6 @@ class AddFoodViewModel(
                 val results = result.candidates
                 val error = deriveOnlineErrorMessage(
                     providerRuns = result.providerRuns,
-                    hasResults = results.isNotEmpty(),
                 )
                 unifiedSearchState.update { current ->
                     current.copy(
@@ -433,26 +432,34 @@ private data class UnifiedSearchComposedState(
 
 private fun deriveOnlineErrorMessage(
     providerRuns: List<OnlineProviderRun>,
-    hasResults: Boolean,
 ): String? {
     if (providerRuns.isEmpty()) {
         return null
     }
-    val missingConfig = providerRuns.firstOrNull { run ->
+    val missingConfigRuns = providerRuns.filter { run ->
         run.status == OnlineProviderRunStatus.SKIPPED_MISSING_CONFIG
     }
-    if (missingConfig != null && !hasResults) {
-        return missingConfig.message ?: "Provider setup is required before searching online."
+    val failedRuns = providerRuns.filter { run ->
+        run.status == OnlineProviderRunStatus.FAILED
     }
-    val failed = providerRuns.filter { run -> run.status == OnlineProviderRunStatus.FAILED }
-    if (failed.isEmpty()) {
-        return null
+
+    if (missingConfigRuns.isNotEmpty() && failedRuns.isEmpty()) {
+        return if (missingConfigRuns.size == 1) {
+            "Source needs setup. See statuses below."
+        } else {
+            "Some sources need setup. See statuses below."
+        }
     }
-    return if (hasResults) {
-        "Some providers were unavailable. Showing partial results."
-    } else {
-        "Online search failed. Check connection and try again."
+
+    if (failedRuns.isNotEmpty()) {
+        return if (failedRuns.size == 1 && missingConfigRuns.isEmpty()) {
+            failedRuns.single().message ?: "A source failed. See statuses below."
+        } else {
+            "Some sources failed. See statuses below."
+        }
     }
+
+    return null
 }
 
 private object EmptyFoodCatalogProviderRegistry : FoodCatalogProviderRegistry {

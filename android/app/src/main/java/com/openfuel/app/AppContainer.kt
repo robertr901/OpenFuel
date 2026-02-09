@@ -50,6 +50,7 @@ import com.openfuel.app.domain.service.FoodCatalogProviderDescriptor
 import com.openfuel.app.domain.service.FoodCatalogProviderRegistry
 import com.openfuel.app.domain.service.InMemoryProviderExecutionDiagnosticsStore
 import com.openfuel.app.domain.service.ProviderExecutor
+import com.openfuel.app.domain.service.ProviderExecutionPolicy
 import com.openfuel.app.export.ExportManager
 import androidx.activity.ComponentActivity
 import okhttp3.OkHttpClient
@@ -65,8 +66,10 @@ class AppContainer(
     private val userInitiatedNetworkGuard = UserInitiatedNetworkGuard()
     private val currentActivityRef = java.util.concurrent.atomic.AtomicReference<WeakReference<ComponentActivity>?>(null)
     private val onlineHttpClient: OkHttpClient = OkHttpClient.Builder()
-        .connectTimeout(5, TimeUnit.SECONDS)
-        .readTimeout(10, TimeUnit.SECONDS)
+        .connectTimeout(10, TimeUnit.SECONDS)
+        .readTimeout(12, TimeUnit.SECONDS)
+        .writeTimeout(12, TimeUnit.SECONDS)
+        .callTimeout(15, TimeUnit.SECONDS)
         .retryOnConnectionFailure(false)
         .build()
 
@@ -226,6 +229,10 @@ class AppContainer(
         },
         cache = RoomProviderResultCache(database.providerSearchCacheDao()),
         diagnosticsStore = providerExecutionDiagnosticsStore,
+        policy = ProviderExecutionPolicy(
+            overallTimeout = java.time.Duration.ofSeconds(12),
+            perProviderTimeout = java.time.Duration.ofSeconds(6),
+        ),
     )
     val onlineSearchOrchestrator: OnlineSearchOrchestrator = ProviderExecutorOnlineSearchOrchestrator(
         providerExecutor = providerExecutor,

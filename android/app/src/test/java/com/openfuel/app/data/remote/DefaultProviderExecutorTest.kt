@@ -186,6 +186,37 @@ class DefaultProviderExecutorTest {
     }
 
     @Test
+    fun execute_providerDisabledBySettings_skipsExecutionAndReturnsDisabledStatus() = runTest {
+        val provider = FakeExecutorFoodCatalogProvider(
+            searchResults = listOf(
+                candidate(sourceId = "x", barcode = "999", name = "Hidden", brand = null, servingSize = null),
+            ),
+        )
+        val executor = DefaultProviderExecutor(
+            providerSource = { _ ->
+                listOf(
+                    provider(
+                        key = "provider_a",
+                        priority = 10,
+                        enabled = false,
+                        provider = provider,
+                    ),
+                )
+            },
+        )
+
+        val report = executor.execute(
+            request = textRequest(
+                query = "hidden",
+                token = guard.issueToken("search_online"),
+            ),
+        )
+
+        assertEquals(ProviderStatus.DISABLED_BY_SETTINGS, report.providerResults.single().status)
+        assertEquals(0, provider.searchCalls)
+    }
+
+    @Test
     fun execute_missingTokenMarksGuardRejectedAndSkipsExecution() = runTest {
         val provider = FakeExecutorFoodCatalogProvider()
         val executor = DefaultProviderExecutor(

@@ -10,7 +10,9 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material3.AlertDialog
@@ -47,9 +49,12 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.openfuel.app.BuildConfig
 import com.openfuel.app.domain.model.DailyGoal
 import com.openfuel.app.domain.util.GoalValidation
+import com.openfuel.app.export.ExportFormat
+import com.openfuel.app.ui.components.ProPaywallDialog
 import com.openfuel.app.ui.theme.Dimens
 import com.openfuel.app.ui.util.formatMacro
 import com.openfuel.app.ui.util.parseDecimalInput
+import com.openfuel.app.viewmodel.AdvancedExportState
 import com.openfuel.app.viewmodel.ExportState
 import com.openfuel.app.viewmodel.GoalSaveResult
 import com.openfuel.app.viewmodel.SettingsViewModel
@@ -85,6 +90,38 @@ fun SettingsScreen(
         } else if (exportState is ExportState.Error) {
             snackbarHostState.showSnackbar(exportState.message)
         }
+    }
+
+    LaunchedEffect(uiState.advancedExportState) {
+        val advancedExportState = uiState.advancedExportState
+        if (advancedExportState is AdvancedExportState.Success) {
+            val uri = FileProvider.getUriForFile(
+                context,
+                "${context.packageName}.fileprovider",
+                advancedExportState.file,
+            )
+            val mimeType = if (advancedExportState.file.extension.equals("csv", ignoreCase = true)) {
+                "text/csv"
+            } else {
+                "application/json"
+            }
+            val intent = Intent(Intent.ACTION_SEND).apply {
+                type = mimeType
+                putExtra(Intent.EXTRA_STREAM, uri)
+                clipData = ClipData.newUri(context.contentResolver, "OpenFuel export", uri)
+                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            }
+            context.startActivity(Intent.createChooser(intent, "Share export"))
+            viewModel.consumeAdvancedExport()
+        } else if (advancedExportState is AdvancedExportState.Error) {
+            snackbarHostState.showSnackbar(advancedExportState.message)
+        }
+    }
+
+    LaunchedEffect(uiState.entitlementActionMessage) {
+        val message = uiState.entitlementActionMessage ?: return@LaunchedEffect
+        snackbarHostState.showSnackbar(message)
+        viewModel.consumeEntitlementMessage()
     }
 
     if (showGoalsDialog) {
@@ -125,7 +162,8 @@ fun SettingsScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
-                .padding(Dimens.m),
+                .padding(Dimens.m)
+                .verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.spacedBy(Dimens.m),
         ) {
             Text(
@@ -315,19 +353,125 @@ fun SettingsScreen(
             )
             if (uiState.isPro) {
                 Text(
-                    text = "Advanced export is enabled for this build and is coming in a follow-up phase.",
+                    text = "Advanced export is enabled for your account.",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
+                Text(
+                    text = "Review before sharing. Redacted mode removes brand fields from exported foods.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(Dimens.s),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    TextButton(
+                        modifier = Modifier.testTag("settings_advanced_export_format_json"),
+                        onClick = { viewModel.setAdvancedExportFormat(ExportFormat.JSON) },
+                    ) {
+                        val selected = uiState.advancedExportFormat == ExportFormat.JSON
+                        Text(if (selected) "JSON ✓" else "JSON")
+                    }
+                    TextButton(
+                        modifier = Modifier.testTag("settings_advanced_export_format_csv"),
+                        onClick = { viewModel.setAdvancedExportFormat(ExportFormat.CSV) },
+                    ) {
+                        val selected = uiState.advancedExportFormat == ExportFormat.CSV
+                        Text(if (selected) "CSV ✓" else "CSV")
+                    }
+                }
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Column {
+                        Text(
+                            text = "Redacted export",
+                            style = MaterialTheme.typography.bodyLarge,
+                        )
+                        Text(
+                            text = "Hide brand names in exported files.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                    Switch(
+                        modifier = Modifier.testTag("settings_advanced_export_redacted_toggle"),
+                        checked = uiState.advancedExportRedacted,
+                        onCheckedChange = viewModel::setAdvancedExportRedacted,
+                    )
+                }
+                Text(
+                    text = "Preview: ${uiState.advancedExportPreview.foodCount} foods, " +
+                        "${uiState.advancedExportPreview.mealEntryCount} entries, " +
+                        "${uiState.advancedExportPreview.dailyGoalCount} goals, " +
+                        "${uiState.advancedExportPreview.redactedBrandCount} brand field(s) redacted.",
+                    modifier = Modifier.testTag("settings_advanced_export_preview"),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                val advancedState = uiState.advancedExportState
+                when (advancedState) {
+                    is AdvancedExportState.Exporting -> {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.Center,
+                        ) {
+                            CircularProgressIndicator()
+                        }
+                    }
+                    is AdvancedExportState.Error -> {
+                        Text(
+                            text = advancedState.message,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.error,
+                        )
+                        Button(
+                            modifier = Modifier.testTag("settings_advanced_export_button"),
+                            onClick = {
+                                viewModel.exportAdvancedData(context.cacheDir, BuildConfig.VERSION_NAME)
+                            },
+                        ) {
+                            Text("Retry advanced export")
+                        }
+                    }
+                    else -> {
+                        Button(
+                            modifier = Modifier.testTag("settings_advanced_export_button"),
+                            onClick = {
+                                viewModel.exportAdvancedData(context.cacheDir, BuildConfig.VERSION_NAME)
+                            },
+                        ) {
+                            Text("Export advanced file")
+                        }
+                    }
+                }
             } else {
                 Text(
                     text = "Upgrade to Pro to unlock advanced export formats.",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
+                Button(
+                    modifier = Modifier.testTag("settings_open_paywall_button"),
+                    onClick = viewModel::openPaywall,
+                ) {
+                    Text("See Pro options")
+                }
             }
             Spacer(modifier = Modifier.height(Dimens.xl))
         }
+
+        ProPaywallDialog(
+            show = uiState.showPaywall,
+            isActionInProgress = uiState.isEntitlementActionInProgress,
+            message = uiState.entitlementActionMessage,
+            onDismiss = viewModel::dismissPaywall,
+            onPurchaseClick = viewModel::purchasePro,
+            onRestoreClick = viewModel::restorePurchases,
+        )
     }
 }
 

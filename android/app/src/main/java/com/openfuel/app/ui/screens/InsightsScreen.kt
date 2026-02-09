@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
@@ -17,6 +18,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.openfuel.app.domain.model.InsightWindow
+import com.openfuel.app.ui.components.ProPaywallDialog
 import com.openfuel.app.ui.theme.Dimens
 import com.openfuel.app.ui.util.formatCalories
 import com.openfuel.app.ui.util.formatMacro
@@ -64,28 +66,42 @@ fun InsightsScreen(
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
+                        Button(
+                            modifier = Modifier.testTag("insights_open_paywall_button"),
+                            onClick = viewModel::openPaywall,
+                        ) {
+                            Text("See Pro options")
+                        }
                     }
                 }
-                return@Column
-            }
-
-            Text(
-                text = "Consistency score: ${uiState.snapshot.consistencyScore}/100",
-                style = MaterialTheme.typography.titleLarge,
-            )
-            if (uiState.snapshot.last30Days.loggedDays == 0) {
-                Card(modifier = Modifier.fillMaxWidth()) {
-                    Text(
-                        text = "No logged days yet. Start logging meals to unlock trends.",
-                        modifier = Modifier.padding(Dimens.m),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
+            } else {
+                Text(
+                    text = "Consistency score: ${uiState.snapshot.consistencyScore}/100",
+                    style = MaterialTheme.typography.titleLarge,
+                )
+                if (uiState.snapshot.last30Days.loggedDays == 0) {
+                    Card(modifier = Modifier.fillMaxWidth()) {
+                        Text(
+                            text = "No logged days yet. Start logging meals to unlock trends.",
+                            modifier = Modifier.padding(Dimens.m),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
                 }
+                InsightWindowCard(window = uiState.snapshot.last7Days)
+                InsightWindowCard(window = uiState.snapshot.last30Days)
             }
-            InsightWindowCard(window = uiState.snapshot.last7Days)
-            InsightWindowCard(window = uiState.snapshot.last30Days)
         }
+
+        ProPaywallDialog(
+            show = uiState.showPaywall,
+            isActionInProgress = uiState.isEntitlementActionInProgress,
+            message = uiState.entitlementActionMessage,
+            onDismiss = viewModel::dismissPaywall,
+            onPurchaseClick = viewModel::purchasePro,
+            onRestoreClick = viewModel::restorePurchases,
+        )
     }
 }
 

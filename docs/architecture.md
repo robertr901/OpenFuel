@@ -165,6 +165,26 @@ domain (pure logic, calculations, unit helpers)
 - Imported online foods are persisted locally and then behave like native local foods.
 - Export uses local-only FileProvider sharing.
 
+## Entitlements and paywall architecture (Phase 14)
+- Entitlement seam:
+  - `EntitlementService` remains the domain boundary for entitlement state and actions.
+  - Release wiring uses Play Billing-backed implementation; debug wiring stays deterministic/test-friendly.
+- Refresh strategy:
+  - entitlement refresh runs on app foreground entry (`MainActivity.onStart`) and explicit user action (`Restore purchases`).
+  - no background polling/job scheduling for billing state.
+- Paywall UX:
+  - surfaced from Pro-gated experiences (Insights and Advanced Export).
+  - includes explicit `Upgrade` and `Restore` actions plus deterministic loading/message states.
+  - close/back remains user-controlled and deterministic.
+
+## Advanced export (Pro anchor)
+- Export remains explicit user action only from Settings.
+- Supported formats:
+  - JSON (versioned payload path)
+  - CSV (dietician/coach-friendly tabular export)
+- Optional redaction mode supports privacy-preserving sharing (for example, redacting brand fields).
+- No automatic upload/transmission; sharing continues through explicit user-initiated file share flow.
+
 ## Resilience
 - Writes are transactional where needed (Room).
 - UI state is immutable, derived from stable flows.

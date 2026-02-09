@@ -14,3 +14,6 @@
 - Debug APK assembles successfully.
 - Intelligence golden corpus parser tests pass as part of `./gradlew test`.
 - Instrumentation tests pass on the pinned emulator profile.
+- Deterministic androidTest coverage still validates:
+  - Add Food unified search and quick-add flows without live network dependencies.
+  - Pro-gated paywall lock and restore flows using fake/debug entitlement wiring in tests.

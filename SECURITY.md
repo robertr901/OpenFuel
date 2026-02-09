@@ -5,6 +5,7 @@ OpenFuel is a privacy-first, local-first nutrition tracker.
 ## Security and Privacy Baseline
 - Local-first by default: personal meal logs stay on-device (Room + DataStore).
 - Online lookups are explicit-action only and guarded.
+- Billing actions are explicit-action only from user-visible paywall controls.
 - No telemetry, no ads, no trackers, no crash-reporting SDKs.
 - No secrets should be committed to this repository.
 
@@ -35,6 +36,18 @@ Not declared:
 - `UserInitiatedNetworkGuard` issues and validates short-lived tokens before provider calls.
 - Online lookup setting gates execution; disabled setting returns local-safe UI states and blocks provider calls.
 - Online lookup default is currently `enabled = true` when no stored setting exists (`SettingsRepositoryImpl`), but requests still require explicit user action.
+- Play Billing calls are limited to:
+  - explicit user actions (`Upgrade` and `Restore purchases`) from paywall surfaces
+  - explicit app foreground entitlement refresh (`MainActivity.onStart`)
+- No periodic billing polling/background jobs are used.
+
+## Billing and Paywall Behavior Summary
+- Release entitlement implementation:
+  - `PlayBillingEntitlementService`
+  - `PlayBillingGateway`
+- Billing is isolated behind the `EntitlementService` seam for testability and deterministic fake injection in androidTest.
+- Locked Pro surfaces open a local paywall with explicit user controls; unlock state is reflected through entitlement state updates.
+- Offline/error states degrade gracefully with user-safe messages; no hidden retries or background network loops.
 
 ## Voice Behavior Summary
 - Voice input uses the `VoiceTranscriber` seam and `RecognizerIntentVoiceTranscriber`.
@@ -47,8 +60,9 @@ Not declared:
 - Room database: `android/app/src/main/java/com/openfuel/app/data/db/OpenFuelDatabase.kt`
   - Stores foods, meal entries, daily goals, and provider search cache metadata/payload.
 - DataStore settings: `android/app/src/main/java/com/openfuel/app/data/datastore/SettingsDataStore.kt`
-  - Stores app settings such as online lookup enablement and goals.
-- Export is explicit user action via Settings UI; data is serialized to user-shared JSON.
+  - Stores app settings such as online lookup enablement, goals, and local entitlement state.
+- Export is explicit user action via Settings UI; data is serialized to user-shared JSON/CSV output.
+- Advanced export includes optional redaction controls to reduce sensitive-context sharing risk before user-initiated share.
 
 ## Logging Policy and Current Footprint
 - Policy:

@@ -1,6 +1,7 @@
 package com.openfuel.app.viewmodel
 
 import com.openfuel.app.MainDispatcherRule
+import com.openfuel.app.domain.model.EntitlementActionResult
 import com.openfuel.app.domain.model.EntitlementSource
 import com.openfuel.app.domain.model.EntitlementState
 import com.openfuel.app.domain.model.MealEntry
@@ -62,6 +63,14 @@ private class FakeEntitlementService(
 
     override suspend fun refreshEntitlements() {
         // no-op for tests
+    }
+
+    override suspend fun purchasePro(): EntitlementActionResult {
+        return EntitlementActionResult.Cancelled
+    }
+
+    override suspend fun restorePurchases(): EntitlementActionResult {
+        return EntitlementActionResult.Cancelled
     }
 
     override suspend fun setDebugProOverride(enabled: Boolean) {

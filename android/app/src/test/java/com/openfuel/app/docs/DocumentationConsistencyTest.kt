@@ -54,6 +54,25 @@ class DocumentationConsistencyTest {
         )
     }
 
+    @Test
+    fun deterministicInstrumentationGate_isDocumentedInCoreDocs() {
+        val readme = readRepoFile("README.md")
+        val verificationDoc = readRepoFile("docs/verification.md")
+
+        assertTrue(
+            "README.md must include connectedDebugAndroidTest in the deterministic verification gate.",
+            readme.contains("./gradlew :app:connectedDebugAndroidTest"),
+        )
+        assertTrue(
+            "docs/verification.md must include connectedDebugAndroidTest as a release gate.",
+            verificationDoc.contains("./gradlew :app:connectedDebugAndroidTest"),
+        )
+        assertTrue(
+            "README.md should describe deterministic runner behavior for instrumentation tests.",
+            readme.contains("OpenFuelAndroidTestRunner"),
+        )
+    }
+
     private fun readRepoFile(relativePath: String): String {
         val bytes = Files.readAllBytes(repoRoot.resolve(relativePath))
         return bytes.toString(Charsets.UTF_8)

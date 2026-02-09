@@ -84,6 +84,63 @@ class ProviderExecutorOnlineSearchOrchestratorTest {
     }
 
     @Test
+    fun search_whenOneProviderReturnsResultsAndAnotherReturnsEmpty_keepsSuccessfulResultsAndStatuses() = runTest {
+        val candidate = remoteCandidate(sourceId = "oats-1", name = "Rolled Oats")
+        val report = ProviderExecutionReport(
+            requestType = ProviderRequestType.TEXT_SEARCH,
+            sourceFilter = SearchSourceFilter.ONLINE_ONLY,
+            mergedCandidates = listOf(
+                ProviderMergedCandidate(
+                    providerId = "provider_a",
+                    candidate = candidate,
+                    dedupeKey = "oats-1",
+                ),
+            ),
+            providerResults = listOf(
+                ProviderResult(
+                    providerId = "provider_a",
+                    capability = ProviderRequestType.TEXT_SEARCH.capability,
+                    status = ProviderStatus.AVAILABLE,
+                    items = listOf(candidate),
+                    elapsedMs = 10L,
+                ),
+                ProviderResult(
+                    providerId = "provider_b",
+                    capability = ProviderRequestType.TEXT_SEARCH.capability,
+                    status = ProviderStatus.EMPTY,
+                    items = emptyList(),
+                    elapsedMs = 8L,
+                ),
+            ),
+            overallElapsedMs = 22L,
+        )
+        val providers = listOf(
+            executionProvider(key = "provider_a", displayName = "Provider A", priority = 10),
+            executionProvider(key = "provider_b", displayName = "Provider B", priority = 20),
+        )
+        val orchestrator = ProviderExecutorOnlineSearchOrchestrator(
+            providerExecutor = FakeProviderExecutor(report),
+            providerRegistry = FakeFoodCatalogProviderRegistry(providers),
+        )
+        val guard = UserInitiatedNetworkGuard()
+
+        val result = orchestrator.search(
+            request = OnlineSearchRequest(
+                query = "oats",
+                token = guard.issueToken("test_search"),
+                onlineLookupEnabled = true,
+                refreshPolicy = ProviderRefreshPolicy.CACHE_PREFERRED,
+            ),
+        )
+
+        assertEquals(1, result.candidates.size)
+        assertEquals("provider_a", result.candidates.single().providerKey)
+        assertEquals(2, result.providerRuns.size)
+        assertEquals(OnlineProviderRunStatus.SUCCESS, result.providerRuns[0].status)
+        assertEquals(OnlineProviderRunStatus.EMPTY, result.providerRuns[1].status)
+    }
+
+    @Test
     fun search_whenProviderMissingConfig_marksRunAsSkippedMissingConfig() = runTest {
         val report = ProviderExecutionReport(
             requestType = ProviderRequestType.TEXT_SEARCH,
@@ -123,6 +180,88 @@ class ProviderExecutorOnlineSearchOrchestratorTest {
         assertEquals(OnlineProviderRunStatus.SKIPPED_MISSING_CONFIG, result.providerRuns.single().status)
         assertTrue(result.providerRuns.single().message.orEmpty().contains("API key"))
         assertEquals(1, result.summary.skippedProviders)
+    }
+
+    @Test
+    fun search_whenDuplicateCandidatesFromProviders_prefersRicherPayload() = runTest {
+        val providerACandidate = RemoteFoodCandidate(
+            source = RemoteFoodSource.OPEN_FOOD_FACTS,
+            sourceId = "off-1",
+            providerKey = null,
+            barcode = "0123456789",
+            name = "Protein Bar",
+            brand = "Acme",
+            caloriesKcalPer100g = 380.0,
+            proteinGPer100g = null,
+            carbsGPer100g = null,
+            fatGPer100g = null,
+            servingSize = "100 g",
+        )
+        val providerBCandidate = RemoteFoodCandidate(
+            source = RemoteFoodSource.NUTRITIONIX,
+            sourceId = "nix-1",
+            providerKey = null,
+            barcode = "0123456789",
+            name = "Protein Bar",
+            brand = "Acme",
+            caloriesKcalPer100g = 380.0,
+            proteinGPer100g = 25.0,
+            carbsGPer100g = 45.0,
+            fatGPer100g = 10.0,
+            servingSize = "100 g",
+        )
+        val report = ProviderExecutionReport(
+            requestType = ProviderRequestType.TEXT_SEARCH,
+            sourceFilter = SearchSourceFilter.ONLINE_ONLY,
+            mergedCandidates = listOf(
+                ProviderMergedCandidate(
+                    providerId = "provider_a",
+                    candidate = providerACandidate,
+                    dedupeKey = "barcode:0123456789",
+                ),
+            ),
+            providerResults = listOf(
+                ProviderResult(
+                    providerId = "provider_a",
+                    capability = ProviderRequestType.TEXT_SEARCH.capability,
+                    status = ProviderStatus.AVAILABLE,
+                    items = listOf(providerACandidate),
+                    elapsedMs = 11L,
+                ),
+                ProviderResult(
+                    providerId = "provider_b",
+                    capability = ProviderRequestType.TEXT_SEARCH.capability,
+                    status = ProviderStatus.AVAILABLE,
+                    items = listOf(providerBCandidate),
+                    elapsedMs = 12L,
+                ),
+            ),
+            overallElapsedMs = 24L,
+        )
+        val providers = listOf(
+            executionProvider(key = "provider_a", displayName = "Provider A", priority = 10),
+            executionProvider(key = "provider_b", displayName = "Provider B", priority = 20),
+        )
+        val orchestrator = ProviderExecutorOnlineSearchOrchestrator(
+            providerExecutor = FakeProviderExecutor(report),
+            providerRegistry = FakeFoodCatalogProviderRegistry(providers),
+        )
+        val guard = UserInitiatedNetworkGuard()
+
+        val result = orchestrator.search(
+            request = OnlineSearchRequest(
+                query = "bar",
+                token = guard.issueToken("test_search"),
+                onlineLookupEnabled = true,
+                refreshPolicy = ProviderRefreshPolicy.CACHE_PREFERRED,
+            ),
+        )
+
+        assertEquals(1, result.candidates.size)
+        val merged = result.candidates.single()
+        assertEquals("provider_b", merged.providerKey)
+        assertEquals(RemoteFoodSource.NUTRITIONIX, merged.source)
+        assertEquals(25.0, merged.proteinGPer100g ?: 0.0, 0.0)
     }
 
     @Test

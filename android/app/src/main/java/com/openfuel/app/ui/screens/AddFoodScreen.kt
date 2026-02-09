@@ -73,10 +73,11 @@ import com.openfuel.app.domain.voice.messageOrNull
 import com.openfuel.app.ui.components.MealTypeDropdown
 import com.openfuel.app.ui.components.OFCard
 import com.openfuel.app.ui.components.OFEmptyState
+import com.openfuel.app.ui.components.OFPill
 import com.openfuel.app.ui.components.OFPrimaryButton
+import com.openfuel.app.ui.components.OFRow
 import com.openfuel.app.ui.components.OFSectionHeader
 import com.openfuel.app.ui.components.OFSecondaryButton
-import com.openfuel.app.ui.components.OFStatPill
 import com.openfuel.app.ui.components.UnitDropdown
 import com.openfuel.app.ui.theme.Dimens
 import com.openfuel.app.ui.util.formatCalories
@@ -374,6 +375,18 @@ fun AddFoodScreen(
                                 OFSectionHeader(
                                     title = "Provider diagnostics",
                                     subtitle = "Debug-only local execution details.",
+                                    trailing = {
+                                        TextButton(
+                                            onClick = {
+                                                isDiagnosticsExpanded = !isDiagnosticsExpanded
+                                            },
+                                            modifier = Modifier.testTag("add_food_unified_provider_debug_toggle"),
+                                        ) {
+                                            Text(
+                                                text = if (isDiagnosticsExpanded) "Hide advanced" else "Show advanced",
+                                            )
+                                        }
+                                    },
                                 )
                                 Text(
                                     text = "Execution #${uiState.onlineExecutionCount}",
@@ -381,26 +394,11 @@ fun AddFoodScreen(
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                     modifier = Modifier.testTag("add_food_unified_provider_debug_execution_count"),
                                 )
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.SpaceBetween,
-                                ) {
-                                    Text(
-                                        text = "Elapsed ${uiState.onlineExecutionElapsedMs} ms · cache ${uiState.onlineProviderResults.count { it.fromCache }} hit(s)",
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    )
-                                    TextButton(
-                                        onClick = {
-                                            isDiagnosticsExpanded = !isDiagnosticsExpanded
-                                        },
-                                        modifier = Modifier.testTag("add_food_unified_provider_debug_toggle"),
-                                    ) {
-                                        Text(
-                                            text = if (isDiagnosticsExpanded) "Hide advanced" else "Show advanced",
-                                        )
-                                    }
-                                }
+                                Text(
+                                    text = "Elapsed ${uiState.onlineExecutionElapsedMs} ms · cache ${uiState.onlineProviderResults.count { it.fromCache }} hit(s)",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
                                 AnimatedVisibility(
                                     visible = isDiagnosticsExpanded,
                                     enter = fadeIn(),
@@ -571,17 +569,15 @@ private fun UnifiedSearchControls(
                 text = "Search online",
                 onClick = onSearchOnline,
                 enabled = query.isNotBlank() && !isOnlineSearchInProgress,
-                modifier = Modifier
-                    .weight(1f)
-                    .testTag("add_food_unified_search_online"),
+                modifier = Modifier.weight(1f),
+                testTag = "add_food_unified_search_online",
             )
             OFSecondaryButton(
                 text = "Refresh online",
                 onClick = onRefreshOnline,
                 enabled = query.isNotBlank() && !isOnlineSearchInProgress,
-                modifier = Modifier
-                    .weight(1f)
-                    .testTag("add_food_unified_refresh_online"),
+                modifier = Modifier.weight(1f),
+                testTag = "add_food_unified_refresh_online",
             )
         }
     }
@@ -843,16 +839,14 @@ private fun QuickActionsCard(
             OFSecondaryButton(
                 text = "Scan barcode",
                 onClick = onScanBarcode,
-                modifier = Modifier
-                    .weight(1f)
-                    .testTag("add_food_unified_scan_barcode"),
+                modifier = Modifier.weight(1f),
+                testTag = "add_food_unified_scan_barcode",
             )
             OFSecondaryButton(
                 text = "Quick add",
                 onClick = onOpenQuickAdd,
-                modifier = Modifier
-                    .weight(1f)
-                    .testTag("add_food_quick_add_text_button"),
+                modifier = Modifier.weight(1f),
+                testTag = "add_food_quick_add_text_button",
             )
         }
     }
@@ -973,9 +967,8 @@ private fun QuickAddManualForm(
                     fat = ""
                 }
             },
-            modifier = Modifier
-                .fillMaxWidth()
-                .testTag("add_food_quick_log_button"),
+            modifier = Modifier.fillMaxWidth(),
+            testTag = "add_food_quick_log_button",
         )
     }
 }
@@ -1047,20 +1040,13 @@ private fun SearchResultFoodRow(
             modifier = Modifier.fillMaxWidth(),
             verticalArrangement = Arrangement.spacedBy(Dimens.sm),
         ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-            ) {
-                Text(text = food.name, style = MaterialTheme.typography.titleMedium)
-                OFStatPill(text = sourceLabel)
-            }
-            if (!food.brand.isNullOrBlank()) {
-                Text(
-                    text = food.brand.orEmpty(),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
+            OFRow(
+                title = food.name,
+                subtitle = food.brand?.takeIf { it.isNotBlank() },
+                trailing = {
+                    OFPill(text = sourceLabel)
+                },
+            )
             Text(
                 text = "${formatCalories(food.caloriesKcal)} kcal · ${formatMacro(food.proteinG)}p ${formatMacro(food.carbsG)}c ${formatMacro(food.fatG)}f",
                 style = instrumentTextStyle(),
@@ -1100,23 +1086,13 @@ private fun OnlineResultRow(
             modifier = Modifier.fillMaxWidth(),
             verticalArrangement = Arrangement.spacedBy(Dimens.sm),
         ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-            ) {
-                Text(
-                    text = food.name,
-                    style = MaterialTheme.typography.titleMedium,
-                )
-                OFStatPill(text = provenanceLabel(food))
-            }
-            if (!food.brand.isNullOrBlank()) {
-                Text(
-                    text = food.brand.orEmpty(),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
+            OFRow(
+                title = food.name,
+                subtitle = food.brand?.takeIf { it.isNotBlank() },
+                trailing = {
+                    OFPill(text = provenanceLabel(food))
+                },
+            )
             val calories = food.caloriesKcalPer100g
             val protein = food.proteinGPer100g
             val carbs = food.carbsGPer100g

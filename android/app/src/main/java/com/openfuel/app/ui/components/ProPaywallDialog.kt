@@ -4,8 +4,8 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -34,14 +34,17 @@ fun ProPaywallDialog(
                 onDismiss()
             }
         },
+        shape = RoundedCornerShape(Dimens.cardRadius),
+        containerColor = MaterialTheme.colorScheme.surface,
         title = {
-            Text(
-                text = "OpenFuel Pro",
-                style = MaterialTheme.typography.titleLarge,
+            OFSectionHeader(
+                title = "OpenFuel Pro",
+                subtitle = "Private, local-first nutrition tracking.",
             )
         },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(Dimens.s)) {
+                OFPill(text = "No ads · no trackers")
                 Text(
                     text = "Free includes local logging, search, and standard export.",
                     style = MaterialTheme.typography.bodyMedium,
@@ -75,26 +78,24 @@ fun ProPaywallDialog(
             }
         },
         confirmButton = {
-            Button(
-                modifier = Modifier.testTag("paywall_upgrade_button"),
-                enabled = !isActionInProgress,
+            OFPrimaryButton(
+                text = "Upgrade to Pro",
                 onClick = onPurchaseClick,
-            ) {
-                Text("Upgrade to Pro")
-            }
+                enabled = !isActionInProgress,
+                testTag = "paywall_upgrade_button",
+            )
         },
         dismissButton = {
             Row(
                 horizontalArrangement = Arrangement.spacedBy(Dimens.xs),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                TextButton(
-                    modifier = Modifier.testTag("paywall_restore_button"),
-                    enabled = !isActionInProgress,
+                OFSecondaryButton(
+                    text = "Restore",
                     onClick = onRestoreClick,
-                ) {
-                    Text("Restore")
-                }
+                    enabled = !isActionInProgress,
+                    testTag = "paywall_restore_button",
+                )
                 TextButton(
                     modifier = Modifier.testTag("paywall_close_button"),
                     enabled = !isActionInProgress,

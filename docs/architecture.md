@@ -26,6 +26,19 @@ domain (pure logic, calculations, unit helpers)
   - hardened deterministic intelligence seam behavior
   - unified quick-add entry point with integrated explicit-action voice capture.
 
+## UI design system (Phase 15)
+- Design tokens live in:
+  - `android/app/src/main/java/com/openfuel/app/ui/design/OpenFuelDesignTokens.kt`
+  - `android/app/src/main/java/com/openfuel/app/ui/theme/Dimens.kt`
+- Shared base components live in:
+  - `android/app/src/main/java/com/openfuel/app/ui/components/OpenFuelComponents.kt`
+  - `android/app/src/main/java/com/openfuel/app/ui/components/ProPaywallDialog.kt`
+- Minimum consistency rules for new surfaces:
+  - use the spacing rhythm `4/8/12/16/24/32` via tokens (no ad-hoc padding values)
+  - keep one primary action per card/surface; secondary actions should be visually subordinate
+  - reuse shared card/row/button/pill components before adding screen-local variants
+  - preserve stable `testTag` identifiers and a11y semantics during visual refactors
+
 ## Data flow
 1. UI events (e.g., log meal) call ViewModel intent methods.
 2. ViewModel updates StateFlow UI state and invokes repositories.

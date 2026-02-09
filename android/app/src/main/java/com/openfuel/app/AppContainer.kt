@@ -17,11 +17,15 @@ import com.openfuel.app.data.remote.ProviderExecutorOnlineSearchOrchestrator
 import com.openfuel.app.data.remote.RoomProviderResultCache
 import com.openfuel.app.data.remote.RemoteFoodDataSource
 import com.openfuel.app.data.remote.StaticSampleCatalogProvider
+import com.openfuel.app.data.remote.NutritionixCatalogProvider
+import com.openfuel.app.data.remote.NutritionixFoodDataSource
+import com.openfuel.app.data.remote.NutritionixRemoteFoodDataSource
 import com.openfuel.app.data.remote.UsdaFoodDataCentralCatalogProvider
 import com.openfuel.app.data.remote.UsdaFoodDataCentralDataSource
 import com.openfuel.app.data.remote.UsdaFoodDataSource
 import com.openfuel.app.data.remote.UserInitiatedNetworkGuard
 import com.openfuel.app.data.remote.resolveOpenFoodFactsAvailability
+import com.openfuel.app.data.remote.resolveNutritionixAvailability
 import com.openfuel.app.data.remote.resolveUsdaAvailability
 import com.openfuel.app.data.voice.RecognizerIntentVoiceTranscriber
 import com.openfuel.app.data.security.LocalSecurityPostureProvider
@@ -93,6 +97,8 @@ class AppContainer(
         userInitiatedNetworkGuard = userInitiatedNetworkGuard,
     )
     private val usdaApiKey: String = BuildConfig.USDA_API_KEY.trim()
+    private val nutritionixAppId: String = BuildConfig.NUTRITIONIX_APP_ID.trim()
+    private val nutritionixApiKey: String = BuildConfig.NUTRITIONIX_API_KEY.trim()
     private val openFoodFactsAvailability = resolveOpenFoodFactsAvailability(
         forceDeterministicProvidersOnly = forceDeterministicProvidersOnly,
         providerEnabledByFlag = BuildConfig.ONLINE_PROVIDER_OPEN_FOOD_FACTS_ENABLED,
@@ -102,16 +108,31 @@ class AppContainer(
         providerEnabledByFlag = BuildConfig.ONLINE_PROVIDER_USDA_ENABLED,
         apiKey = usdaApiKey,
     )
+    private val nutritionixAvailability = resolveNutritionixAvailability(
+        forceDeterministicProvidersOnly = forceDeterministicProvidersOnly,
+        providerEnabledByFlag = BuildConfig.ONLINE_PROVIDER_NUTRITIONIX_ENABLED,
+        appId = nutritionixAppId,
+        apiKey = nutritionixApiKey,
+    )
     private val usdaFoodDataSource: UsdaFoodDataSource = UsdaFoodDataCentralDataSource.create(
         okHttpClient = onlineHttpClient,
         userInitiatedNetworkGuard = userInitiatedNetworkGuard,
         apiKey = usdaApiKey,
+    )
+    private val nutritionixFoodDataSource: NutritionixFoodDataSource = NutritionixRemoteFoodDataSource.create(
+        okHttpClient = onlineHttpClient,
+        userInitiatedNetworkGuard = userInitiatedNetworkGuard,
+        appId = nutritionixAppId,
+        apiKey = nutritionixApiKey,
     )
     val foodCatalogProvider: FoodCatalogProvider = OpenFoodFactsCatalogProvider(
         remoteFoodDataSource = remoteFoodDataSource,
     )
     private val usdaFoodCatalogProvider: FoodCatalogProvider = UsdaFoodDataCentralCatalogProvider(
         dataSource = usdaFoodDataSource,
+    )
+    private val nutritionixFoodCatalogProvider: FoodCatalogProvider = NutritionixCatalogProvider(
+        dataSource = nutritionixFoodDataSource,
     )
     private val staticSampleCatalogProvider: FoodCatalogProvider = StaticSampleCatalogProvider()
     val foodCatalogProviderRegistry: FoodCatalogProviderRegistry = DefaultFoodCatalogProviderRegistry(
@@ -162,16 +183,20 @@ class AppContainer(
             ),
             ProviderEntry(
                 metadata = FoodCatalogProviderDescriptor(
-                    key = "nutritionix_stub",
-                    displayName = "Nutritionix (stub)",
+                    key = "nutritionix",
+                    displayName = "Nutritionix",
                     priority = 30,
                     supportsBarcode = true,
                     supportsTextSearch = true,
                     termsOfUseLink = "https://www.nutritionix.com/business/api",
-                    enabled = false,
-                    statusReason = "Disabled. API integration not implemented in this phase.",
+                    enabled = nutritionixAvailability.enabled,
+                    statusReason = nutritionixAvailability.statusReason,
                 ),
-                provider = null,
+                provider = if (nutritionixAvailability.enabled) {
+                    nutritionixFoodCatalogProvider
+                } else {
+                    null
+                },
             ),
             ProviderEntry(
                 metadata = FoodCatalogProviderDescriptor(

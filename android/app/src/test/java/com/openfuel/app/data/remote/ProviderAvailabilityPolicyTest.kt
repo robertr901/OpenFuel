@@ -63,4 +63,59 @@ class ProviderAvailabilityPolicyTest {
         assertFalse(availability.enabled)
         assertEquals("Disabled in deterministic test mode.", availability.statusReason)
     }
+
+    @Test
+    fun resolveNutritionixAvailability_whenCredentialsMissing_returnsNeedsSetupReason() {
+        val availability = resolveNutritionixAvailability(
+            forceDeterministicProvidersOnly = false,
+            providerEnabledByFlag = true,
+            appId = "",
+            apiKey = "",
+        )
+
+        assertFalse(availability.enabled)
+        assertEquals(
+            "Nutritionix credentials missing. Add NUTRITIONIX_APP_ID and NUTRITIONIX_API_KEY in local.properties.",
+            availability.statusReason,
+        )
+    }
+
+    @Test
+    fun resolveNutritionixAvailability_whenEnabledAndConfigured_returnsConfigured() {
+        val availability = resolveNutritionixAvailability(
+            forceDeterministicProvidersOnly = false,
+            providerEnabledByFlag = true,
+            appId = "demo-app-id",
+            apiKey = "demo-app-key",
+        )
+
+        assertTrue(availability.enabled)
+        assertEquals("Configured.", availability.statusReason)
+    }
+
+    @Test
+    fun resolveNutritionixAvailability_whenFlagDisabled_returnsDisabledReason() {
+        val availability = resolveNutritionixAvailability(
+            forceDeterministicProvidersOnly = false,
+            providerEnabledByFlag = false,
+            appId = "demo-app-id",
+            apiKey = "demo-app-key",
+        )
+
+        assertFalse(availability.enabled)
+        assertEquals("Disabled by local provider flag.", availability.statusReason)
+    }
+
+    @Test
+    fun resolveNutritionixAvailability_whenDeterministicModeAndConfigured_disablesProvider() {
+        val availability = resolveNutritionixAvailability(
+            forceDeterministicProvidersOnly = true,
+            providerEnabledByFlag = true,
+            appId = "demo-app-id",
+            apiKey = "demo-app-key",
+        )
+
+        assertFalse(availability.enabled)
+        assertEquals("Disabled in deterministic test mode.", availability.statusReason)
+    }
 }

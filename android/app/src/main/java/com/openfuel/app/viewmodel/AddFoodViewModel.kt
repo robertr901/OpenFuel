@@ -245,6 +245,7 @@ class AddFoodViewModel(
                 val results = result.candidates
                 val error = deriveOnlineErrorMessage(
                     providerRuns = result.providerRuns,
+                    hasResults = results.isNotEmpty(),
                 )
                 unifiedSearchState.update { current ->
                     current.copy(
@@ -432,8 +433,12 @@ private data class UnifiedSearchComposedState(
 
 private fun deriveOnlineErrorMessage(
     providerRuns: List<OnlineProviderRun>,
+    hasResults: Boolean,
 ): String? {
     if (providerRuns.isEmpty()) {
+        return null
+    }
+    if (hasResults) {
         return null
     }
     val missingConfigRuns = providerRuns.filter { run ->

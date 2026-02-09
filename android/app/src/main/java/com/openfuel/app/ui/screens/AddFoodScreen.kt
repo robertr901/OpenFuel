@@ -1117,9 +1117,11 @@ private fun provenanceLabel(food: RemoteFoodCandidate): String {
     val providerKey = food.providerKey.orEmpty()
     return when {
         providerKey.equals("open_food_facts", ignoreCase = true) -> "OFF"
+        providerKey.equals("usda_fdc", ignoreCase = true) -> "USDA"
         providerKey.equals("static_sample", ignoreCase = true) -> "Sample"
         providerKey.isNotBlank() -> providerKey
         food.source == RemoteFoodSource.OPEN_FOOD_FACTS -> "OFF"
+        food.source == RemoteFoodSource.USDA_FOODDATA_CENTRAL -> "USDA"
         food.source == RemoteFoodSource.STATIC_SAMPLE -> "Sample"
         else -> "Online"
     }

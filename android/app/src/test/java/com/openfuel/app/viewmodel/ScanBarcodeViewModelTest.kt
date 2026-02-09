@@ -102,6 +102,34 @@ class ScanBarcodeViewModelTest {
         )
         collectJob.cancel()
     }
+
+    @Test
+    fun onBarcodeDetected_whenUsdaKeyMissing_showsConfigurationMessage() = runTest {
+        val remoteDataSource = ScanStatusProviderExecutor(
+            providerId = "usda_fdc",
+            status = ProviderStatus.DISABLED_BY_SETTINGS,
+            diagnostics = "USDA API key missing. Add USDA_API_KEY in local.properties.",
+        )
+        val viewModel = ScanBarcodeViewModel(
+            providerExecutor = remoteDataSource,
+            userInitiatedNetworkGuard = UserInitiatedNetworkGuard(),
+            foodRepository = ScanFakeFoodRepository(),
+            logRepository = ScanFakeLogRepository(),
+            settingsRepository = FakeScanSettingsRepository(enabled = true),
+        )
+        val collectJob = launch { viewModel.uiState.collect { } }
+        advanceUntilIdle()
+
+        viewModel.onBarcodeDetected("012345")
+        advanceUntilIdle()
+
+        assertEquals(
+            "USDA provider is not configured. Add USDA_API_KEY in local.properties.",
+            viewModel.uiState.value.errorMessage,
+        )
+        assertNull(viewModel.uiState.value.previewFood)
+        collectJob.cancel()
+    }
 }
 
 private class ScanFakeProviderExecutor(
@@ -233,5 +261,30 @@ private class FakeScanSettingsRepository(
 
     override suspend fun setOnlineLookupEnabled(enabled: Boolean) {
         // no-op
+    }
+}
+
+private class ScanStatusProviderExecutor(
+    private val providerId: String,
+    private val status: ProviderStatus,
+    private val diagnostics: String?,
+) : ProviderExecutor {
+    override suspend fun execute(request: ProviderExecutionRequest): ProviderExecutionReport {
+        return ProviderExecutionReport(
+            requestType = request.requestType,
+            sourceFilter = request.sourceFilter,
+            mergedCandidates = emptyList(),
+            providerResults = listOf(
+                ProviderResult(
+                    providerId = providerId,
+                    capability = request.requestType.capability,
+                    status = status,
+                    items = emptyList(),
+                    elapsedMs = 0L,
+                    diagnostics = diagnostics,
+                ),
+            ),
+            overallElapsedMs = 0L,
+        )
     }
 }

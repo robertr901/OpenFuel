@@ -53,4 +53,16 @@ class OnlineSearchGatingTest {
             }
         }
     }
+
+    @Test
+    fun settings_showsOnlineProviderSetupSection() {
+        composeRule.waitForIdle()
+        composeRule.onNodeWithTag("screen_today").assertIsDisplayed()
+        composeRule.onNodeWithTag("tab_settings").performClick()
+        composeRule.waitForIdle()
+
+        composeRule.onNodeWithTag("screen_settings").assertIsDisplayed()
+        composeRule.onNodeWithTag("settings_online_provider_setup_section").assertIsDisplayed()
+        composeRule.onNodeWithTag("settings_online_provider_setup_row_open_food_facts").assertIsDisplayed()
+    }
 }

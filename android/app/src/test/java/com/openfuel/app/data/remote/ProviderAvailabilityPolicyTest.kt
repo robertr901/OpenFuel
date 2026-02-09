@@ -65,6 +65,18 @@ class ProviderAvailabilityPolicyTest {
     }
 
     @Test
+    fun resolveUsdaAvailability_whenFlagDisabled_returnsDisabledReason() {
+        val availability = resolveUsdaAvailability(
+            forceDeterministicProvidersOnly = false,
+            providerEnabledByFlag = false,
+            apiKey = "demo-key",
+        )
+
+        assertFalse(availability.enabled)
+        assertEquals("Disabled by local provider flag.", availability.statusReason)
+    }
+
+    @Test
     fun resolveNutritionixAvailability_whenCredentialsMissing_returnsNeedsSetupReason() {
         val availability = resolveNutritionixAvailability(
             forceDeterministicProvidersOnly = false,

@@ -235,7 +235,7 @@ class AddFoodViewModelTest {
         advanceUntilIdle()
 
         assertEquals(
-            "USDA provider is not configured. Add USDA_API_KEY in local.properties.",
+            "USDA API key missing. Add USDA_API_KEY in local.properties.",
             viewModel.uiState.value.onlineErrorMessage,
         )
         assertTrue(viewModel.uiState.value.onlineResults.isEmpty())

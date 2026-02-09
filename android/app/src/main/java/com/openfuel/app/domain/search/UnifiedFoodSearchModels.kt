@@ -22,6 +22,7 @@ data class UnifiedSearchState(
     val onlineHasSearched: Boolean = false,
     val onlineIsLoading: Boolean = false,
     val onlineError: String? = null,
+    val providerRuns: List<OnlineProviderRun> = emptyList(),
     val providerResults: List<ProviderResult> = emptyList(),
     val onlineElapsedMs: Long = 0L,
     val onlineExecutionCount: Int = 0,

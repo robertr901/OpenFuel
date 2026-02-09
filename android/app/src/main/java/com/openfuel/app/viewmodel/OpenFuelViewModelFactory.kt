@@ -25,6 +25,7 @@ class OpenFuelViewModelFactory(
                 settingsRepository = container.settingsRepository,
                 providerExecutor = container.providerExecutor,
                 userInitiatedNetworkGuard = container.networkGuard,
+                onlineSearchOrchestrator = container.onlineSearchOrchestrator,
             )
             FoodLibraryViewModel::class.java -> FoodLibraryViewModel(
                 foodRepository = container.foodRepository,

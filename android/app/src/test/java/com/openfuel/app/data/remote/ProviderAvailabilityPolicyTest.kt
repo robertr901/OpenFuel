@@ -51,4 +51,16 @@ class ProviderAvailabilityPolicyTest {
         assertTrue(availability.enabled)
         assertEquals("Configured.", availability.statusReason)
     }
+
+    @Test
+    fun resolveUsdaAvailability_whenDeterministicModeAndKeyPresent_disablesProvider() {
+        val availability = resolveUsdaAvailability(
+            forceDeterministicProvidersOnly = true,
+            providerEnabledByFlag = true,
+            apiKey = "demo-key",
+        )
+
+        assertFalse(availability.enabled)
+        assertEquals("Disabled in deterministic test mode.", availability.statusReason)
+    }
 }

@@ -13,6 +13,7 @@ import com.openfuel.app.data.remote.DefaultProviderExecutor
 import com.openfuel.app.data.remote.OpenFoodFactsCatalogProvider
 import com.openfuel.app.data.remote.OpenFoodFactsRemoteFoodDataSource
 import com.openfuel.app.data.remote.ProviderEntry
+import com.openfuel.app.data.remote.ProviderExecutorOnlineSearchOrchestrator
 import com.openfuel.app.data.remote.RoomProviderResultCache
 import com.openfuel.app.data.remote.RemoteFoodDataSource
 import com.openfuel.app.data.remote.StaticSampleCatalogProvider
@@ -37,6 +38,7 @@ import com.openfuel.app.domain.repository.SettingsRepository
 import com.openfuel.app.domain.security.SecurityPostureProvider
 import com.openfuel.app.domain.intelligence.IntelligenceService
 import com.openfuel.app.domain.intelligence.RuleBasedIntelligenceService
+import com.openfuel.app.domain.search.OnlineSearchOrchestrator
 import com.openfuel.app.domain.voice.VoiceTranscriber
 import com.openfuel.app.domain.service.EntitlementService
 import com.openfuel.app.domain.service.FoodCatalogProvider
@@ -199,6 +201,10 @@ class AppContainer(
         },
         cache = RoomProviderResultCache(database.providerSearchCacheDao()),
         diagnosticsStore = providerExecutionDiagnosticsStore,
+    )
+    val onlineSearchOrchestrator: OnlineSearchOrchestrator = ProviderExecutorOnlineSearchOrchestrator(
+        providerExecutor = providerExecutor,
+        providerRegistry = foodCatalogProviderRegistry,
     )
     val networkGuard: UserInitiatedNetworkGuard = userInitiatedNetworkGuard
     val intelligenceService: IntelligenceService = RuleBasedIntelligenceService()

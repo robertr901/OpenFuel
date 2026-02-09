@@ -43,14 +43,26 @@ class ProviderExecutorOnlineSearchOrchestrator(
         )
 
         val providerResultsById = report.providerResults.associateBy { result -> result.providerId }
-        val providerRuns = sortedProviders.map { provider ->
-            val descriptor = provider.descriptor
-            val result = providerResultsById[descriptor.key]
-            result.toOnlineProviderRun(
-                providerId = descriptor.key,
-                providerDisplayName = descriptor.displayName,
-                fallbackMessage = descriptor.statusReason,
-            )
+        val providerRuns = if (sortedProviders.isEmpty()) {
+            report.providerResults
+                .sortedBy { result -> result.providerId }
+                .map { result ->
+                    result.toOnlineProviderRun(
+                        providerId = result.providerId,
+                        providerDisplayName = result.providerId,
+                        fallbackMessage = result.diagnostics ?: "Configured.",
+                    )
+                }
+        } else {
+            sortedProviders.map { provider ->
+                val descriptor = provider.descriptor
+                val result = providerResultsById[descriptor.key]
+                result.toOnlineProviderRun(
+                    providerId = descriptor.key,
+                    providerDisplayName = descriptor.displayName,
+                    fallbackMessage = descriptor.statusReason,
+                )
+            }
         }.filterNot { run ->
             run.providerId.endsWith("_stub")
         }

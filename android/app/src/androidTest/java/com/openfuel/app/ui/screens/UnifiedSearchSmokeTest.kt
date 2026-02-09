@@ -14,6 +14,7 @@ import androidx.compose.ui.test.performTextInput
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.openfuel.app.MainActivity
 import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -87,6 +88,17 @@ class UnifiedSearchSmokeTest {
         composeRule.onNodeWithTag("add_food_unified_results_list")
             .performScrollToNode(hasTestTag("add_food_unified_online_result_sample-oatmeal-1"))
         composeRule.onNodeWithTag("add_food_unified_online_result_sample-oatmeal-1").assertIsDisplayed()
+        composeRule.onNodeWithTag("add_food_unified_results_list")
+            .performScrollToNode(hasTestTag("add_food_unified_online_sources"))
+        composeRule.onNodeWithTag("add_food_unified_online_sources").assertIsDisplayed()
+        composeRule.onNode(hasText("Static sample", substring = true)).assertIsDisplayed()
+        val showsNeedsSetup = runCatching {
+            composeRule.onNode(hasText("needs setup", substring = true)).assertIsDisplayed()
+        }.isSuccess
+        val showsDisabled = runCatching {
+            composeRule.onNode(hasText("disabled", substring = true)).assertIsDisplayed()
+        }.isSuccess
+        assertTrue(showsNeedsSetup || showsDisabled)
 
         composeRule.onNodeWithTag("add_food_unified_results_list")
             .performScrollToNode(hasTestTag("add_food_unified_provider_debug"))

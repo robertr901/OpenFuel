@@ -32,12 +32,6 @@ fun resolveUsdaAvailability(
     providerEnabledByFlag: Boolean,
     apiKey: String,
 ): ProviderAvailability {
-    if (forceDeterministicProvidersOnly) {
-        return ProviderAvailability(
-            enabled = false,
-            statusReason = "Disabled in deterministic test mode.",
-        )
-    }
     if (!providerEnabledByFlag) {
         return ProviderAvailability(
             enabled = false,
@@ -48,6 +42,12 @@ fun resolveUsdaAvailability(
         return ProviderAvailability(
             enabled = false,
             statusReason = "USDA API key missing. Add USDA_API_KEY in local.properties.",
+        )
+    }
+    if (forceDeterministicProvidersOnly) {
+        return ProviderAvailability(
+            enabled = false,
+            statusReason = "Disabled in deterministic test mode.",
         )
     }
     return ProviderAvailability(

@@ -64,6 +64,8 @@ import com.openfuel.app.domain.model.FoodUnit
 import com.openfuel.app.domain.model.MealType
 import com.openfuel.app.domain.model.RemoteFoodCandidate
 import com.openfuel.app.domain.model.RemoteFoodSource
+import com.openfuel.app.domain.search.OnlineProviderRun
+import com.openfuel.app.domain.search.OnlineProviderRunStatus
 import com.openfuel.app.domain.search.SearchSourceFilter
 import com.openfuel.app.domain.service.ProviderStatus
 import com.openfuel.app.domain.voice.VoiceTranscribeConfig
@@ -273,6 +275,35 @@ fun AddFoodScreen(
                         }
 
                         UnifiedSearchSectionType.ONLINE -> {
+                            if (uiState.onlineProviderRuns.isNotEmpty()) {
+                                item {
+                                    OFCard(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .testTag("add_food_unified_online_sources"),
+                                    ) {
+                                        OFSectionHeader(
+                                            title = "Online sources",
+                                            subtitle = "Runs only after explicit online actions.",
+                                        )
+                                        Column(
+                                            verticalArrangement = Arrangement.spacedBy(Dimens.xs),
+                                        ) {
+                                            uiState.onlineProviderRuns.forEach { run ->
+                                                Text(
+                                                    text = run.toStatusLine(),
+                                                    style = MaterialTheme.typography.bodySmall,
+                                                    color = if (run.status == OnlineProviderRunStatus.FAILED) {
+                                                        MaterialTheme.colorScheme.error
+                                                    } else {
+                                                        MaterialTheme.colorScheme.onSurfaceVariant
+                                                    },
+                                                )
+                                            }
+                                        }
+                                    }
+                                }
+                            }
                             if (!uiState.onlineLookupEnabled) {
                                 item {
                                     Text(
@@ -1125,6 +1156,18 @@ private fun provenanceLabel(food: RemoteFoodCandidate): String {
         food.source == RemoteFoodSource.STATIC_SAMPLE -> "Sample"
         else -> "Online"
     }
+}
+
+private fun OnlineProviderRun.toStatusLine(): String {
+    val state = when (status) {
+        OnlineProviderRunStatus.SUCCESS -> "ok"
+        OnlineProviderRunStatus.EMPTY -> "empty"
+        OnlineProviderRunStatus.FAILED -> "failed"
+        OnlineProviderRunStatus.SKIPPED_MISSING_CONFIG -> "needs setup"
+        OnlineProviderRunStatus.SKIPPED_DISABLED -> "disabled"
+    }
+    val suffix = message?.takeIf { it.isNotBlank() }?.let { value -> " - $value" }.orEmpty()
+    return "$providerDisplayName: $state$suffix"
 }
 
 @Composable

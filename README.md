@@ -12,6 +12,7 @@ Status: bootstrapping.
 - 2026-02-08: Completed Phase 14 monetisation foundations (release Play Billing entitlements, calm paywall UX with restore, Pro advanced export JSON/CSV with optional redaction).
 - 2026-02-09: Completed Phase 16 unified search + first real USDA provider integration (explicit-action online only, deterministic offline-friendly tests).
 - 2026-02-09: Completed Phase 17 multi-provider online search orchestration (deterministic provider runs, per-provider status disclosure, isolated provider failures, explicit-action online only).
+- 2026-02-09: Completed Phase 18 provider integration hardening (Nutritionix real integration, deterministic multi-provider merge improvements, explicit-action online safeguards unchanged).
 
 ## Deterministic Android Verification
 Run from repo root:
@@ -29,12 +30,15 @@ cd android
 OpenFuel includes multi-provider online search behind explicit-action controls.
 
 1. Open `android/local.properties`.
-2. Configure providers and USDA key:
+2. Configure providers and credentials:
 
 ```properties
 ONLINE_PROVIDER_OPEN_FOOD_FACTS_ENABLED=true
 ONLINE_PROVIDER_USDA_ENABLED=true
+ONLINE_PROVIDER_NUTRITIONIX_ENABLED=true
 USDA_API_KEY=your_usda_key_here
+NUTRITIONIX_APP_ID=your_nutritionix_app_id
+NUTRITIONIX_API_KEY=your_nutritionix_api_key
 ```
 
 3. Rebuild:
@@ -44,7 +48,7 @@ cd android
 ./gradlew assembleDebug
 ```
 
-If `USDA_API_KEY` is missing, the app stays stable and shows a clear provider configuration message when USDA is selected in the online execution path. No key is committed to the repository.
+If `USDA_API_KEY` or Nutritionix credentials are missing, the app stays stable and shows a clear provider `needs setup` message in `Online sources`. No keys are committed to the repository.
 
 ## Online privacy boundary (explicit action only)
 - Data leaves the device only when the user explicitly taps online actions:

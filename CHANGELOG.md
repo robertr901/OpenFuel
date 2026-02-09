@@ -4,6 +4,23 @@ All notable changes to OpenFuel are documented here.
 
 ## Unreleased
 
+### Phase 18: Provider integrations hardening
+- Added a real Nutritionix provider integration behind existing provider seams:
+  - `NutritionixRemoteFoodDataSource` with explicit guard-token enforcement
+  - `NutritionixCatalogProvider` for text search and barcode lookup delegation
+  - deterministic mapping tests for defensive parsing and nutrient normalization.
+- Added local configuration support for Nutritionix:
+  - `ONLINE_PROVIDER_NUTRITIONIX_ENABLED`
+  - `NUTRITIONIX_APP_ID`
+  - `NUTRITIONIX_API_KEY`
+- Wired Nutritionix availability into provider registry selection with explicit `needs setup` messaging when credentials are missing.
+- Hardened deterministic online merge behavior:
+  - dedupe key precedence: barcode, then exact name(+brand), then fuzzy fallback
+  - richer nutrition payload wins duplicate collisions
+  - deterministic tie-breakers remain stable.
+- Added Nutritionix provenance labeling in Add Food online result cards.
+- No changes to provider cache schema/migrations, online guard token enforcement semantics, telemetry/analytics posture, or background networking behavior.
+
 ### Phase 17: Multi-provider online search orchestration
 - Added deterministic online search orchestration for Add Food explicit online actions:
   - provider runs execute in stable priority order

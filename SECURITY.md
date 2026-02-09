@@ -38,11 +38,13 @@ Not declared:
 - Active real providers:
   - Open Food Facts (`ONLINE_PROVIDER_OPEN_FOOD_FACTS_ENABLED=true`)
   - USDA FoodData Central (`ONLINE_PROVIDER_USDA_ENABLED=true` and local `USDA_API_KEY` configured)
+  - Nutritionix (`ONLINE_PROVIDER_NUTRITIONIX_ENABLED=true` and local `NUTRITIONIX_APP_ID` + `NUTRITIONIX_API_KEY` configured)
 - `UserInitiatedNetworkGuard` issues and validates short-lived tokens before provider calls.
 - Online lookup setting gates execution; disabled setting returns local-safe UI states and blocks provider calls.
 - Online lookup default is currently `enabled = true` when no stored setting exists (`SettingsRepositoryImpl`), but requests still require explicit user action.
 - There is no background provider polling and no silent online refresh path.
 - Missing USDA key degrades gracefully to user-visible `needs setup` guidance; no crashes and no secret fallback.
+- Missing Nutritionix credentials degrade gracefully to user-visible `needs setup` guidance; no crashes and no secret fallback.
 - Play Billing calls are limited to:
   - explicit user actions (`Upgrade` and `Restore purchases`) from paywall surfaces
   - explicit app foreground entitlement refresh (`MainActivity.onStart`)
@@ -71,6 +73,7 @@ Not declared:
 - Export is explicit user action via Settings UI; data is serialized to user-shared JSON/CSV output.
 - Advanced export includes optional redaction controls to reduce sensitive-context sharing risk before user-initiated share.
 - USDA API key is read from local build config (`android/local.properties` -> `BuildConfig.USDA_API_KEY`) and is not stored in user content databases.
+- Nutritionix credentials are read from local build config (`android/local.properties` -> `BuildConfig.NUTRITIONIX_APP_ID` / `BuildConfig.NUTRITIONIX_API_KEY`) and are not stored in user content databases.
 
 ## Logging Policy and Current Footprint
 - Policy:

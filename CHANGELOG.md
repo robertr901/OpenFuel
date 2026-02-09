@@ -4,6 +4,29 @@ All notable changes to OpenFuel are documented here.
 
 ## Unreleased
 
+### Phase 19: Online provider reliability
+- Hardened Open Food Facts runtime reliability for explicit online actions:
+  - explicit connect/read/write/call timeout configuration on shared online HTTP client
+  - bounded provider execution timeout policy tuned for real-device reliability
+  - single explicit retry path for idempotent Open Food Facts GET calls (no background retry loops).
+- Refined provider error messaging surfaced to users:
+  - timeout: `Timed out (check connection).`
+  - offline/network unavailable: `No connection.`
+  - HTTP/parsing failures: `Service error.`
+- Added Settings `Online provider setup` surface with non-secret provider status (`Configured`, `Needs setup`, `Disabled`).
+- Reduced online status message duplication in Add Food:
+  - one top-level summary/error message
+  - per-provider details remain under `Online sources`.
+- Improved deterministic multi-provider merge behavior:
+  - stronger identity keying with serving-size-aware text matching
+  - stable, deterministic winner selection with richer payload preference
+  - conservative dedupe to avoid hiding distinct items.
+- Added deterministic unit/androidTest coverage for:
+  - Open Food Facts retry behavior
+  - provider setup visibility in Settings
+  - Add Food online summary messaging
+  - multi-provider merge/dedupe edge cases.
+
 ### Phase 18: Provider integrations hardening
 - Added a real Nutritionix provider integration behind existing provider seams:
   - `NutritionixRemoteFoodDataSource` with explicit guard-token enforcement

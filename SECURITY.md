@@ -35,6 +35,7 @@ Not declared:
   - Barcode lookup (`ScanBarcodeViewModel.onBarcodeDetected`, `ScanBarcodeViewModel.retryLookup`).
 - Add Food online search uses deterministic multi-provider orchestration through the provider executor seam.
 - Provider runs execute in stable priority order and expose per-provider status in UI (`Online sources`) for explicit user transparency.
+- Open Food Facts reliability hardening uses bounded client timeouts and at-most-one retry for idempotent GET requests, still only within explicit user-triggered online actions.
 - Active real providers:
   - Open Food Facts (`ONLINE_PROVIDER_OPEN_FOOD_FACTS_ENABLED=true`)
   - USDA FoodData Central (`ONLINE_PROVIDER_USDA_ENABLED=true` and local `USDA_API_KEY` configured)

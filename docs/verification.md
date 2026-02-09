@@ -22,6 +22,7 @@
 - With provider defaults enabled and missing `USDA_API_KEY` and/or Nutritionix credentials:
   - Tapping `Search online` remains stable.
   - `Online sources` shows missing-config providers as `needs setup` with clear messaging.
+  - Settings `Online provider setup` shows which provider is `Configured`, `Needs setup`, or `Disabled`.
 - With valid `USDA_API_KEY`, `NUTRITIONIX_APP_ID`, and `NUTRITIONIX_API_KEY` configured:
   - Tapping `Search online` can return USDA-backed candidates.
   - Tapping `Search online` can return Nutritionix-backed candidates.
@@ -33,6 +34,16 @@
   - Explicit online action returns friendly failure copy per provider status.
   - UI remains responsive and local search still works.
 - Confirm no online request is started unless the user taps an explicit online action.
+
+## Open Food Facts timeout troubleshooting (manual)
+- Trigger online search only via explicit button tap (`Search online` or `Refresh online`).
+- Validate `Online sources` status for OFF:
+  - `Timed out (check connection).`
+  - `No connection.`
+  - `Service error.`
+- Confirm retry behavior is explicit-action only:
+  - tap `Refresh online` to retry
+  - no automatic background retries/polling should occur.
 
 ## UI consistency checklist
 - Use design tokens from `ui/design/OpenFuelDesignTokens.kt` and `ui/theme/Dimens.kt`.

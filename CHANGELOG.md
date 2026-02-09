@@ -4,6 +4,19 @@ All notable changes to OpenFuel are documented here.
 
 ## Unreleased
 
+### Phase 17: Multi-provider online search orchestration
+- Added deterministic online search orchestration for Add Food explicit online actions:
+  - provider runs execute in stable priority order
+  - per-provider run status/result metadata are captured
+  - provider failures are isolated (one failing provider does not blank successful provider results).
+- Added provider availability policy wiring for local development configuration:
+  - `ONLINE_PROVIDER_OPEN_FOOD_FACTS_ENABLED`
+  - `ONLINE_PROVIDER_USDA_ENABLED`
+  - `USDA_API_KEY` (required for USDA execution)
+- Added Add Food `Online sources` disclosure row to surface provider outcomes (`ok`, `empty`, `failed`, `disabled`, `needs setup`) with user-safe messaging.
+- Added deterministic unit and instrumentation coverage for orchestration and explicit-action online flows.
+- No changes to persistence schema/migrations, local search behavior, background networking, telemetry/analytics, or online guard token enforcement.
+
 ### Phase 16: Unified search + USDA provider integration
 - Introduced shared unified search sectioning model for Local and Online result blocks in Add Food (single query field, single list).
 - Added a real USDA FoodData Central provider implementation behind the existing provider seam:

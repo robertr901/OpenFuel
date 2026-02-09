@@ -19,14 +19,17 @@
   - Pro-gated paywall lock and restore flows using fake/debug entitlement wiring in tests.
 
 ## Provider verification checklist (manual, release-oriented)
-- With `android/local.properties` missing `USDA_API_KEY`:
-  - Add Food online search remains stable.
-  - App shows a clear configuration message (no crash, no stack trace).
+- With provider defaults enabled and missing `USDA_API_KEY`:
+  - Tapping `Search online` remains stable.
+  - `Online sources` shows USDA as `needs setup` with clear messaging.
 - With valid `USDA_API_KEY` configured:
-  - Tapping `Search online` from Add Food can return USDA-backed results.
+  - Tapping `Search online` can return USDA-backed candidates.
   - Tapping `Refresh online` performs a second explicit online execution (no silent background refresh).
+- With `ONLINE_PROVIDER_OPEN_FOOD_FACTS_ENABLED=false` or `ONLINE_PROVIDER_USDA_ENABLED=false`:
+  - `Online sources` shows the disabled provider as `disabled`.
+  - Other enabled providers still run and render results/failures independently.
 - Airplane mode:
-  - Explicit online action returns friendly failure copy.
+  - Explicit online action returns friendly failure copy per provider status.
   - UI remains responsive and local search still works.
 - Confirm no online request is started unless the user taps an explicit online action.
 

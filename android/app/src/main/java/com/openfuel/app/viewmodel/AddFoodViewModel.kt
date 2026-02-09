@@ -2,6 +2,7 @@ package com.openfuel.app.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.openfuel.app.data.remote.ProviderExecutorOnlineSearchOrchestrator
 import com.openfuel.app.data.remote.UserInitiatedNetworkGuard
 import com.openfuel.app.domain.model.FoodItem
 import com.openfuel.app.domain.model.FoodUnit
@@ -9,6 +10,10 @@ import com.openfuel.app.domain.model.MealEntry
 import com.openfuel.app.domain.model.MealType
 import com.openfuel.app.domain.model.RemoteFoodCandidate
 import com.openfuel.app.domain.model.toLocalFoodItem
+import com.openfuel.app.domain.search.OnlineProviderRun
+import com.openfuel.app.domain.search.OnlineProviderRunStatus
+import com.openfuel.app.domain.search.OnlineSearchOrchestrator
+import com.openfuel.app.domain.search.OnlineSearchRequest
 import com.openfuel.app.domain.repository.FoodRepository
 import com.openfuel.app.domain.repository.LogRepository
 import com.openfuel.app.domain.repository.SettingsRepository
@@ -17,12 +22,14 @@ import com.openfuel.app.domain.search.UnifiedFoodSearchResult
 import com.openfuel.app.domain.search.UnifiedSearchState
 import com.openfuel.app.domain.search.applySourceFilter
 import com.openfuel.app.domain.search.mergeUnifiedSearchResults
-import com.openfuel.app.domain.service.ProviderExecutionRequest
+import com.openfuel.app.domain.service.FoodCatalogExecutionProvider
+import com.openfuel.app.domain.service.FoodCatalogProvider
+import com.openfuel.app.domain.service.FoodCatalogProviderDescriptor
+import com.openfuel.app.domain.service.FoodCatalogProviderRegistry
 import com.openfuel.app.domain.service.ProviderExecutor
 import com.openfuel.app.domain.service.ProviderRefreshPolicy
 import com.openfuel.app.domain.service.ProviderRequestType
 import com.openfuel.app.domain.service.ProviderResult
-import com.openfuel.app.domain.service.ProviderStatus
 import com.openfuel.app.domain.util.EntryValidation
 import java.time.Instant
 import java.util.UUID
@@ -45,8 +52,12 @@ class AddFoodViewModel(
     private val foodRepository: FoodRepository,
     private val logRepository: LogRepository,
     settingsRepository: SettingsRepository,
-    private val providerExecutor: ProviderExecutor,
+    providerExecutor: ProviderExecutor,
     private val userInitiatedNetworkGuard: UserInitiatedNetworkGuard,
+    private val onlineSearchOrchestrator: OnlineSearchOrchestrator = ProviderExecutorOnlineSearchOrchestrator(
+        providerExecutor = providerExecutor,
+        providerRegistry = EmptyFoodCatalogProviderRegistry,
+    ),
 ) : ViewModel() {
     private companion object {
         private const val MAX_CALORIES_KCAL = 10_000.0
@@ -130,6 +141,7 @@ class AddFoodViewModel(
             onlineLookupEnabled = effectiveUnifiedSearch.onlineEnabled,
             hasSearchedOnline = effectiveUnifiedSearch.onlineHasSearched,
             onlineResults = effectiveUnifiedSearch.onlineResults,
+            onlineProviderRuns = effectiveUnifiedSearch.providerRuns,
             onlineProviderResults = effectiveUnifiedSearch.providerResults,
             onlineExecutionElapsedMs = effectiveUnifiedSearch.onlineElapsedMs,
             onlineExecutionCount = effectiveUnifiedSearch.onlineExecutionCount,
@@ -152,6 +164,7 @@ class AddFoodViewModel(
                 onlineHasSearched = false,
                 onlineIsLoading = false,
                 onlineError = null,
+                providerRuns = emptyList(),
                 providerResults = emptyList(),
                 onlineElapsedMs = 0L,
                 onlineExecutionCount = 0,
@@ -183,6 +196,7 @@ class AddFoodViewModel(
                     onlineIsLoading = false,
                     onlineResults = emptyList(),
                     onlineError = "Online search is turned off. Enable it in Settings to continue.",
+                    providerRuns = emptyList(),
                     providerResults = emptyList(),
                     onlineElapsedMs = 0L,
                 )
@@ -198,6 +212,7 @@ class AddFoodViewModel(
                     onlineIsLoading = false,
                     onlineResults = emptyList(),
                     onlineError = "Enter a search term to look up online.",
+                    providerRuns = emptyList(),
                     providerResults = emptyList(),
                     onlineElapsedMs = 0L,
                 )
@@ -212,25 +227,24 @@ class AddFoodViewModel(
                     onlineIsLoading = true,
                     onlineResults = emptyList(),
                     onlineError = null,
+                    providerRuns = emptyList(),
                     providerResults = emptyList(),
                     onlineElapsedMs = 0L,
                 )
             }
             try {
                 val token = userInitiatedNetworkGuard.issueToken("add_food_search_online")
-                val report = providerExecutor.execute(
-                    request = ProviderExecutionRequest(
-                        requestType = ProviderRequestType.TEXT_SEARCH,
-                        sourceFilter = SearchSourceFilter.ONLINE_ONLY,
-                        onlineLookupEnabled = onlineLookupEnabledState.value,
+                val result = onlineSearchOrchestrator.search(
+                    request = OnlineSearchRequest(
                         query = query,
                         token = token,
+                        onlineLookupEnabled = onlineLookupEnabledState.value,
                         refreshPolicy = refreshPolicy,
                     ),
                 )
-                val results = report.mergedCandidates.map { merged -> merged.candidate }
+                val results = result.candidates
                 val error = deriveOnlineErrorMessage(
-                    providerResults = report.providerResults,
+                    providerRuns = result.providerRuns,
                     hasResults = results.isNotEmpty(),
                 )
                 unifiedSearchState.update { current ->
@@ -239,8 +253,9 @@ class AddFoodViewModel(
                         onlineIsLoading = false,
                         onlineResults = results,
                         onlineError = error,
-                        providerResults = report.providerResults,
-                        onlineElapsedMs = report.overallElapsedMs,
+                        providerRuns = result.providerRuns,
+                        providerResults = result.providerResults,
+                        onlineElapsedMs = result.overallDurationMs,
                         onlineExecutionCount = current.onlineExecutionCount + 1,
                     )
                 }
@@ -251,6 +266,7 @@ class AddFoodViewModel(
                         onlineIsLoading = false,
                         onlineResults = emptyList(),
                         onlineError = "Online search failed. Check connection and try again.",
+                        providerRuns = emptyList(),
                         providerResults = emptyList(),
                         onlineElapsedMs = 0L,
                         onlineExecutionCount = current.onlineExecutionCount + 1,
@@ -392,6 +408,7 @@ data class AddFoodUiState(
     val onlineLookupEnabled: Boolean = true,
     val hasSearchedOnline: Boolean = false,
     val onlineResults: List<RemoteFoodCandidate> = emptyList(),
+    val onlineProviderRuns: List<OnlineProviderRun> = emptyList(),
     val onlineProviderResults: List<ProviderResult> = emptyList(),
     val onlineExecutionElapsedMs: Long = 0L,
     val onlineExecutionCount: Int = 0,
@@ -415,30 +432,19 @@ private data class UnifiedSearchComposedState(
 )
 
 private fun deriveOnlineErrorMessage(
-    providerResults: List<ProviderResult>,
+    providerRuns: List<OnlineProviderRun>,
     hasResults: Boolean,
 ): String? {
-    if (providerResults.isEmpty()) {
+    if (providerRuns.isEmpty()) {
         return null
     }
-    val hasMissingUsdaKey = providerResults.any { result ->
-        result.providerId.equals("usda_fdc", ignoreCase = true) &&
-            result.status == ProviderStatus.DISABLED_BY_SETTINGS &&
-            result.diagnostics?.contains("API key missing", ignoreCase = true) == true
+    val missingConfig = providerRuns.firstOrNull { run ->
+        run.status == OnlineProviderRunStatus.SKIPPED_MISSING_CONFIG
     }
-    if (hasMissingUsdaKey && !hasResults) {
-        return "USDA provider is not configured. Add USDA_API_KEY in local.properties."
+    if (missingConfig != null && !hasResults) {
+        return missingConfig.message ?: "Provider setup is required before searching online."
     }
-    val failedStatuses = setOf(
-        ProviderStatus.NETWORK_UNAVAILABLE,
-        ProviderStatus.HTTP_ERROR,
-        ProviderStatus.PARSING_ERROR,
-        ProviderStatus.ERROR,
-        ProviderStatus.TIMEOUT,
-        ProviderStatus.GUARD_REJECTED,
-        ProviderStatus.RATE_LIMITED,
-    )
-    val failed = providerResults.filter { result -> result.status in failedStatuses }
+    val failed = providerRuns.filter { run -> run.status == OnlineProviderRunStatus.FAILED }
     if (failed.isEmpty()) {
         return null
     }
@@ -446,5 +452,22 @@ private fun deriveOnlineErrorMessage(
         "Some providers were unavailable. Showing partial results."
     } else {
         "Online search failed. Check connection and try again."
+    }
+}
+
+private object EmptyFoodCatalogProviderRegistry : FoodCatalogProviderRegistry {
+    override fun providersFor(
+        requestType: ProviderRequestType,
+        onlineLookupEnabled: Boolean,
+    ): List<FoodCatalogExecutionProvider> {
+        return emptyList()
+    }
+
+    override fun primaryTextSearchProvider(): FoodCatalogProvider {
+        error("No providers configured in EmptyFoodCatalogProviderRegistry.")
+    }
+
+    override fun providerDiagnostics(onlineLookupEnabled: Boolean): List<FoodCatalogProviderDescriptor> {
+        return emptyList()
     }
 }

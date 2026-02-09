@@ -33,14 +33,16 @@ Not declared:
 - Online provider requests are initiated from explicit UI actions:
   - Add Food online search/refresh (`AddFoodViewModel.searchOnline`, `AddFoodViewModel.refreshOnline`).
   - Barcode lookup (`ScanBarcodeViewModel.onBarcodeDetected`, `ScanBarcodeViewModel.retryLookup`).
+- Add Food online search uses deterministic multi-provider orchestration through the provider executor seam.
+- Provider runs execute in stable priority order and expose per-provider status in UI (`Online sources`) for explicit user transparency.
 - Active real providers:
-  - Open Food Facts
-  - USDA FoodData Central (requires local `USDA_API_KEY` configuration)
+  - Open Food Facts (`ONLINE_PROVIDER_OPEN_FOOD_FACTS_ENABLED=true`)
+  - USDA FoodData Central (`ONLINE_PROVIDER_USDA_ENABLED=true` and local `USDA_API_KEY` configured)
 - `UserInitiatedNetworkGuard` issues and validates short-lived tokens before provider calls.
 - Online lookup setting gates execution; disabled setting returns local-safe UI states and blocks provider calls.
 - Online lookup default is currently `enabled = true` when no stored setting exists (`SettingsRepositoryImpl`), but requests still require explicit user action.
 - There is no background provider polling and no silent online refresh path.
-- Missing USDA key degrades gracefully to user-visible configuration guidance; no crashes and no secret fallback.
+- Missing USDA key degrades gracefully to user-visible `needs setup` guidance; no crashes and no secret fallback.
 - Play Billing calls are limited to:
   - explicit user actions (`Upgrade` and `Restore purchases`) from paywall surfaces
   - explicit app foreground entitlement refresh (`MainActivity.onStart`)

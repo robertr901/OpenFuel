@@ -8,6 +8,13 @@
 3) Run deterministic instrumentation tests:
    - `./gradlew :app:connectedDebugAndroidTest`
 
+## CI gate (pull requests)
+- GitHub Actions workflow: `.github/workflows/android-gates.yml`
+- PRs to `main` run the same three gates in order:
+  1) `./gradlew test`
+  2) `./gradlew assembleDebug`
+  3) `./gradlew :app:connectedDebugAndroidTest`
+
 ## Expected results
 - All commands complete with no errors.
 - Unit tests pass.

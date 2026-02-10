@@ -4,6 +4,16 @@ All notable changes to OpenFuel are documented here.
 
 ## Unreleased
 
+### Phase 20: Release review and quality hardening
+- Added high-leverage online UX clarity fix:
+  - top-level Add Food online error/setup summaries are now suppressed when results are already present
+  - per-provider status details remain visible under `Online sources`.
+- Added lightweight CI enforcement for release gates on pull requests:
+  - `.github/workflows/android-gates.yml`
+  - runs `./gradlew test`, `./gradlew assembleDebug`, and `./gradlew :app:connectedDebugAndroidTest`.
+- Added deterministic documentation consistency coverage that asserts CI gate workflow includes all three required commands.
+- Updated roadmap/threat/verification docs to align with current runtime behavior and explicit-action networking constraints.
+
 ### Phase 19: Online provider reliability
 - Hardened Open Food Facts runtime reliability for explicit online actions:
   - explicit connect/read/write/call timeout configuration on shared online HTTP client

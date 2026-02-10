@@ -283,6 +283,114 @@ class AddFoodViewModelTest {
     }
 
     @Test
+    fun searchOnline_whenResultsExistAndAnotherProviderNeedsSetup_hidesTopLevelErrorMessage() = runTest {
+        val remoteDataSource = MultiStatusProviderExecutor(
+            providerResults = listOf(
+                ProviderResult(
+                    providerId = "open_food_facts",
+                    capability = ProviderRequestType.TEXT_SEARCH.capability,
+                    status = ProviderStatus.AVAILABLE,
+                    items = listOf(
+                        RemoteFoodCandidate(
+                            source = RemoteFoodSource.OPEN_FOOD_FACTS,
+                            sourceId = "off-1",
+                            barcode = "123",
+                            name = "Greek Yogurt",
+                            brand = "OFF",
+                            caloriesKcalPer100g = 62.0,
+                            proteinGPer100g = 10.0,
+                            carbsGPer100g = 4.0,
+                            fatGPer100g = 1.0,
+                            servingSize = "170 g",
+                        ),
+                    ),
+                    elapsedMs = 0L,
+                ),
+                ProviderResult(
+                    providerId = "usda_fdc",
+                    capability = ProviderRequestType.TEXT_SEARCH.capability,
+                    status = ProviderStatus.DISABLED_BY_SETTINGS,
+                    items = emptyList(),
+                    elapsedMs = 0L,
+                    diagnostics = "USDA API key missing. Add USDA_API_KEY in local.properties.",
+                ),
+            ),
+        )
+        val viewModel = AddFoodViewModel(
+            foodRepository = AddFoodFakeFoodRepository(),
+            logRepository = AddFoodFakeLogRepository(),
+            settingsRepository = FakeSettingsRepository(enabled = true),
+            providerExecutor = remoteDataSource,
+            userInitiatedNetworkGuard = UserInitiatedNetworkGuard(),
+        )
+        val collectJob = launch { viewModel.uiState.collect { } }
+
+        viewModel.updateSearchQuery("yogurt")
+        advanceTimeBy(300)
+        advanceUntilIdle()
+        viewModel.searchOnline()
+        advanceUntilIdle()
+
+        assertEquals(1, viewModel.uiState.value.onlineResults.size)
+        assertEquals(null, viewModel.uiState.value.onlineErrorMessage)
+        collectJob.cancel()
+    }
+
+    @Test
+    fun searchOnline_whenResultsExistAndAnotherProviderFails_hidesTopLevelErrorMessage() = runTest {
+        val remoteDataSource = MultiStatusProviderExecutor(
+            providerResults = listOf(
+                ProviderResult(
+                    providerId = "open_food_facts",
+                    capability = ProviderRequestType.TEXT_SEARCH.capability,
+                    status = ProviderStatus.AVAILABLE,
+                    items = listOf(
+                        RemoteFoodCandidate(
+                            source = RemoteFoodSource.OPEN_FOOD_FACTS,
+                            sourceId = "off-2",
+                            barcode = "456",
+                            name = "Oatmeal",
+                            brand = "OFF",
+                            caloriesKcalPer100g = 370.0,
+                            proteinGPer100g = 13.0,
+                            carbsGPer100g = 67.0,
+                            fatGPer100g = 7.0,
+                            servingSize = "40 g",
+                        ),
+                    ),
+                    elapsedMs = 0L,
+                ),
+                ProviderResult(
+                    providerId = "nutritionix",
+                    capability = ProviderRequestType.TEXT_SEARCH.capability,
+                    status = ProviderStatus.TIMEOUT,
+                    items = emptyList(),
+                    elapsedMs = 0L,
+                    diagnostics = "Provider execution timed out.",
+                ),
+            ),
+        )
+        val viewModel = AddFoodViewModel(
+            foodRepository = AddFoodFakeFoodRepository(),
+            logRepository = AddFoodFakeLogRepository(),
+            settingsRepository = FakeSettingsRepository(enabled = true),
+            providerExecutor = remoteDataSource,
+            userInitiatedNetworkGuard = UserInitiatedNetworkGuard(),
+        )
+        val collectJob = launch { viewModel.uiState.collect { } }
+
+        viewModel.updateSearchQuery("oat")
+        advanceTimeBy(300)
+        advanceUntilIdle()
+        viewModel.searchOnline()
+        advanceUntilIdle()
+
+        assertEquals(1, viewModel.uiState.value.onlineResults.size)
+        assertEquals(null, viewModel.uiState.value.onlineErrorMessage)
+        collectJob.cancel()
+    }
+
+    @Test
     fun updateSearchQuery_clearsPreviousOnlineResultsAndAttemptState() = runTest {
         val remoteDataSource = FakeProviderExecutor()
         val viewModel = AddFoodViewModel(

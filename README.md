@@ -14,6 +14,7 @@ Status: bootstrapping.
 - 2026-02-09: Completed Phase 17 multi-provider online search orchestration (deterministic provider runs, per-provider status disclosure, isolated provider failures, explicit-action online only).
 - 2026-02-09: Completed Phase 18 provider integration hardening (Nutritionix real integration, deterministic multi-provider merge improvements, explicit-action online safeguards unchanged).
 - 2026-02-09: Completed Phase 19 online provider reliability hardening (Open Food Facts timeout/retry resilience, clearer provider setup/status UX, deterministic merge refinements, explicit-action networking unchanged).
+- 2026-02-09: Completed Phase 20 release review and quality hardening (high-leverage UX clarity fix, CI gate enforcement for test/assemble/connected tests, docs/runtime alignment, evidence-based next roadmap proposal).
 
 ## Deterministic Android Verification
 Run from repo root:
@@ -26,6 +27,8 @@ cd android
 ```
 
 `./gradlew :app:connectedDebugAndroidTest` is part of the primary release gate. It uses `OpenFuelAndroidTestRunner`, which overrides the app container with deterministic providers and fake voice transcription. This keeps instrumentation tests offline and reproducible by disabling live Open Food Facts execution and avoiding system microphone/speech UI dependencies.
+
+PR CI runs the same three gates via `.github/workflows/android-gates.yml`.
 
 ## Online provider setup (local development)
 OpenFuel includes multi-provider online search behind explicit-action controls.

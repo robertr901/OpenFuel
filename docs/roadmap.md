@@ -71,18 +71,18 @@ This roadmap separates product milestones (user outcomes) from implementation ph
 - Local capture remains reliable when offline or when network calls fail.
 
 **Progress update**
-- Completed: OpenFoodFacts integration with Retrofit + OkHttp timeouts and retries disabled.
+- Completed: OpenFoodFacts integration with Retrofit + bounded OkHttp timeouts and explicit-action single retry for idempotent GET requests.
 - Completed: `UserInitiatedNetworkGuard` and tokenised network-call enforcement path in ViewModels/data source.
 - Completed: Add Food explicit “Search online” flow with local-first UI and online preview Save/Save+Log actions.
 - Completed: Barcode scan screen with ML Kit + CameraX, plus lookup retry/error handling.
 - Completed: Food model and Room migration for barcode uniqueness and favourites persistence.
 - Completed: Add Food surfaces favourites and recent logged foods for faster capture loops.
 - Completed: Online search defaults ON with user override in Settings; online actions are blocked cleanly when disabled.
-- Completed: Add Food fast-capture segmented modes (`Recents`, `Favourites`, `Local`, `Online`) and richer online preview sheet.
+- Completed: Add Food unified local-first search with one query field, explicit online actions, and sectioned Local/Online results.
 - Completed: Local “Report incorrect food” flag for imported foods (device-local only).
 - Completed: Unified Add Food search UX with a single query input, explicit online action, and deterministic online state rendering (idle/loading/empty/error).
 - Completed: Search domain merge policy for local+online results, with local-first ordering and dedupe safeguards.
-- Completed: Provider abstraction with a registry scaffold (OpenFoodFacts active; other providers stubbed, documented, and disabled).
+- Completed: Provider abstraction with registry-driven availability and real Open Food Facts + USDA + Nutritionix integrations.
 - Completed: Deterministic instrumentation coverage for unified search controls/filter behaviour and online-disabled gating.
 - Completed: Mapping hardening for partial OpenFoodFacts payloads (stable derived IDs, sanitised nutrient values, missing-field tolerance).
 
@@ -254,10 +254,106 @@ This roadmap separates product milestones (user outcomes) from implementation ph
   - deterministic tie-break by provider priority and stable identity.
 - Preserved explicit-action guardrails, deterministic tests, and no schema/migration changes.
 
-## Phase 19+: ideas (not planned yet)
-- Optional on-device embeddings for better local matching and dedupe (local-only).
-- Private export/import improvements (encrypted export, user-controlled keys).
-- Multi-device sync only if end-to-end encrypted and user-owned (explicitly not in scope yet).
+## Phase 19: Online provider reliability hardening (completed)
+**Completed**
+- Hardened Open Food Facts reliability for explicit actions with bounded connect/read/write/call timeouts.
+- Added at-most-one explicit-action retry for idempotent Open Food Facts GET requests (no background retry loops).
+- Added Settings `Online provider setup` status section (`Configured` / `Needs setup` / `Disabled`) without revealing secret values.
+- Reduced Add Food online error duplication by using clearer top-level summaries and source-level status details.
+- Improved deterministic multi-provider dedupe ranking and tie-breaking to reduce false merges.
+- Preserved explicit-action-only networking, local-first defaults, and no cache schema/migration changes.
+
+## Phase 20: Release review and quality hardening (completed)
+**Completed**
+- Performed end-to-end release review across UX, reliability, data quality, privacy/security, accessibility, maintainability, and docs.
+- Added lightweight CI PR gate workflow that runs:
+  - `./gradlew test`
+  - `./gradlew assembleDebug`
+  - `./gradlew :app:connectedDebugAndroidTest`
+- Added documentation consistency test coverage that asserts CI workflow contains all three release gates.
+- Refined Add Food online messaging so top-level error/setup banners are suppressed when results are already available (provider statuses remain visible in `Online sources`).
+- Updated docs to align with runtime behavior and explicit-action networking constraints.
+
+## Phase 21–30 proposal (review-driven)
+### Phase 21: Provider contract conformance pack
+- Goal: lock provider mapping correctness against a shared canonical fixture corpus.
+- Why: reduces regressions from provider payload drift.
+- Minimal deliverables: fixture pack + contract test harness for OFF/USDA/Nutritionix.
+- Acceptance criteria: all providers pass canonical mapping checks; no flaky network tests.
+- Test strategy: JVM fixture tests only; deterministic snapshots.
+- Risks/non-goals: no new providers; no schema changes.
+
+### Phase 22: Query normalization and input resilience
+- Goal: make search text normalization predictable for edge punctuation/units/brands.
+- Why: improves hit rate and user trust without extra network calls.
+- Minimal deliverables: shared normalization utility and golden tests.
+- Acceptance criteria: deterministic normalized output for defined corpus.
+- Test strategy: pure JVM golden tests + targeted VM tests.
+- Risks/non-goals: no ML inference in this phase.
+
+### Phase 23: Barcode reliability hardening
+- Goal: stabilize scan-to-result loop under poor camera/light conditions.
+- Why: barcode is a primary fast-capture path on real devices.
+- Minimal deliverables: clearer scan states and retry guidance; defensive debounce.
+- Acceptance criteria: scan path remains explicit-action, stable, and non-blocking.
+- Test strategy: unit tests + deterministic UI/instrumentation assertions without camera hardware dependency.
+- Risks/non-goals: no new permissions, no background camera use.
+
+### Phase 24: Serving-size normalization v2
+- Goal: reduce ambiguity in imported serving strings and unit conversion.
+- Why: improves data quality and downstream logging accuracy.
+- Minimal deliverables: deterministic serving parser improvements + fallback copy.
+- Acceptance criteria: known problematic serving examples parse consistently.
+- Test strategy: unit corpus tests + save/log regression tests.
+- Risks/non-goals: no nutritional inference additions.
+
+### Phase 25: Accessibility confidence pass
+- Goal: raise TalkBack/keyboard/large-font quality on core logging flows.
+- Why: improves inclusivity and reduces interaction friction.
+- Minimal deliverables: semantics/focus tweaks and a11y smoke assertions.
+- Acceptance criteria: no clipped critical controls at large font scale; focus order stable.
+- Test strategy: deterministic compose tests with semantics assertions.
+- Risks/non-goals: no visual redesign scope creep.
+
+### Phase 26: Export trustworthiness hardening
+- Goal: strengthen export clarity, preview fidelity, and redaction confidence.
+- Why: export is high-value and privacy-sensitive for users.
+- Minimal deliverables: clearer schema docs, redaction preview invariants, regression tests.
+- Acceptance criteria: export output matches on-screen preview for JSON/CSV.
+- Test strategy: JVM export snapshot tests.
+- Risks/non-goals: no cloud upload or sync.
+
+### Phase 27: Performance budgets for Add Food
+- Goal: keep Add Food interactions smooth under large local datasets.
+- Why: protects daily usability as data grows.
+- Minimal deliverables: explicit performance budgets + lightweight benchmark checks.
+- Acceptance criteria: query/update interactions stay under agreed latency thresholds.
+- Test strategy: local benchmark profile + deterministic perf smoke checks.
+- Risks/non-goals: no architectural rewrite.
+
+### Phase 28: Security hardening pass (local-first)
+- Goal: reduce residual risk in logs, key handling, and local attack surface.
+- Why: security posture is core product value.
+- Minimal deliverables: log scrub review, key-handling audit, updated threat model evidence.
+- Acceptance criteria: no sensitive content in logs, no secrets in repo, docs match runtime.
+- Test strategy: static grep checks + documentation consistency tests.
+- Risks/non-goals: no backend introduction.
+
+### Phase 29: Release automation maturity
+- Goal: make release readiness checks repeatable and auditable.
+- Why: lowers human error in shipping.
+- Minimal deliverables: stricter PR checks and release checklist automation hooks.
+- Acceptance criteria: release checklist can be executed from repo with deterministic outputs.
+- Test strategy: CI workflow checks + docs consistency tests.
+- Risks/non-goals: no paid CI vendor lock-in decisions in this phase.
+
+### Phase 30: Product simplification pass
+- Goal: remove low-value UI complexity and keep primary flows fast.
+- Why: increases perceived quality and long-term maintainability.
+- Minimal deliverables: evidence-backed simplification changes with test coverage.
+- Acceptance criteria: fewer steps in primary log flow; no regressions in explicit-action guardrails.
+- Test strategy: deterministic UI smoke + targeted VM tests.
+- Risks/non-goals: no feature expansion outside simplification findings.
 
 ## Deferred
 - Photo-based logging.

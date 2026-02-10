@@ -5,6 +5,7 @@ import com.openfuel.app.data.db.FoodItemEntity
 import com.openfuel.app.domain.model.FoodItem
 import java.time.Instant
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
@@ -17,6 +18,20 @@ class FoodRepositoryImplTest {
         val escaped = escapeLikeQuery("100%_\\test")
 
         assertEquals("100\\%\\_\\\\test", escaped)
+    }
+
+    @Test
+    fun buildSearchLikePattern_normalizesAndBuildsTokenAwareLikePattern() {
+        val pattern = buildSearchLikePattern("Coke-Zero (330ml)")
+
+        assertEquals("coke%zero%330%ml", pattern)
+    }
+
+    @Test
+    fun buildSearchLikePattern_escapesWildcardsInsideTokens() {
+        val pattern = buildSearchLikePattern("100% whey_protein")
+
+        assertEquals("100\\%%whey%protein", pattern)
     }
 
     @Test
@@ -83,10 +98,24 @@ class FoodRepositoryImplTest {
 
         assertEquals(true, fakeDao.getFoodById("food-1")?.isReportedIncorrect)
     }
+
+    @Test
+    fun searchFoods_usesNormalizedTokenPatternForDaoLookup() = runTest {
+        val fakeDao = FakeFoodDao()
+        val repository = FoodRepositoryImpl(fakeDao)
+
+        repository.searchFoods(query = "Coke-Zero (330ml)", limit = 5).first()
+
+        assertEquals("coke%zero%330%ml", fakeDao.lastObserveFoodsBySearchQuery)
+    }
 }
 
 private class FakeFoodDao : FoodDao {
     private val storage = LinkedHashMap<String, FoodItemEntity>()
+    var lastObserveAllFoodsBySearchQuery: String? = null
+        private set
+    var lastObserveFoodsBySearchQuery: String? = null
+        private set
 
     override suspend fun upsertFood(foodItem: FoodItemEntity) {
         storage[foodItem.id] = foodItem
@@ -128,6 +157,7 @@ private class FakeFoodDao : FoodDao {
     }
 
     override fun observeAllFoodsBySearch(escapedQuery: String): Flow<List<FoodItemEntity>> {
+        lastObserveAllFoodsBySearchQuery = escapedQuery
         val normalized = escapedQuery.lowercase()
         return flowOf(
             storage.values.filter { food ->
@@ -146,6 +176,7 @@ private class FakeFoodDao : FoodDao {
     }
 
     override fun observeFoodsBySearch(escapedQuery: String, limit: Int): Flow<List<FoodItemEntity>> {
+        lastObserveFoodsBySearchQuery = escapedQuery
         val normalized = escapedQuery.lowercase()
         return flowOf(
             storage.values

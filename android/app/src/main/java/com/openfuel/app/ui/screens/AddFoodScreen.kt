@@ -49,6 +49,7 @@ import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
@@ -285,8 +286,14 @@ fun AddFoodScreen(
                                         OFSectionHeader(
                                             title = "Online sources",
                                             subtitle = "Runs only after explicit online actions.",
+                                            modifier = Modifier.semantics { heading() },
                                         )
+                                        val sourceStatusSummary = uiState.onlineProviderRuns
+                                            .joinToString(separator = ". ") { run -> run.toStatusLine() }
                                         Column(
+                                            modifier = Modifier.semantics {
+                                                contentDescription = "Online source statuses. $sourceStatusSummary"
+                                            },
                                             verticalArrangement = Arrangement.spacedBy(Dimens.xs),
                                         ) {
                                             uiState.onlineProviderRuns.forEach { run ->
@@ -353,6 +360,12 @@ fun AddFoodScreen(
                                         text = uiState.onlineErrorMessage.orEmpty(),
                                         style = MaterialTheme.typography.bodyMedium,
                                         color = MaterialTheme.colorScheme.error,
+                                        modifier = Modifier
+                                            .testTag("add_food_unified_online_error")
+                                            .semantics {
+                                                liveRegion = LiveRegionMode.Polite
+                                                contentDescription = uiState.onlineErrorMessage.orEmpty()
+                                            },
                                     )
                                 }
                             }
@@ -386,7 +399,10 @@ fun AddFoodScreen(
                                 ProviderStatus.GUARD_REJECTED,
                                 ProviderStatus.RATE_LIMITED,
                             )
-                            if (BuildConfig.DEBUG && uiState.onlineProviderResults.isNotEmpty()) {
+                            val hasDebugDiagnostics = uiState.onlineProviderResults.isNotEmpty() ||
+                                uiState.localSearchLatencyMs != null ||
+                                uiState.addFlowCompletionMs != null
+                            if (BuildConfig.DEBUG && hasDebugDiagnostics) {
                                 item {
                                     OFCard(
                                         modifier = Modifier
@@ -409,17 +425,35 @@ fun AddFoodScreen(
                                                 }
                                             },
                                         )
-                                        Text(
-                                            text = "Execution #${uiState.onlineExecutionCount}",
-                                            style = MaterialTheme.typography.bodySmall,
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                            modifier = Modifier.testTag("add_food_unified_provider_debug_execution_count"),
-                                        )
+                                        if (uiState.onlineExecutionCount > 0) {
+                                            Text(
+                                                text = "Execution #${uiState.onlineExecutionCount}",
+                                                style = MaterialTheme.typography.bodySmall,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                modifier = Modifier.testTag("add_food_unified_provider_debug_execution_count"),
+                                            )
+                                        }
                                         Text(
                                             text = "Elapsed ${uiState.onlineExecutionElapsedMs} ms · cache ${uiState.onlineProviderResults.count { it.fromCache }} hit(s)",
                                             style = MaterialTheme.typography.bodySmall,
                                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                                         )
+                                        uiState.localSearchLatencyMs?.let { localSearchLatencyMs ->
+                                            Text(
+                                                text = "Local search ${localSearchLatencyMs} ms · ${uiState.localSearchResultCount} item(s)",
+                                                style = MaterialTheme.typography.bodySmall,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                modifier = Modifier.testTag("add_food_unified_debug_local_search_latency"),
+                                            )
+                                        }
+                                        uiState.addFlowCompletionMs?.let { addFlowCompletionMs ->
+                                            Text(
+                                                text = "Add flow completion ${addFlowCompletionMs} ms",
+                                                style = MaterialTheme.typography.bodySmall,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                modifier = Modifier.testTag("add_food_unified_debug_add_flow_completion_latency"),
+                                            )
+                                        }
                                         AnimatedVisibility(
                                             visible = isDiagnosticsExpanded,
                                             enter = fadeIn(),
@@ -535,6 +569,7 @@ private fun UnifiedSearchControls(
         OFSectionHeader(
             title = "Local search",
             subtitle = "Search foods already saved on this device.",
+            modifier = Modifier.semantics { heading() },
         )
         OutlinedTextField(
             value = query,
@@ -846,6 +881,7 @@ private fun QuickActionsCard(
         OFSectionHeader(
             title = "Quick actions",
             subtitle = "Scan or launch quick add with explicit actions.",
+            modifier = Modifier.semantics { heading() },
         )
         Row(
             modifier = Modifier.fillMaxWidth(),

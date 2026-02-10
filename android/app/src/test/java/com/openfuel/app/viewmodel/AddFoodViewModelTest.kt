@@ -22,12 +22,14 @@ import com.openfuel.app.domain.service.ProviderRefreshPolicy
 import com.openfuel.app.domain.service.ProviderRequestType
 import com.openfuel.app.domain.service.ProviderResult
 import com.openfuel.app.domain.service.ProviderStatus
+import java.util.ArrayDeque
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.advanceTimeBy
@@ -110,6 +112,32 @@ class AddFoodViewModelTest {
     }
 
     @Test
+    fun updateSearchQuery_typingAndDebounce_doNotTriggerOnlineExecution() = runTest {
+        val remoteDataSource = FakeProviderExecutor()
+        val viewModel = AddFoodViewModel(
+            foodRepository = AddFoodFakeFoodRepository(
+                foods = listOf(fakeFood(id = "f1", name = "Oatmeal")),
+            ),
+            logRepository = AddFoodFakeLogRepository(),
+            settingsRepository = FakeSettingsRepository(enabled = true),
+            providerExecutor = remoteDataSource,
+            userInitiatedNetworkGuard = UserInitiatedNetworkGuard(),
+        )
+        val collectJob = launch { viewModel.uiState.collect { } }
+
+        viewModel.updateSearchQuery("o")
+        advanceTimeBy(100)
+        viewModel.updateSearchQuery("oa")
+        advanceTimeBy(100)
+        viewModel.updateSearchQuery("oat")
+        advanceTimeBy(300)
+        advanceUntilIdle()
+
+        assertEquals(0, remoteDataSource.searchCalls)
+        collectJob.cancel()
+    }
+
+    @Test
     fun updateSearchQuery_normalizesPunctuationAndUnitsForLocalSearch() = runTest {
         val foodRepository = AddFoodFakeFoodRepository(
             foods = listOf(
@@ -130,6 +158,58 @@ class AddFoodViewModelTest {
         advanceUntilIdle()
 
         assertEquals("coke zero 330 ml", foodRepository.searchQueries.last())
+        collectJob.cancel()
+    }
+
+    @Test
+    fun updateSearchQuery_recordsDeterministicLocalSearchLatencyMetrics() = runTest {
+        val nowValues = ArrayDeque(listOf(1_000L, 1_100L, 1_180L))
+        val viewModel = AddFoodViewModel(
+            foodRepository = AddFoodFakeFoodRepository(
+                foods = listOf(fakeFood(id = "f1", name = "Oatmeal")),
+                searchDelayMs = 1L,
+            ),
+            logRepository = AddFoodFakeLogRepository(),
+            settingsRepository = FakeSettingsRepository(enabled = true),
+            providerExecutor = FakeProviderExecutor(),
+            userInitiatedNetworkGuard = UserInitiatedNetworkGuard(),
+            nowEpochMillis = { if (nowValues.isEmpty()) 1_180L else nowValues.removeFirst() },
+        )
+        val collectJob = launch { viewModel.uiState.collect { } }
+
+        viewModel.updateSearchQuery("oat")
+        advanceTimeBy(300)
+        advanceUntilIdle()
+
+        assertEquals(80L, viewModel.uiState.value.localSearchLatencyMs)
+        assertEquals(1, viewModel.uiState.value.localSearchResultCount)
+        collectJob.cancel()
+    }
+
+    @Test
+    fun quickAdd_recordsAddFlowCompletionLatency() = runTest {
+        val nowValues = ArrayDeque(listOf(2_000L, 2_450L))
+        val viewModel = AddFoodViewModel(
+            foodRepository = AddFoodFakeFoodRepository(),
+            logRepository = AddFoodFakeLogRepository(),
+            settingsRepository = FakeSettingsRepository(enabled = true),
+            providerExecutor = FakeProviderExecutor(),
+            userInitiatedNetworkGuard = UserInitiatedNetworkGuard(),
+            nowEpochMillis = { if (nowValues.isEmpty()) 2_450L else nowValues.removeFirst() },
+        )
+        val collectJob = launch { viewModel.uiState.collect { } }
+
+        viewModel.quickAdd(
+            name = "Quick Oats",
+            caloriesKcal = 100.0,
+            proteinG = 5.0,
+            carbsG = 10.0,
+            fatG = 2.0,
+            mealType = MealType.BREAKFAST,
+        )
+        advanceUntilIdle()
+
+        assertEquals(450L, viewModel.uiState.value.addFlowCompletionMs)
         collectJob.cancel()
     }
 
@@ -256,7 +336,10 @@ class AddFoodViewModelTest {
         viewModel.searchOnline()
         advanceUntilIdle()
 
-        assertEquals("No connection.", viewModel.uiState.value.onlineErrorMessage)
+        assertEquals(
+            "A source failed. See statuses below.",
+            viewModel.uiState.value.onlineErrorMessage,
+        )
         assertTrue(viewModel.uiState.value.onlineResults.isEmpty())
         assertFalse(viewModel.uiState.value.isOnlineSearchInProgress)
         collectJob.cancel()
@@ -601,6 +684,7 @@ private class AddFoodFakeFoodRepository(
     private val foods: List<FoodItem> = emptyList(),
     private val favorites: List<FoodItem> = emptyList(),
     private val recents: List<FoodItem> = emptyList(),
+    private val searchDelayMs: Long = 0L,
 ) : FoodRepository {
     val upsertedFoods = mutableListOf<FoodItem>()
     val searchQueries = mutableListOf<String>()
@@ -642,8 +726,13 @@ private class AddFoodFakeFoodRepository(
     }
 
     override fun searchFoods(query: String, limit: Int): Flow<List<FoodItem>> {
-        searchQueries += query
-        return flowOf(filterFoods(query).take(limit))
+        return flow {
+            searchQueries += query
+            if (searchDelayMs > 0) {
+                delay(searchDelayMs)
+            }
+            emit(filterFoods(query).take(limit))
+        }
     }
 
     private fun filterFoods(query: String): List<FoodItem> {

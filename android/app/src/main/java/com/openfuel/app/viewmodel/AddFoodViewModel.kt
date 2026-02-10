@@ -55,6 +55,7 @@ class AddFoodViewModel(
     settingsRepository: SettingsRepository,
     providerExecutor: ProviderExecutor,
     private val userInitiatedNetworkGuard: UserInitiatedNetworkGuard,
+    private val nowEpochMillis: () -> Long = { System.currentTimeMillis() },
     private val onlineSearchOrchestrator: OnlineSearchOrchestrator = ProviderExecutorOnlineSearchOrchestrator(
         providerExecutor = providerExecutor,
         providerRegistry = EmptyFoodCatalogProviderRegistry,
@@ -68,19 +69,26 @@ class AddFoodViewModel(
 
     private val unifiedSearchState = MutableStateFlow(UnifiedSearchState())
     private val transientState = MutableStateFlow(AddFoodTransientState())
+    private val sessionStartedAtMs = nowEpochMillis()
 
-    private val localSearchResultsState: StateFlow<List<FoodItem>> = unifiedSearchState
+    private val localSearchSnapshotState: StateFlow<LocalSearchSnapshot> = unifiedSearchState
         .map { state -> state.query }
         .map { query -> normalizeSearchQuery(query) }
         .debounce(300)
         .distinctUntilChanged()
-        .flatMapLatest { query ->
-            foodRepository.searchFoods(query = query, limit = SEARCH_LIMIT)
+        .map { query -> query to nowEpochMillis() }
+        .flatMapLatest { (query, startedAtMs) ->
+            foodRepository.searchFoods(query = query, limit = SEARCH_LIMIT).map { results ->
+                LocalSearchSnapshot(
+                    results = results,
+                    latencyMs = (nowEpochMillis() - startedAtMs).coerceAtLeast(0L),
+                )
+            }
         }
         .stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(5_000),
-            initialValue = emptyList(),
+            initialValue = LocalSearchSnapshot(),
         )
 
     private val favoriteFoodsState: StateFlow<List<FoodItem>> = foodRepository.favoriteFoods(SEARCH_LIMIT)
@@ -106,14 +114,15 @@ class AddFoodViewModel(
 
     val uiState: StateFlow<AddFoodUiState> = combine(
         unifiedSearchState,
-        localSearchResultsState,
+        localSearchSnapshotState,
         favoriteFoodsState,
         recentLoggedFoodsState,
         onlineLookupEnabledState,
-    ) { unified, localResults, favoriteFoods, recentFoods, onlineEnabled ->
+    ) { unified, localSearchSnapshot, favoriteFoods, recentFoods, onlineEnabled ->
         UnifiedSearchComposedState(
             unified = unified,
-            localResults = localResults,
+            localResults = localSearchSnapshot.results,
+            localSearchLatencyMs = localSearchSnapshot.latencyMs,
             favoriteFoods = favoriteFoods,
             recentFoods = recentFoods,
             onlineEnabled = onlineEnabled,
@@ -149,6 +158,9 @@ class AddFoodViewModel(
             onlineExecutionCount = effectiveUnifiedSearch.onlineExecutionCount,
             isOnlineSearchInProgress = effectiveUnifiedSearch.onlineIsLoading,
             onlineErrorMessage = effectiveUnifiedSearch.onlineError,
+            localSearchLatencyMs = composed.localSearchLatencyMs,
+            localSearchResultCount = composed.localResults.size,
+            addFlowCompletionMs = transient.addFlowCompletionMs,
             selectedOnlineFood = transient.selectedOnlineFood,
             message = transient.message,
         )
@@ -197,7 +209,7 @@ class AddFoodViewModel(
                     onlineHasSearched = false,
                     onlineIsLoading = false,
                     onlineResults = emptyList(),
-                    onlineError = "Online search is turned off. Enable it in Settings to continue.",
+                    onlineError = SearchUserCopy.ONLINE_SEARCH_DISABLED,
                     providerRuns = emptyList(),
                     providerResults = emptyList(),
                     onlineElapsedMs = 0L,
@@ -213,7 +225,7 @@ class AddFoodViewModel(
                     onlineHasSearched = false,
                     onlineIsLoading = false,
                     onlineResults = emptyList(),
-                    onlineError = "Enter a search term to look up online.",
+                    onlineError = SearchUserCopy.ONLINE_SEARCH_QUERY_REQUIRED,
                     providerRuns = emptyList(),
                     providerResults = emptyList(),
                     onlineElapsedMs = 0L,
@@ -267,7 +279,7 @@ class AddFoodViewModel(
                         onlineHasSearched = true,
                         onlineIsLoading = false,
                         onlineResults = emptyList(),
-                        onlineError = "Online search failed. Check connection and try again.",
+                        onlineError = SearchUserCopy.ONLINE_SEARCH_FAILED_GENERIC,
                         providerRuns = emptyList(),
                         providerResults = emptyList(),
                         onlineElapsedMs = 0L,
@@ -292,6 +304,7 @@ class AddFoodViewModel(
                 foodRepository.upsertFood(food.toLocalFoodItem())
                 transientState.update { current ->
                     current.copy(
+                        addFlowCompletionMs = elapsedSinceSessionStart(),
                         selectedOnlineFood = null,
                         message = "Saved to My Foods.",
                     )
@@ -332,6 +345,7 @@ class AddFoodViewModel(
                 )
                 transientState.update { current ->
                     current.copy(
+                        addFlowCompletionMs = elapsedSinceSessionStart(),
                         selectedOnlineFood = null,
                         message = "Saved and logged.",
                     )
@@ -359,6 +373,9 @@ class AddFoodViewModel(
                 unit = unit,
             )
             logRepository.logMealEntry(entry)
+            transientState.update { current ->
+                current.copy(addFlowCompletionMs = elapsedSinceSessionStart())
+            }
         }
     }
 
@@ -395,7 +412,14 @@ class AddFoodViewModel(
                 unit = FoodUnit.SERVING,
             )
             logRepository.logMealEntry(entry)
+            transientState.update { current ->
+                current.copy(addFlowCompletionMs = elapsedSinceSessionStart())
+            }
         }
+    }
+
+    private fun elapsedSinceSessionStart(): Long {
+        return (nowEpochMillis() - sessionStartedAtMs).coerceAtLeast(0L)
     }
 }
 
@@ -416,21 +440,31 @@ data class AddFoodUiState(
     val onlineExecutionCount: Int = 0,
     val isOnlineSearchInProgress: Boolean = false,
     val onlineErrorMessage: String? = null,
+    val localSearchLatencyMs: Long? = null,
+    val localSearchResultCount: Int = 0,
+    val addFlowCompletionMs: Long? = null,
     val selectedOnlineFood: RemoteFoodCandidate? = null,
     val message: String? = null,
 )
 
 private data class AddFoodTransientState(
     val selectedOnlineFood: RemoteFoodCandidate? = null,
+    val addFlowCompletionMs: Long? = null,
     val message: String? = null,
 )
 
 private data class UnifiedSearchComposedState(
     val unified: UnifiedSearchState,
     val localResults: List<FoodItem>,
+    val localSearchLatencyMs: Long?,
     val favoriteFoods: List<FoodItem>,
     val recentFoods: List<FoodItem>,
     val onlineEnabled: Boolean,
+)
+
+private data class LocalSearchSnapshot(
+    val results: List<FoodItem> = emptyList(),
+    val latencyMs: Long? = null,
 )
 
 private fun deriveOnlineErrorMessage(
@@ -452,17 +486,17 @@ private fun deriveOnlineErrorMessage(
 
     if (missingConfigRuns.isNotEmpty() && failedRuns.isEmpty()) {
         return if (missingConfigRuns.size == 1) {
-            "Source needs setup. See statuses below."
+            SearchUserCopy.ONLINE_SOURCE_NEEDS_SETUP_SINGLE
         } else {
-            "Some sources need setup. See statuses below."
+            SearchUserCopy.ONLINE_SOURCE_NEEDS_SETUP_MULTIPLE
         }
     }
 
     if (failedRuns.isNotEmpty()) {
         return if (failedRuns.size == 1 && missingConfigRuns.isEmpty()) {
-            failedRuns.single().message ?: "A source failed. See statuses below."
+            SearchUserCopy.ONLINE_SOURCE_FAILED_SINGLE
         } else {
-            "Some sources failed. See statuses below."
+            SearchUserCopy.ONLINE_SOURCE_FAILED_MULTIPLE
         }
     }
 

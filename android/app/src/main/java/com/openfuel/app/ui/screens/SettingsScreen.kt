@@ -43,6 +43,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.core.content.FileProvider
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -177,6 +181,7 @@ fun SettingsScreen(
                 OFSectionHeader(
                     title = "Privacy",
                     subtitle = "Your logs stay on device. Online lookup is optional.",
+                    modifier = Modifier.semantics { heading() },
                 )
                 OFRow(
                     title = "Online food lookup",
@@ -185,6 +190,16 @@ fun SettingsScreen(
                         Switch(
                             checked = uiState.onlineLookupEnabled,
                             onCheckedChange = { viewModel.setOnlineLookupEnabled(it) },
+                            modifier = Modifier
+                                .testTag("settings_online_lookup_switch")
+                                .semantics {
+                                    contentDescription = "Online food lookup toggle"
+                                    stateDescription = if (uiState.onlineLookupEnabled) {
+                                        "On"
+                                    } else {
+                                        "Off"
+                                    }
+                                },
                         )
                     },
                 )
@@ -201,12 +216,14 @@ fun SettingsScreen(
                     OFSectionHeader(
                         title = "Online provider setup",
                         subtitle = "Local status only. Secrets are never displayed.",
+                        modifier = Modifier.semantics { heading() },
                     )
                     onlineProviderSetup.forEach { provider ->
                         val setupState = providerSetupState(provider)
                         OFRow(
                             title = provider.displayName,
                             subtitle = "$setupState · ${provider.statusReason}",
+                            contentDescription = "${provider.displayName}. $setupState. ${provider.statusReason}",
                             testTag = "settings_online_provider_setup_row_${provider.key}",
                         )
                     }

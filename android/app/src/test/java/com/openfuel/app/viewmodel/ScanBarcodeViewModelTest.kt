@@ -20,14 +20,19 @@ import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
+import kotlinx.coroutines.withContext
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 
@@ -56,6 +61,8 @@ class ScanBarcodeViewModelTest {
         assertEquals("123456", viewModel.uiState.value.lastBarcode)
         assertNotNull(viewModel.uiState.value.previewFood)
         assertNull(viewModel.uiState.value.errorMessage)
+        assertEquals(BarcodeLookupStatus.SUCCESS, viewModel.uiState.value.lookupStatus)
+        assertFalse(viewModel.uiState.value.canRetry)
         collectJob.cancel()
     }
 
@@ -76,6 +83,7 @@ class ScanBarcodeViewModelTest {
 
         assertEquals("No matching food found for barcode.", viewModel.uiState.value.errorMessage)
         assertNull(viewModel.uiState.value.previewFood)
+        assertEquals(BarcodeLookupStatus.ERROR, viewModel.uiState.value.lookupStatus)
         collectJob.cancel()
     }
 
@@ -128,6 +136,148 @@ class ScanBarcodeViewModelTest {
             viewModel.uiState.value.errorMessage,
         )
         assertNull(viewModel.uiState.value.previewFood)
+        assertEquals(BarcodeLookupStatus.ERROR, viewModel.uiState.value.lookupStatus)
+        collectJob.cancel()
+    }
+
+    @Test
+    fun onBarcodeDetected_sameBarcodeWithinWindow_skipsDuplicateLookup() = runTest {
+        val remoteDataSource = ScanFakeProviderExecutor()
+        var nowMs = 1_000L
+        val viewModel = ScanBarcodeViewModel(
+            providerExecutor = remoteDataSource,
+            userInitiatedNetworkGuard = UserInitiatedNetworkGuard(),
+            foodRepository = ScanFakeFoodRepository(),
+            logRepository = ScanFakeLogRepository(),
+            settingsRepository = FakeScanSettingsRepository(enabled = true),
+            nowEpochMillis = { nowMs },
+        )
+        val collectJob = launch { viewModel.uiState.collect { } }
+        advanceUntilIdle()
+
+        viewModel.onBarcodeDetected("123456")
+        advanceUntilIdle()
+        nowMs = 1_200L
+        viewModel.onBarcodeDetected("123456")
+        advanceUntilIdle()
+
+        assertEquals(1, remoteDataSource.lookupCalls)
+        collectJob.cancel()
+    }
+
+    @Test
+    fun retryLookup_bypassesDedupe_andTriggersSingleAdditionalLookup() = runTest {
+        val remoteDataSource = ScanStatusProviderExecutor(
+            providerId = "open_food_facts",
+            status = ProviderStatus.TIMEOUT,
+            diagnostics = "Provider execution timed out.",
+        )
+        var nowMs = 1_000L
+        val viewModel = ScanBarcodeViewModel(
+            providerExecutor = remoteDataSource,
+            userInitiatedNetworkGuard = UserInitiatedNetworkGuard(),
+            foodRepository = ScanFakeFoodRepository(),
+            logRepository = ScanFakeLogRepository(),
+            settingsRepository = FakeScanSettingsRepository(enabled = true),
+            nowEpochMillis = { nowMs },
+        )
+        val collectJob = launch { viewModel.uiState.collect { } }
+        advanceUntilIdle()
+
+        viewModel.onBarcodeDetected("123456")
+        advanceUntilIdle()
+        assertEquals(1, remoteDataSource.lookupCalls)
+        assertEquals(BarcodeLookupStatus.TIMEOUT, viewModel.uiState.value.lookupStatus)
+        nowMs = 1_200L
+        viewModel.retryLookup()
+        advanceUntilIdle()
+
+        assertEquals(2, remoteDataSource.lookupCalls)
+        assertEquals(BarcodeLookupStatus.TIMEOUT, viewModel.uiState.value.lookupStatus)
+        assertTrue(viewModel.uiState.value.canRetry)
+        collectJob.cancel()
+    }
+
+    @Test
+    fun onBarcodeDetected_latestBarcodeWins_whenEarlierLookupCompletesLater() = runTest {
+        val remoteDataSource = ControlledScanProviderExecutor()
+        val viewModel = ScanBarcodeViewModel(
+            providerExecutor = remoteDataSource,
+            userInitiatedNetworkGuard = UserInitiatedNetworkGuard(),
+            foodRepository = ScanFakeFoodRepository(),
+            logRepository = ScanFakeLogRepository(),
+            settingsRepository = FakeScanSettingsRepository(enabled = true),
+        )
+        val collectJob = launch { viewModel.uiState.collect { } }
+        advanceUntilIdle()
+
+        viewModel.onBarcodeDetected("111")
+        advanceUntilIdle()
+        viewModel.onBarcodeDetected("222")
+        advanceUntilIdle()
+
+        remoteDataSource.completeSuccess(barcode = "222", providerId = "provider_b")
+        advanceUntilIdle()
+        assertEquals("222", viewModel.uiState.value.previewFood?.barcode)
+        assertEquals("222", viewModel.uiState.value.lastBarcode)
+
+        remoteDataSource.completeSuccess(barcode = "111", providerId = "provider_a")
+        advanceUntilIdle()
+        assertEquals("222", viewModel.uiState.value.previewFood?.barcode)
+        assertEquals("222", viewModel.uiState.value.lastBarcode)
+        assertEquals(BarcodeLookupStatus.SUCCESS, viewModel.uiState.value.lookupStatus)
+        collectJob.cancel()
+    }
+
+    @Test
+    fun onBarcodeDetected_whenNetworkUnavailable_setsNoConnectionState() = runTest {
+        val remoteDataSource = ScanStatusProviderExecutor(
+            providerId = "open_food_facts",
+            status = ProviderStatus.NETWORK_UNAVAILABLE,
+            diagnostics = "No internet connection",
+        )
+        val viewModel = ScanBarcodeViewModel(
+            providerExecutor = remoteDataSource,
+            userInitiatedNetworkGuard = UserInitiatedNetworkGuard(),
+            foodRepository = ScanFakeFoodRepository(),
+            logRepository = ScanFakeLogRepository(),
+            settingsRepository = FakeScanSettingsRepository(enabled = true),
+        )
+        val collectJob = launch { viewModel.uiState.collect { } }
+        advanceUntilIdle()
+
+        viewModel.onBarcodeDetected("987654")
+        advanceUntilIdle()
+
+        assertEquals(BarcodeLookupStatus.NO_CONNECTION, viewModel.uiState.value.lookupStatus)
+        assertEquals("No connection.", viewModel.uiState.value.errorMessage)
+        assertTrue(viewModel.uiState.value.canRetry)
+        collectJob.cancel()
+    }
+
+    @Test
+    fun onBarcodeDetected_whenTimeout_setsTimeoutState() = runTest {
+        val remoteDataSource = ScanStatusProviderExecutor(
+            providerId = "open_food_facts",
+            status = ProviderStatus.TIMEOUT,
+            diagnostics = "Provider execution timed out.",
+        )
+        val viewModel = ScanBarcodeViewModel(
+            providerExecutor = remoteDataSource,
+            userInitiatedNetworkGuard = UserInitiatedNetworkGuard(),
+            foodRepository = ScanFakeFoodRepository(),
+            logRepository = ScanFakeLogRepository(),
+            settingsRepository = FakeScanSettingsRepository(enabled = true),
+        )
+        val collectJob = launch { viewModel.uiState.collect { } }
+        advanceUntilIdle()
+
+        viewModel.onBarcodeDetected("111222")
+        advanceUntilIdle()
+
+        assertEquals(BarcodeLookupStatus.TIMEOUT, viewModel.uiState.value.lookupStatus)
+        assertEquals("Timed out (check connection).", viewModel.uiState.value.errorMessage)
+        assertTrue(viewModel.uiState.value.canRetry)
         collectJob.cancel()
     }
 }
@@ -179,6 +329,58 @@ private class ScanFakeProviderExecutor(
             ),
             overallElapsedMs = 1L,
         )
+    }
+}
+
+private class ControlledScanProviderExecutor : ProviderExecutor {
+    private val pending = mutableMapOf<String, CompletableDeferred<ProviderExecutionReport>>()
+
+    override suspend fun execute(request: ProviderExecutionRequest): ProviderExecutionReport {
+        val barcode = request.barcode.orEmpty()
+        val deferred = pending.getOrPut(barcode) { CompletableDeferred() }
+        return withContext(NonCancellable) {
+            deferred.await()
+        }
+    }
+
+    fun completeSuccess(
+        barcode: String,
+        providerId: String,
+    ) {
+        val candidate = RemoteFoodCandidate(
+            source = RemoteFoodSource.OPEN_FOOD_FACTS,
+            sourceId = barcode,
+            barcode = barcode,
+            name = "Food $barcode",
+            brand = "Provider",
+            caloriesKcalPer100g = 100.0,
+            proteinGPer100g = 5.0,
+            carbsGPer100g = 10.0,
+            fatGPer100g = 1.0,
+            servingSize = "100 g",
+        )
+        val report = ProviderExecutionReport(
+            requestType = com.openfuel.app.domain.service.ProviderRequestType.BARCODE_LOOKUP,
+            sourceFilter = com.openfuel.app.domain.search.SearchSourceFilter.ONLINE_ONLY,
+            mergedCandidates = listOf(
+                ProviderMergedCandidate(
+                    providerId = providerId,
+                    candidate = candidate.copy(providerKey = providerId),
+                    dedupeKey = barcode,
+                ),
+            ),
+            providerResults = listOf(
+                ProviderResult(
+                    providerId = providerId,
+                    capability = com.openfuel.app.domain.service.ProviderCapability.BARCODE_LOOKUP,
+                    status = ProviderStatus.AVAILABLE,
+                    items = listOf(candidate),
+                    elapsedMs = 1L,
+                ),
+            ),
+            overallElapsedMs = 1L,
+        )
+        pending.getOrPut(barcode) { CompletableDeferred() }.complete(report)
     }
 }
 
@@ -269,7 +471,10 @@ private class ScanStatusProviderExecutor(
     private val status: ProviderStatus,
     private val diagnostics: String?,
 ) : ProviderExecutor {
+    var lookupCalls: Int = 0
+
     override suspend fun execute(request: ProviderExecutionRequest): ProviderExecutionReport {
+        lookupCalls += 1
         return ProviderExecutionReport(
             requestType = request.requestType,
             sourceFilter = request.sourceFilter,

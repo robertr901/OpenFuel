@@ -1,0 +1,55 @@
+{
+  "foods": [
+    {
+      "fdcId": 1001,
+      "description": " Greek Yogurt ",
+      "brandOwner": "OpenFuel Labs",
+      "brandName": "",
+      "gtinUpc": "000123456789",
+      "servingSize": 170.0,
+      "servingSizeUnit": "g",
+      "foodNutrients": [
+        {
+          "nutrientNumber": "1008",
+          "nutrientName": "Energy",
+          "value": 100.0
+        },
+        {
+          "nutrientNumber": "1003",
+          "nutrientName": "Protein",
+          "value": 17.0
+        },
+        {
+          "nutrientNumber": "1005",
+          "nutrientName": "Carbohydrate",
+          "value": 7.5
+        },
+        {
+          "nutrientNumber": "1004",
+          "nutrientName": "Total lipid (fat)",
+          "value": 0.8
+        }
+      ]
+    },
+    {
+      "fdcId": 1002,
+      "description": "Orange Juice",
+      "brandOwner": "Fresh Co",
+      "gtinUpc": "009999999999",
+      "servingSize": 240.0,
+      "servingSizeUnit": "ml",
+      "foodNutrients": [
+        {
+          "nutrientNumber": "1008",
+          "nutrientName": "Energy",
+          "value": 120.0
+        },
+        {
+          "nutrientNumber": "1005",
+          "nutrientName": "Carbohydrate",
+          "value": 28.0
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,30 @@
+{
+  "products": [
+    {
+      "code": "04963406",
+      "id": "off-coke-zero-1",
+      "product_name": " Coke Zero ",
+      "brands": " The Coca-Cola Company ",
+      "serving_size": "1 can (330 ml)",
+      "nutriments": {
+        "energy-kcal_100g": 0.0,
+        "proteins_100g": 0.0,
+        "carbohydrates_100g": 0.0,
+        "fat_100g": 0.0
+      }
+    },
+    {
+      "code": "04012345",
+      "_id": "off-oat-bar-1",
+      "product_name_en": " Oat Bar ",
+      "brands": "OpenFuel Foods",
+      "serving_size": "1 bar (40 g)",
+      "nutriments": {
+        "energy-kcal": 180.0,
+        "proteins": 6.0,
+        "carbohydrates": 24.0,
+        "fat": 7.0
+      }
+    }
+  ]
+}

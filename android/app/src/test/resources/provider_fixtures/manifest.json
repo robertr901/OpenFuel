@@ -1,0 +1,23 @@
+{
+  "version": 1,
+  "providers": {
+    "off": [
+      "search_normal.json",
+      "search_edge.json",
+      "lookup_normal.json",
+      "lookup_edge.json"
+    ],
+    "usda": [
+      "search_normal.json",
+      "search_edge.json",
+      "details_normal.json",
+      "details_edge.json"
+    ],
+    "nutritionix": [
+      "search_normal.json",
+      "search_edge.json",
+      "details_normal.json",
+      "details_edge.json"
+    ]
+  }
+}

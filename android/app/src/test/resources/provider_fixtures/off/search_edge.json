@@ -1,0 +1,35 @@
+{
+  "products": [
+    {
+      "code": "9001",
+      "product_name": "Fiber Bar",
+      "brands": "Acme Snacks",
+      "serving_size": "1 bar (40 g)",
+      "nutriments": {
+        "energy-kcal_100g": -5.0,
+        "energy-kcal": 180.0,
+        "proteins_100g": 12.0,
+        "carbohydrates_100g": 55.0,
+        "fat_100g": 6.0
+      }
+    },
+    {
+      "_id": "off-edge-2",
+      "product_name": "Farmer's Oat-Cookies",
+      "brands": "Bakers Best",
+      "serving_size": "2 biscuits",
+      "nutriments": {
+        "energy-kcal_100g": 5200.0,
+        "proteins_100g": 8.5,
+        "carbohydrates_100g": 62.2,
+        "fat_100g": 24.7
+      }
+    },
+    {
+      "code": "bad-no-name",
+      "product_name": "   ",
+      "product_name_en": "   ",
+      "generic_name": "   "
+    }
+  ]
+}

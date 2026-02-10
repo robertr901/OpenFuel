@@ -1,0 +1,30 @@
+{
+  "foods": [
+    {
+      "food_name": "Cola Zero",
+      "brand_name": "Fizz Co",
+      "nix_item_id": "nix-cola-1",
+      "upc": "012345678905",
+      "serving_qty": 1,
+      "serving_unit": "can",
+      "serving_weight_grams": 355,
+      "nf_calories": 5,
+      "nf_protein": 0,
+      "nf_total_carbohydrate": 1,
+      "nf_total_fat": 0
+    },
+    {
+      "food_name": "Fallback Cola",
+      "brand_name": "Fizz Co",
+      "nix_item_id": "nix-cola-2",
+      "upc": "000000000000",
+      "serving_qty": 1,
+      "serving_unit": "can",
+      "serving_weight_grams": 355,
+      "nf_calories": 6,
+      "nf_protein": 0,
+      "nf_total_carbohydrate": 2,
+      "nf_total_fat": 0
+    }
+  ]
+}

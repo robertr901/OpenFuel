@@ -4,6 +4,18 @@ All notable changes to OpenFuel are documented here.
 
 ## Unreleased
 
+### Phase 21: Provider contract conformance pack
+- Added a canonical, versioned provider fixture corpus under `android/app/src/test/resources/provider_fixtures/` for:
+  - Open Food Facts (search + barcode lookup, normal + edge cases)
+  - USDA (search + details/lookup shaped responses, normal + edge cases)
+  - Nutritionix (search + item details responses, normal + edge cases)
+- Added a reusable JVM contract harness for provider mapping conformance:
+  - `ProviderFixtureLoader`
+  - `ProviderContractAssertions`
+  - deterministic fixture-based contract tests for OFF, USDA, and Nutritionix providers.
+- Added fixture loader utility tests to ensure fixture parsing and missing-fixture failures are actionable.
+- No provider registry changes, no cache schema/migration changes, and no live network dependency in tests.
+
 ### Phase 20: Release review and quality hardening
 - Added high-leverage online UX clarity fix:
   - top-level Add Food online error/setup summaries are now suppressed when results are already present

@@ -1,0 +1,34 @@
+{
+  "foods": [
+    {
+      "fdcId": 3001,
+      "description": "Cola Zero",
+      "brandOwner": "Fizz Co",
+      "gtinUpc": "012345678905",
+      "servingSize": 355.0,
+      "servingSizeUnit": "ml",
+      "foodNutrients": [
+        {
+          "nutrientNumber": "1008",
+          "nutrientName": "Energy",
+          "value": 5.0
+        }
+      ]
+    },
+    {
+      "fdcId": 3002,
+      "description": "Fallback Cola",
+      "brandOwner": "Fizz Co",
+      "gtinUpc": "000000000000",
+      "servingSize": 355.0,
+      "servingSizeUnit": "ml",
+      "foodNutrients": [
+        {
+          "nutrientNumber": "1008",
+          "nutrientName": "Energy",
+          "value": 6.0
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,16 @@
+{
+  "status": 1,
+  "product": {
+    "code": "04963406",
+    "_id": "off-lookup-1",
+    "product_name": "Coke Zero",
+    "brands": "The Coca-Cola Company",
+    "serving_size": "330 ml",
+    "nutriments": {
+      "energy-kcal_100g": 0.0,
+      "proteins_100g": 0.0,
+      "carbohydrates_100g": 0.0,
+      "fat_100g": 0.0
+    }
+  }
+}

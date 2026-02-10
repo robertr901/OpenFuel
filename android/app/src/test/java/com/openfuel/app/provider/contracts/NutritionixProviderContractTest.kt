@@ -75,6 +75,7 @@ class NutritionixProviderContractTest : ProviderContractAssertions() {
                     assertEquals("Greek Yogurt", yogurt.name)
                     assertEquals("OpenFuel Brand", yogurt.brand)
                     assertEquals("000123456789", yogurt.barcode)
+                    assertEquals("1 cup (200 g)", yogurt.servingSize)
                     assertEquals(60.0, yogurt.caloriesKcalPer100g ?: 0.0, 0.0001)
                     assertEquals(10.0, yogurt.proteinGPer100g ?: 0.0, 0.0001)
                     assertEquals(4.0, yogurt.carbsGPer100g ?: 0.0, 0.0001)
@@ -86,12 +87,13 @@ class NutritionixProviderContractTest : ProviderContractAssertions() {
                     val trailMix = first.first { it.name == "Trail Mix" }
                     assertEquals("UPC-ABC-01", trailMix.sourceId)
                     assertEquals("UPC-ABC-01", trailMix.barcode)
+                    assertEquals("1.5 packet", trailMix.servingSize)
                     assertNull(trailMix.caloriesKcalPer100g)
                     assertEquals(6.0, trailMix.proteinGPer100g ?: 0.0, 0.0001)
 
                     val oatBites = first.first { it.sourceId == "nix-edge-2" }
                     assertEquals(450.0, oatBites.caloriesKcalPer100g ?: 0.0, 0.0001)
-                    assertEquals(24999997.5, oatBites.carbsGPer100g ?: 0.0, 0.0001)
+                    assertNull(oatBites.carbsGPer100g)
                 }
             }
         }

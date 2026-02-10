@@ -156,6 +156,59 @@ class NutritionixFoodDataSourceTest {
     }
 
     @Test
+    fun searchByText_usesServingWeightPrecedence_thenConvertibleServingUnits() = runTest {
+        val response = Gson().fromJson(
+            """
+            {
+              "foods": [
+                {
+                  "food_name": "Milk",
+                  "nix_item_id": "milk-1",
+                  "serving_qty": 1,
+                  "serving_unit": "cup",
+                  "serving_weight_grams": 240,
+                  "nf_calories": 120
+                },
+                {
+                  "food_name": "Juice",
+                  "nix_item_id": "juice-1",
+                  "serving_qty": 0.5,
+                  "serving_unit": "l",
+                  "serving_weight_grams": null,
+                  "nf_calories": 50
+                }
+              ]
+            }
+            """.trimIndent(),
+            NutritionixNaturalResponse::class.java,
+        )
+
+        val guard = UserInitiatedNetworkGuard()
+        val dataSource = NutritionixRemoteFoodDataSource(
+            api = FakeNutritionixApi(
+                naturalResponse = response,
+                barcodeResponse = NutritionixItemLookupResponse(foods = emptyList()),
+            ),
+            userInitiatedNetworkGuard = guard,
+            appId = "demo-app-id",
+            apiKey = "demo-app-key",
+        )
+
+        val results = dataSource.searchByText(
+            query = "milk juice",
+            token = guard.issueToken("test_search"),
+        )
+
+        val milk = results.first { it.sourceId == "milk-1" }
+        assertEquals("1 cup (240 g)", milk.servingSize)
+        assertEquals(50.0, milk.caloriesKcalPer100g ?: 0.0, 0.0001)
+
+        val juice = results.first { it.sourceId == "juice-1" }
+        assertEquals("0.5 l", juice.servingSize)
+        assertEquals(10.0, juice.caloriesKcalPer100g ?: 0.0, 0.0001)
+    }
+
+    @Test
     fun searchByText_whenCredentialsMissing_returnsEmptyWithoutCallingApi() = runTest {
         val guard = UserInitiatedNetworkGuard()
         val fakeApi = FakeNutritionixApi(

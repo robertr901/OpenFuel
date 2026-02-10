@@ -146,6 +146,38 @@ class OpenFoodFactsRemoteFoodDataSourceTest {
     }
 
     @Test
+    fun searchByText_normalizesServingPatternsDeterministically() = runTest {
+        val response = Gson().fromJson(
+            """
+            {
+              "products": [
+                {
+                  "id": "off-bottle-1",
+                  "product_name": "Citrus Soda",
+                  "serving_size": " 1 bottle(500ml) "
+                }
+              ]
+            }
+            """.trimIndent(),
+            OpenFoodFactsSearchResponse::class.java,
+        )
+
+        val guard = UserInitiatedNetworkGuard()
+        val dataSource = OpenFoodFactsRemoteFoodDataSource(
+            api = FakeOpenFoodFactsApi(searchResponse = response),
+            userInitiatedNetworkGuard = guard,
+            pageSize = 10,
+        )
+
+        val result = dataSource.searchByText(
+            query = "citrus soda",
+            token = guard.issueToken("test_search"),
+        ).single()
+
+        assertEquals("1 bottle (500 ml)", result.servingSize)
+    }
+
+    @Test
     fun searchByText_sanitizesNegativeNutrimentsAndFallsBackSafely() = runTest {
         val response = Gson().fromJson(
             """

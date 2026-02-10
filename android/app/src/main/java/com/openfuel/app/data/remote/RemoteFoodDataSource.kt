@@ -202,7 +202,7 @@ private fun OpenFoodFactsProductDto.toRemoteFoodCandidate(): RemoteFoodCandidate
     val normalizedProductNameEn = productNameEn.normalizedOrNull()
     val normalizedGenericName = genericName.normalizedOrNull()
     val normalizedBrand = brands.normalizedOrNull()
-    val normalizedServingSize = servingSize.normalizedOrNull()
+    val normalizedServingSize = normalizeServingText(servingSize)
     val normalizedCode = code.normalizedOrNull()
     val normalizedId = id.normalizedOrNull()
 
@@ -225,14 +225,34 @@ private fun OpenFoodFactsProductDto.toRemoteFoodCandidate(): RemoteFoodCandidate
         barcode = normalizedCode,
         name = resolvedName,
         brand = normalizedBrand,
-        caloriesKcalPer100g = nutriments?.energyKcal100g.sanitizeNutrient()
-            ?: nutriments?.energyKcal.sanitizeNutrient(),
-        proteinGPer100g = nutriments?.proteins100g.sanitizeNutrient()
-            ?: nutriments?.proteins.sanitizeNutrient(),
-        carbsGPer100g = nutriments?.carbohydrates100g.sanitizeNutrient()
-            ?: nutriments?.carbohydrates.sanitizeNutrient(),
-        fatGPer100g = nutriments?.fat100g.sanitizeNutrient()
-            ?: nutriments?.fat.sanitizeNutrient(),
+        caloriesKcalPer100g = sanitizePer100Nutrient(
+            value = nutriments?.energyKcal100g,
+            kind = ServingNutrientKind.CALORIES,
+        ) ?: sanitizePer100Nutrient(
+            value = nutriments?.energyKcal,
+            kind = ServingNutrientKind.CALORIES,
+        ),
+        proteinGPer100g = sanitizePer100Nutrient(
+            value = nutriments?.proteins100g,
+            kind = ServingNutrientKind.MACRO,
+        ) ?: sanitizePer100Nutrient(
+            value = nutriments?.proteins,
+            kind = ServingNutrientKind.MACRO,
+        ),
+        carbsGPer100g = sanitizePer100Nutrient(
+            value = nutriments?.carbohydrates100g,
+            kind = ServingNutrientKind.MACRO,
+        ) ?: sanitizePer100Nutrient(
+            value = nutriments?.carbohydrates,
+            kind = ServingNutrientKind.MACRO,
+        ),
+        fatGPer100g = sanitizePer100Nutrient(
+            value = nutriments?.fat100g,
+            kind = ServingNutrientKind.MACRO,
+        ) ?: sanitizePer100Nutrient(
+            value = nutriments?.fat,
+            kind = ServingNutrientKind.MACRO,
+        ),
         servingSize = normalizedServingSize,
     )
 }
@@ -243,11 +263,6 @@ private fun String?.orIfBlank(fallback: String?): String? {
 
 private fun String?.normalizedOrNull(): String? {
     return this?.trim()?.takeIf { it.isNotEmpty() }
-}
-
-private fun Double?.sanitizeNutrient(): Double? {
-    val value = this ?: return null
-    return value.takeIf { it.isFinite() && it >= 0.0 }
 }
 
 private fun buildDerivedSourceId(

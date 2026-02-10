@@ -171,6 +171,67 @@ class UsdaFoodDataSourceTest {
     }
 
     @Test
+    fun searchByText_convertsSupportedUnitsDeterministically() = runTest {
+        val guard = UserInitiatedNetworkGuard()
+        val dataSource = UsdaFoodDataCentralDataSource(
+            api = FakeUsdaFoodDataCentralApi(
+                searchResponse = UsdaFoodSearchResponse(
+                    foods = listOf(
+                        UsdaFoodDto(
+                            fdcId = 444L,
+                            description = "Soda",
+                            brandOwner = "Fizz Co",
+                            brandName = null,
+                            gtinUpc = null,
+                            servingSize = 0.5,
+                            servingSizeUnit = "l",
+                            foodNutrients = listOf(
+                                UsdaFoodNutrientDto(
+                                    nutrientNumber = "1008",
+                                    nutrientName = "Energy",
+                                    value = 50.0,
+                                ),
+                            ),
+                        ),
+                        UsdaFoodDto(
+                            fdcId = 445L,
+                            description = "Almonds",
+                            brandOwner = "Nut House",
+                            brandName = null,
+                            gtinUpc = null,
+                            servingSize = 1.0,
+                            servingSizeUnit = "ounces",
+                            foodNutrients = listOf(
+                                UsdaFoodNutrientDto(
+                                    nutrientNumber = "1008",
+                                    nutrientName = "Energy",
+                                    value = 80.0,
+                                ),
+                            ),
+                        ),
+                    ),
+                ),
+            ),
+            userInitiatedNetworkGuard = guard,
+            apiKey = "demo-key",
+            pageSize = 20,
+        )
+
+        val results = dataSource.searchByText(
+            query = "soda almonds",
+            token = guard.issueToken("test_search"),
+        )
+
+        val soda = results.first { it.sourceId == "444" }
+        assertEquals("0.5 l", soda.servingSize)
+        assertEquals(10.0, soda.caloriesKcalPer100g ?: 0.0, 0.0001)
+
+        val almonds = results.first { it.sourceId == "445" }
+        assertEquals("1 oz", almonds.servingSize)
+        assertEquals(282.1917, almonds.caloriesKcalPer100g ?: 0.0, 0.001)
+    }
+
+    @Test
     fun searchByText_whenApiKeyMissing_returnsEmptyWithoutCallingApi() = runTest {
         val guard = UserInitiatedNetworkGuard()
         val fakeApi = FakeUsdaFoodDataCentralApi(

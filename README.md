@@ -15,6 +15,7 @@ Status: bootstrapping.
 - 2026-02-09: Completed Phase 18 provider integration hardening (Nutritionix real integration, deterministic multi-provider merge improvements, explicit-action online safeguards unchanged).
 - 2026-02-09: Completed Phase 19 online provider reliability hardening (Open Food Facts timeout/retry resilience, clearer provider setup/status UX, deterministic merge refinements, explicit-action networking unchanged).
 - 2026-02-09: Completed Phase 20 release review and quality hardening (high-leverage UX clarity fix, CI gate enforcement for test/assemble/connected tests, docs/runtime alignment, evidence-based next roadmap proposal).
+- 2026-02-10: Completed Phase 21 provider contract conformance pack (versioned OFF/USDA/Nutritionix fixture corpus + deterministic JVM contract harness to lock provider mapping behavior).
 
 ## Deterministic Android Verification
 Run from repo root:

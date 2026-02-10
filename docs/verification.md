@@ -20,6 +20,10 @@
 - Unit tests pass.
 - Debug APK assembles successfully.
 - Intelligence golden corpus parser tests pass as part of `./gradlew test`.
+- Provider mapping contract fixture tests pass as part of `./gradlew test`:
+  - OFF fixtures: `android/app/src/test/resources/provider_fixtures/off/`
+  - USDA fixtures: `android/app/src/test/resources/provider_fixtures/usda/`
+  - Nutritionix fixtures: `android/app/src/test/resources/provider_fixtures/nutritionix/`
 - Instrumentation tests pass on the pinned emulator profile.
 - Deterministic androidTest coverage still validates:
   - Add Food unified search and quick-add flows without live network dependencies.

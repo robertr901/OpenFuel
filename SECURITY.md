@@ -9,6 +9,11 @@ OpenFuel is a privacy-first, local-first nutrition tracker.
 - No telemetry, no ads, no trackers, no crash-reporting SDKs.
 - No secrets should be committed to this repository.
 
+## Phase 25 alignment note
+- Direction and constraints baseline: `docs/phase-25/phase-25-plan.md`.
+- Threat and mitigation detail: `docs/threat-model.md`.
+- Verification and deterministic gate order: `docs/verification.md`.
+
 ## Threat Model Summary
 Threat model details are documented in `docs/threat-model.md`.
 
@@ -49,6 +54,7 @@ Not declared:
 - `UserInitiatedNetworkGuard` issues and validates short-lived tokens before provider calls.
 - Online lookup setting gates execution; disabled setting returns local-safe UI states and blocks provider calls.
 - Online lookup default is currently `enabled = true` when no stored setting exists (`SettingsRepositoryImpl`), but requests still require explicit user action.
+- Release-floor expectation: zero online requests without explicit user action.
 - There is no background provider polling and no silent online refresh path.
 - Missing USDA key degrades gracefully to user-visible `needs setup` guidance; no crashes and no secret fallback.
 - Missing Nutritionix credentials degrade gracefully to user-visible `needs setup` guidance; no crashes and no secret fallback.
@@ -63,6 +69,7 @@ Not declared:
   - `PlayBillingGateway`
 - Billing is isolated behind the `EntitlementService` seam for testability and deterministic fake injection in androidTest.
 - Locked Pro surfaces open a local paywall with explicit user controls; unlock state is reflected through entitlement state updates.
+- Paywall presentation is limited to gated surface entry or explicit upgrade action, with a visible restore path.
 - Offline/error states degrade gracefully with user-safe messages; no hidden retries or background network loops.
 
 ## Voice Behavior Summary
@@ -71,6 +78,7 @@ Not declared:
 - No always-listening mode, no background capture service, no audio persistence.
 - Recognizer requests prefer offline recognition (`RecognizerIntent.EXTRA_PREFER_OFFLINE = true`).
 - Device/OEM recognizer behavior may vary; offline language packs may be required on some devices.
+- Threat boundary reference: `docs/threat-model.md`.
 
 ## Data Storage Summary
 - Room database: `android/app/src/main/java/com/openfuel/app/data/db/OpenFuelDatabase.kt`
@@ -81,6 +89,7 @@ Not declared:
 - Advanced export includes optional redaction controls to reduce sensitive-context sharing risk before user-initiated share.
 - USDA API key is read from local build config (`android/local.properties` -> `BuildConfig.USDA_API_KEY`) and is not stored in user content databases.
 - Nutritionix credentials are read from local build config (`android/local.properties` -> `BuildConfig.NUTRITIONIX_APP_ID` / `BuildConfig.NUTRITIONIX_API_KEY`) and are not stored in user content databases.
+- Architecture boundary reference: `docs/architecture.md`.
 
 ## Logging Policy and Current Footprint
 - Policy:

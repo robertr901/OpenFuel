@@ -1,6 +1,12 @@
 # OpenFuel Product Vision
 
-OpenFuel is a privacy-first, local-first nutrition tracker designed for fast daily logging that stays reliable offline.
+OpenFuel is a privacy-first, local-first nutrition ledger designed for fast daily logging that stays reliable offline.
+
+## Phase 25 direction
+- Canonical direction pack: `docs/phase-25/phase-25-plan.md`
+- Supporting decisions and acceptance thresholds:
+  - `docs/phase-25/decision-log.md`
+  - `docs/phase-25/acceptance-criteria.md`
 
 ## Vision and principles
 ### What OpenFuel is
@@ -10,8 +16,17 @@ OpenFuel is a privacy-first, local-first nutrition tracker designed for fast dai
 
 ### What OpenFuel is not
 - Not an ad-supported or telemetry-driven product.
-- Not an account/sync platform in its current direction.
+- Not an account-required platform.
 - Not a black-box recommendation engine that auto-runs hidden network or inference flows.
+- Not a social network for engagement loops.
+
+### Priority JTBD (with trade-offs)
+1. Fast daily logging with low friction.
+   - Trade-off: prefer speed and stability over novelty features.
+2. Trustworthy nutrition data and provenance.
+   - Trade-off: avoid opaque inference and low-quality crowdsourced shortcuts.
+3. Calm private trend review.
+   - Trade-off: reject guilt-driven engagement patterns and manipulative prompts.
 
 ### Core loops
 1. Fast local logging loop: search -> select -> log.
@@ -24,10 +39,11 @@ OpenFuel is a privacy-first, local-first nutrition tracker designed for fast dai
 - Reversible: users can edit/delete entries and recover from mistakes without data loss.
 
 ### Non-goals
-- No telemetry, ads, trackers, or background analytics.
+- No telemetry, ads, trackers, accounts, or background analytics.
 - No background networking, polling, or silent refresh.
 - No automatic logging from quick-add parsing, voice capture, or online provider responses.
 - No hidden cloud storage of personal logs.
+- No AI coach or photo-calorie estimation as a core loop in this roadmap horizon.
 
 ## Product pillars
 - Privacy-first, local-first by default.

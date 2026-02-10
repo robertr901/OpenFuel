@@ -101,7 +101,10 @@
 - Stronger CI assertions for emulator boot-health diagnostics.
 - Snapshot-style corpus coverage for serving-size edge normalization across providers.
 
-## Next 10 phases roadmap (Phase 21–30)
+## Next 10 phases roadmap (Phase 21-30, historical snapshot)
+This roadmap snapshot is historical to the Phase 20 review context and is superseded by the Phase 25 direction reset:
+- `docs/phase-25/phase-25-plan.md`
+- `docs/roadmap.md`
 
 ### Phase 21: Provider contract conformance pack
 - Goal: lock provider mapping behavior to a canonical fixture suite.

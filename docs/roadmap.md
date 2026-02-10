@@ -4,6 +4,8 @@ This roadmap separates product milestones (user outcomes) from implementation ph
 
 > Note: Phases 4–7 were intermediate iterations that are now fully represented in the milestones and completed phases below.
 > Verification commands in this document and companion docs are repo-relative; run Android gates from `android/`.
+> Phase 25 direction reset is the current planning baseline for next-phase sequencing: `docs/phase-25/phase-25-plan.md`.
+> Schema policy for phases 26-31: no schema changes or migrations unless a future phase explicitly opens schema work.
 
 ## Milestone 0: Foundation (MVP+ groundwork)
 **Scope**
@@ -274,7 +276,39 @@ This roadmap separates product milestones (user outcomes) from implementation ph
 - Refined Add Food online messaging so top-level error/setup banners are suppressed when results are already available (provider statuses remain visible in `Online sources`).
 - Updated docs to align with runtime behavior and explicit-action networking constraints.
 
-## Phases 22–30 direction (acceptance-criteria-first)
+## Current direction: phases 26-31 (Phase 25 reset)
+For current planning, use the Phase 25 reset pack as the source of truth:
+- Canonical roadmap and scope controls: `docs/phase-25/phase-25-plan.md`
+- Decision anchors: `docs/phase-25/decision-log.md`
+- Acceptance thresholds: `docs/phase-25/acceptance-criteria.md`
+- Deterministic test strategy: `docs/phase-25/test-strategy.md`
+
+### Phase 26: Reliability and UX Clarity Baseline
+- Goal: remove high-friction reliability and clarity issues without feature expansion.
+- Non-goals: no new providers, no schema changes, no new permissions.
+
+### Phase 27: Data Trust Layer v1
+- Goal: strengthen provenance, serving/unit consistency, and explainability.
+- Non-goals: no cloud validation service, no AI inference.
+
+### Phase 28: Shared Core for Cross-Platform (KMP)
+- Goal: extract shared domain rules and mapping logic for Android and iOS parity.
+- Non-goals: no full iOS release in this phase, no schema changes.
+
+### Phase 29: iOS MVP (offline-first parity)
+- Goal: ship iOS MVP for core logging, export, and explicit online lookup.
+- Non-goals: no cloud sync, no advanced wearable parity.
+
+### Phase 30: Wear OS Utility Slice
+- Goal: deliver narrow, high-value wrist workflows under explicit-action constraints.
+- Non-goals: no background sync loops, no broad health-platform ingestion.
+
+### Phase 31: Cross-Platform Stabilization and Release Readiness
+- Goal: harden Android, iOS, and Wear quality and parity before expansion.
+- Non-goals: no new headline features, no schema changes unless explicitly opened.
+
+## Historical planning archive: phases 22-30 (superseded by Phase 25 reset)
+The section below is retained for historical traceability. Current forward direction is phases 26-31 from the Phase 25 reset documents.
 Each phase below is intentionally bounded. Any item that risks schema/migration churn, background networking, or non-deterministic testing is out of scope by default.
 
 ### Phase 22: Query normalization and input resilience

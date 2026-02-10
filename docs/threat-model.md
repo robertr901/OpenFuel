@@ -28,6 +28,17 @@ Out of scope (for now):
 - Network boundary (only crossed on explicit user action)
 - Third-party food providers (untrusted data source)
 
+## Data egress boundaries
+- No telemetry, ads, trackers, or background analytics egress is permitted.
+- Online provider calls cross the network boundary only after explicit user action.
+- Billing network calls are limited to explicit purchase/restore actions and explicit foreground refresh behaviour.
+- Export and share actions are explicit user actions and are never auto-triggered.
+- There are no background provider polling loops, no silent refresh, and no background sync of personal logs.
+- Boundary references:
+  - `SECURITY.md`
+  - `docs/architecture.md`
+  - `docs/verification.md`
+
 ## Threats and mitigations
 
 ### 1) Unintended network calls (privacy leak)

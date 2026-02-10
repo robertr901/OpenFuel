@@ -17,6 +17,7 @@ This document defines the canonical contract for remote nutrition catalog provid
   - `TEXT_SEARCH` with non-blank `query`
   - `BARCODE_LOOKUP` with non-blank `barcode`
 - `SearchSourceFilter` controls whether online providers are eligible to run.
+- Typing, local query updates, and app start events must not trigger provider execution.
 
 ## Canonical result contract
 Each provider execution returns:
@@ -60,6 +61,11 @@ Provider execution must never throw to UI layers. Failures are represented as st
 ## Provenance
 - Merged candidates retain provider provenance via `providerKey`.
 - UI-level stable ids include provenance to avoid collisions across providers.
+
+## Trust and provenance direction (Phase 27 roadmap)
+- Phase 27 direction focuses on clearer provenance and completeness messaging in the UI.
+- This is roadmap direction only and does not change current provider execution behaviour.
+- Reference: `docs/phase-25/phase-25-plan.md` (Phase 27 - Data Trust Layer v1).
 
 ## Caching policy
 - Cache key includes normalized input + request type + provider id.

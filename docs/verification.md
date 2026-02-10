@@ -35,6 +35,19 @@ Device prerequisite for connected tests:
   - Pro-gated paywall lock and restore flows using fake/debug entitlement wiring in tests.
   - Provider orchestration and provider status UX without live network dependency.
 
+## Phase 25 acceptance thresholds (reference)
+Source documents:
+- `docs/phase-25/acceptance-criteria.md`
+- `docs/phase-25/test-strategy.md`
+
+Thresholds to verify and track:
+- Cold start latency on reference mid-range device: p50 <= 2.0s and p95 <= 3.0s.
+- Local search results visible p95 <= 250ms after debounce.
+- Known-food log completion median <= 20s.
+- Zero online requests without explicit user action.
+- Paywall appears only on gated surface entry or explicit upgrade action.
+- Export/import round-trip equality for required fields = 100%.
+
 ## Provider verification checklist (manual, release-oriented)
 - With provider defaults enabled and missing `USDA_API_KEY` and/or Nutritionix credentials:
   - Tapping `Search online` remains stable.

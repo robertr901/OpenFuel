@@ -15,6 +15,13 @@ User interaction (Compose)
 - Online is explicit-action only.
 - Provider payloads are untrusted input and always mapped defensively.
 - No telemetry/ads/trackers/background polling.
+- Deterministic CI release floor is defined in `docs/verification.md` (`test` -> `assembleDebug` -> `connectedDebugAndroidTest`).
+
+## Phase 25 direction alignment
+- Direction reset and phase sequencing baseline: `docs/phase-25/phase-25-plan.md`.
+- Acceptance thresholds: `docs/phase-25/acceptance-criteria.md`.
+- Deterministic test strategy: `docs/phase-25/test-strategy.md`.
+- Schema policy reference: phases 26-31 do not include schema/migration changes unless a future phase explicitly opens schema work.
 
 ## Layered structure
 ```
@@ -71,6 +78,7 @@ domain (pure logic, calculations, unit helpers)
   - local results update from debounced query (Room)
   - online results update only when the user explicitly requests online search
   - query changes clear stale online state and provider execution metadata
+  - query typing, query normalization, and app start must not trigger provider execution
 - `ProviderExecutor` is the online orchestration layer for both:
   - Add Food text search
   - barcode lookup

@@ -3,6 +3,8 @@ package com.openfuel.app.data.repository
 import com.openfuel.app.data.db.FoodDao
 import com.openfuel.app.data.mappers.toDomain
 import com.openfuel.app.data.mappers.toEntity
+import com.openfuel.app.domain.search.buildNormalizedSqlLikePattern
+import com.openfuel.app.domain.search.normalizeSearchQuery
 import com.openfuel.app.domain.model.FoodItem
 import com.openfuel.app.domain.repository.FoodRepository
 import kotlinx.coroutines.flow.Flow
@@ -64,11 +66,11 @@ class FoodRepositoryImpl(
     }
 
     override fun allFoods(query: String): Flow<List<FoodItem>> {
-        val trimmedQuery = query.trim()
-        return if (trimmedQuery.isBlank()) {
+        val likePattern = buildSearchLikePattern(query)
+        return if (likePattern.isBlank()) {
             foodDao.observeAllFoods()
         } else {
-            foodDao.observeAllFoodsBySearch(escapeLikeQuery(trimmedQuery))
+            foodDao.observeAllFoodsBySearch(likePattern)
         }.map { foods -> foods.map { it.toDomain() } }
     }
 
@@ -78,13 +80,18 @@ class FoodRepositoryImpl(
     }
 
     override fun searchFoods(query: String, limit: Int): Flow<List<FoodItem>> {
-        val trimmedQuery = query.trim()
-        return if (trimmedQuery.isBlank()) {
+        val likePattern = buildSearchLikePattern(query)
+        return if (likePattern.isBlank()) {
             foodDao.observeRecentFoods(limit)
         } else {
-            foodDao.observeFoodsBySearch(escapeLikeQuery(trimmedQuery), limit)
+            foodDao.observeFoodsBySearch(likePattern, limit)
         }.map { foods -> foods.map { it.toDomain() } }
     }
+}
+
+internal fun buildSearchLikePattern(query: String): String {
+    val normalizedQuery = normalizeSearchQuery(query)
+    return buildNormalizedSqlLikePattern(normalizedQuery)
 }
 
 internal fun escapeLikeQuery(query: String): String {

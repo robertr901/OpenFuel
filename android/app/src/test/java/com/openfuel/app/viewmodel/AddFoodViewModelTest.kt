@@ -83,13 +83,14 @@ class AddFoodViewModelTest {
     @Test
     fun updateSearchQuery_updatesLocalResultsWithoutOnlineCall() = runTest {
         val remoteDataSource = FakeProviderExecutor()
-        val viewModel = AddFoodViewModel(
-            foodRepository = AddFoodFakeFoodRepository(
-                foods = listOf(
-                    fakeFood(id = "f1", name = "Oatmeal"),
-                    fakeFood(id = "f2", name = "Greek Yogurt"),
-                ),
+        val foodRepository = AddFoodFakeFoodRepository(
+            foods = listOf(
+                fakeFood(id = "f1", name = "Oatmeal"),
+                fakeFood(id = "f2", name = "Greek Yogurt"),
             ),
+        )
+        val viewModel = AddFoodViewModel(
+            foodRepository = foodRepository,
             logRepository = AddFoodFakeLogRepository(),
             settingsRepository = FakeSettingsRepository(enabled = true),
             providerExecutor = remoteDataSource,
@@ -104,6 +105,54 @@ class AddFoodViewModelTest {
         assertEquals(0, remoteDataSource.searchCalls)
         assertEquals(1, viewModel.uiState.value.foods.size)
         assertEquals("Oatmeal", viewModel.uiState.value.foods.first().name)
+        assertEquals("oat", foodRepository.searchQueries.last())
+        collectJob.cancel()
+    }
+
+    @Test
+    fun updateSearchQuery_normalizesPunctuationAndUnitsForLocalSearch() = runTest {
+        val foodRepository = AddFoodFakeFoodRepository(
+            foods = listOf(
+                fakeFood(id = "f1", name = "Coke Zero 330 ml"),
+            ),
+        )
+        val viewModel = AddFoodViewModel(
+            foodRepository = foodRepository,
+            logRepository = AddFoodFakeLogRepository(),
+            settingsRepository = FakeSettingsRepository(enabled = true),
+            providerExecutor = FakeProviderExecutor(),
+            userInitiatedNetworkGuard = UserInitiatedNetworkGuard(),
+        )
+        val collectJob = launch { viewModel.uiState.collect { } }
+
+        viewModel.updateSearchQuery("Coke-Zero (330ml)")
+        advanceTimeBy(300)
+        advanceUntilIdle()
+
+        assertEquals("coke zero 330 ml", foodRepository.searchQueries.last())
+        collectJob.cancel()
+    }
+
+    @Test
+    fun searchOnline_normalizesQueryBeforeExplicitExecution() = runTest {
+        val remoteDataSource = FakeProviderExecutor()
+        val viewModel = AddFoodViewModel(
+            foodRepository = AddFoodFakeFoodRepository(),
+            logRepository = AddFoodFakeLogRepository(),
+            settingsRepository = FakeSettingsRepository(enabled = true),
+            providerExecutor = remoteDataSource,
+            userInitiatedNetworkGuard = UserInitiatedNetworkGuard(),
+        )
+        val collectJob = launch { viewModel.uiState.collect { } }
+
+        viewModel.updateSearchQuery("Coke-Zero (330ml)")
+        advanceTimeBy(300)
+        advanceUntilIdle()
+        viewModel.searchOnline()
+        advanceUntilIdle()
+
+        assertEquals(1, remoteDataSource.requests.size)
+        assertEquals("coke zero 330 ml", remoteDataSource.requests.single().query)
         collectJob.cancel()
     }
 
@@ -554,6 +603,7 @@ private class AddFoodFakeFoodRepository(
     private val recents: List<FoodItem> = emptyList(),
 ) : FoodRepository {
     val upsertedFoods = mutableListOf<FoodItem>()
+    val searchQueries = mutableListOf<String>()
 
     override suspend fun upsertFood(foodItem: FoodItem) {
         upsertedFoods += foodItem
@@ -592,6 +642,7 @@ private class AddFoodFakeFoodRepository(
     }
 
     override fun searchFoods(query: String, limit: Int): Flow<List<FoodItem>> {
+        searchQueries += query
         return flowOf(filterFoods(query).take(limit))
     }
 

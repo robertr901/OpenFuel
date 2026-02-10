@@ -22,6 +22,7 @@ import com.openfuel.app.domain.search.UnifiedFoodSearchResult
 import com.openfuel.app.domain.search.UnifiedSearchState
 import com.openfuel.app.domain.search.applySourceFilter
 import com.openfuel.app.domain.search.mergeUnifiedSearchResults
+import com.openfuel.app.domain.search.normalizeSearchQuery
 import com.openfuel.app.domain.service.FoodCatalogExecutionProvider
 import com.openfuel.app.domain.service.FoodCatalogProvider
 import com.openfuel.app.domain.service.FoodCatalogProviderDescriptor
@@ -70,6 +71,7 @@ class AddFoodViewModel(
 
     private val localSearchResultsState: StateFlow<List<FoodItem>> = unifiedSearchState
         .map { state -> state.query }
+        .map { query -> normalizeSearchQuery(query) }
         .debounce(300)
         .distinctUntilChanged()
         .flatMapLatest { query ->
@@ -204,8 +206,8 @@ class AddFoodViewModel(
             return
         }
 
-        val query = unifiedSearchState.value.query.trim()
-        if (query.isBlank()) {
+        val normalizedQuery = normalizeSearchQuery(unifiedSearchState.value.query)
+        if (normalizedQuery.isBlank()) {
             unifiedSearchState.update { current ->
                 current.copy(
                     onlineHasSearched = false,
@@ -236,7 +238,7 @@ class AddFoodViewModel(
                 val token = userInitiatedNetworkGuard.issueToken("add_food_search_online")
                 val result = onlineSearchOrchestrator.search(
                     request = OnlineSearchRequest(
-                        query = query,
+                        query = normalizedQuery,
                         token = token,
                         onlineLookupEnabled = onlineLookupEnabledState.value,
                         refreshPolicy = refreshPolicy,

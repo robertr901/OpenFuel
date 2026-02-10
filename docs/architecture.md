@@ -1,5 +1,21 @@
 # Architecture
 
+## System map
+```
+User interaction (Compose)
+  -> ViewModel intent
+    -> domain/service seams
+      -> local repositories (Room/DataStore) OR explicit online execution
+        -> mapped domain models
+          -> UI state rendering + explicit user confirmation
+```
+
+## Product boundaries (enforced)
+- Local-first by default for logs, goals, and history.
+- Online is explicit-action only.
+- Provider payloads are untrusted input and always mapped defensively.
+- No telemetry/ads/trackers/background polling.
+
 ## Layered structure
 ```
 ui (Compose screens, navigation)
@@ -80,6 +96,18 @@ domain (pure logic, calculations, unit helpers)
   - Nutritionix: network provider (requires local `NUTRITIONIX_APP_ID` and `NUTRITIONIX_API_KEY`)
   - Static sample provider: deterministic non-network provider for debug diagnostics/instrumentation determinism
   - Edamam: scaffold only, disabled
+
+## Provider contract conformance pack (Phase 21)
+- Canonical fixtures are stored under:
+  - `android/app/src/test/resources/provider_fixtures/off/`
+  - `android/app/src/test/resources/provider_fixtures/usda/`
+  - `android/app/src/test/resources/provider_fixtures/nutritionix/`
+- Shared contract harness lives under:
+  - `android/app/src/test/java/com/openfuel/app/provider/contracts/`
+- Coverage intent:
+  - lock provider-to-domain mapping behavior for OFF, USDA, and Nutritionix
+  - detect upstream payload drift without live network dependency
+  - enforce deterministic invariants for identity, string hygiene, nutrients, and serving fields.
 
 ## Intelligence seam (Phase 10)
 - New domain boundary: `com.openfuel.app.domain.intelligence`.
@@ -168,6 +196,7 @@ domain (pure logic, calculations, unit helpers)
 - Network is optional and user-controllable via Settings.
 - Online lookup is enabled by default, but every network call must be explicitly user initiated.
 - `UserInitiatedNetworkGuard` issues short-lived tokens and validates them in remote data sources.
+- Remote sources require explicit user action tokens before network execution.
 - No background sync, no periodic jobs, and no silent network retries.
 - No provider polling loops and no automatic online refreshes.
 - No silent no-op states:
@@ -216,3 +245,20 @@ domain (pure logic, calculations, unit helpers)
 - Domain logic is pure and tested (no Android dependencies).
 - Search merge/dedupe rules are covered by unit tests.
 - Navigation and unified search wiring are covered by deterministic instrumentation tests.
+
+## Where to change what
+- Add Food online orchestration behavior:
+  - `android/app/src/main/java/com/openfuel/app/viewmodel/AddFoodViewModel.kt`
+  - `android/app/src/main/java/com/openfuel/app/data/remote/ProviderExecutorOnlineSearchOrchestrator.kt`
+- Provider availability and setup messaging:
+  - `android/app/src/main/java/com/openfuel/app/data/remote/ProviderAvailabilityPolicy.kt`
+  - `android/app/src/main/java/com/openfuel/app/ui/screens/SettingsScreen.kt`
+- Provider mapping and transport (per provider):
+  - OFF: `android/app/src/main/java/com/openfuel/app/data/remote/RemoteFoodDataSource.kt`
+  - USDA: `android/app/src/main/java/com/openfuel/app/data/remote/UsdaFoodDataSource.kt`
+  - Nutritionix: `android/app/src/main/java/com/openfuel/app/data/remote/NutritionixFoodDataSource.kt`
+- Provider mapping regressions:
+  - run fixture contracts in `android/app/src/test/java/com/openfuel/app/provider/contracts/`
+- Explicit online guards:
+  - `android/app/src/main/java/com/openfuel/app/data/remote/UserInitiatedNetworkGuard.kt`
+  - call sites in Add Food and scan flows.

@@ -274,86 +274,270 @@ This roadmap separates product milestones (user outcomes) from implementation ph
 - Refined Add Food online messaging so top-level error/setup banners are suppressed when results are already available (provider statuses remain visible in `Online sources`).
 - Updated docs to align with runtime behavior and explicit-action networking constraints.
 
-## Phase 21–30 proposal (review-driven)
-### Phase 21: Provider contract conformance pack
-- Goal: lock provider mapping correctness against a shared canonical fixture corpus.
-- Why: reduces regressions from provider payload drift.
-- Minimal deliverables: fixture pack + contract test harness for OFF/USDA/Nutritionix.
-- Acceptance criteria: all providers pass canonical mapping checks; no flaky network tests.
-- Test strategy: JVM fixture tests only; deterministic snapshots.
-- Risks/non-goals: no new providers; no schema changes.
+## Phases 22–30 direction (acceptance-criteria-first)
+Each phase below is intentionally bounded. Any item that risks schema/migration churn, background networking, or non-deterministic testing is out of scope by default.
 
 ### Phase 22: Query normalization and input resilience
-- Goal: make search text normalization predictable for edge punctuation/units/brands.
-- Why: improves hit rate and user trust without extra network calls.
-- Minimal deliverables: shared normalization utility and golden tests.
-- Acceptance criteria: deterministic normalized output for defined corpus.
-- Test strategy: pure JVM golden tests + targeted VM tests.
-- Risks/non-goals: no ML inference in this phase.
+**Goal**
+- Make text input normalization deterministic across punctuation, whitespace, brand casing, and mixed units.
 
-### Phase 23: Barcode reliability hardening
-- Goal: stabilize scan-to-result loop under poor camera/light conditions.
-- Why: barcode is a primary fast-capture path on real devices.
-- Minimal deliverables: clearer scan states and retry guidance; defensive debounce.
-- Acceptance criteria: scan path remains explicit-action, stable, and non-blocking.
-- Test strategy: unit tests + deterministic UI/instrumentation assertions without camera hardware dependency.
-- Risks/non-goals: no new permissions, no background camera use.
+**Why it matters**
+- Better search hit-rate and fewer confusing misses without changing provider/network behavior.
 
-### Phase 24: Serving-size normalization v2
-- Goal: reduce ambiguity in imported serving strings and unit conversion.
-- Why: improves data quality and downstream logging accuracy.
-- Minimal deliverables: deterministic serving parser improvements + fallback copy.
-- Acceptance criteria: known problematic serving examples parse consistently.
-- Test strategy: unit corpus tests + save/log regression tests.
-- Risks/non-goals: no nutritional inference additions.
+**Minimal deliverables**
+- Shared normalization utility for Add Food query + quick-add parser handoff.
+- Canonical golden input/output corpus for normalization.
+- ViewModel-level coverage that query changes preserve current explicit-action online behavior.
+
+**Explicit non-goals**
+- No ML inference changes.
+- No provider executor/registry/cache changes.
+- No background pre-processing jobs.
+
+**Acceptance criteria**
+- Same raw input always yields the same normalized query.
+- Typing does not auto-trigger online execution.
+- Existing query-related testTags and UI behavior remain stable.
+
+**Test strategy**
+- JVM golden tests for normalization corpus.
+- Targeted ViewModel tests for online-state reset behavior on query edits.
+
+**Risks/failure modes**
+- Over-normalization may hide meaningful user input.
+- Regression risk in dedupe keys if normalization contracts are changed inconsistently.
+
+### Phase 23: Barcode flow reliability hardening
+**Goal**
+- Improve explicit scan-to-result reliability and user recovery messaging on real devices.
+
+**Why it matters**
+- Barcode is a primary speed path; failures are high-friction moments.
+
+**Minimal deliverables**
+- Better bounded retry UX copy for failed scans/lookups.
+- Defensive debounce/cooldown to prevent duplicate lookup storms from rapid detections.
+- Clearer offline and provider-setup failure states.
+
+**Explicit non-goals**
+- No new permissions.
+- No background camera/scanner behavior.
+- No provider cache schema changes.
+
+**Acceptance criteria**
+- Scan flow remains explicit-action and non-blocking.
+- Repeated detections do not generate duplicate unstable requests.
+- Offline and setup errors are user-readable and deterministic.
+
+**Test strategy**
+- JVM tests for scan-state transitions and debounce behavior.
+- Deterministic instrumentation checks for stable scan error/retry rendering.
+
+**Risks/failure modes**
+- Overly aggressive debounce can drop legitimate scans.
+- State-machine regressions can leave screen in stuck loading state.
+
+### Phase 24: Serving and unit normalization v2
+**Goal**
+- Make serving-size interpretation safer and more consistent across provider payloads.
+
+**Why it matters**
+- Serving ambiguity drives most nutrition quality complaints.
+
+**Minimal deliverables**
+- Consolidated serving parser rules for common imported patterns.
+- Defensive handling for weird or unknown units with safe fallback text.
+- Regression suite for known problematic serving strings.
+
+**Explicit non-goals**
+- No new nutrient inference models.
+- No schema migrations.
+- No backend or cloud conversion service.
+
+**Acceptance criteria**
+- Defined fixture corpus maps to consistent serving outputs.
+- Save and Save+Log flows remain robust for partial serving metadata.
+- No crash on malformed serving strings.
+
+**Test strategy**
+- JVM fixture tests (provider mapping + parser).
+- ViewModel save/log regression tests for partial candidates.
+
+**Risks/failure modes**
+- Parser changes can silently alter existing dedupe behavior.
+- Unit assumptions may still vary across providers and locales.
 
 ### Phase 25: Accessibility confidence pass
-- Goal: raise TalkBack/keyboard/large-font quality on core logging flows.
-- Why: improves inclusivity and reduces interaction friction.
-- Minimal deliverables: semantics/focus tweaks and a11y smoke assertions.
-- Acceptance criteria: no clipped critical controls at large font scale; focus order stable.
-- Test strategy: deterministic compose tests with semantics assertions.
-- Risks/non-goals: no visual redesign scope creep.
+**Goal**
+- Raise confidence in TalkBack, focus order, keyboard flow, and large-text layouts across primary loops.
 
-### Phase 26: Export trustworthiness hardening
-- Goal: strengthen export clarity, preview fidelity, and redaction confidence.
-- Why: export is high-value and privacy-sensitive for users.
-- Minimal deliverables: clearer schema docs, redaction preview invariants, regression tests.
-- Acceptance criteria: export output matches on-screen preview for JSON/CSV.
-- Test strategy: JVM export snapshot tests.
-- Risks/non-goals: no cloud upload or sync.
+**Why it matters**
+- Accessibility regressions are high severity and often missed by feature tests.
 
-### Phase 27: Performance budgets for Add Food
-- Goal: keep Add Food interactions smooth under large local datasets.
-- Why: protects daily usability as data grows.
-- Minimal deliverables: explicit performance budgets + lightweight benchmark checks.
-- Acceptance criteria: query/update interactions stay under agreed latency thresholds.
-- Test strategy: local benchmark profile + deterministic perf smoke checks.
-- Risks/non-goals: no architectural rewrite.
+**Minimal deliverables**
+- Core semantics/focus audit for Add Food, Today, and Settings.
+- Targeted layout fixes for large font scaling.
+- Stable a11y assertions for changed surfaces.
+
+**Explicit non-goals**
+- No full visual redesign.
+- No new navigation patterns.
+
+**Acceptance criteria**
+- Critical controls remain reachable and readable at large text sizes.
+- Focus order is deterministic and logical.
+- Error states are announced in user-friendly language.
+
+**Test strategy**
+- Compose instrumentation semantics assertions on key flows.
+- JVM/state tests where semantics are driven by UI state flags.
+
+**Risks/failure modes**
+- Semantics label changes can break existing automation if tags/roles drift.
+- Layout tweaks can reintroduce clipping on smaller devices.
+
+### Phase 26: Export trust and interoperability hardening
+**Goal**
+- Make export output easier to trust and easier to consume in external tools.
+
+**Why it matters**
+- Export is a privacy-critical user-owned data surface and a Pro anchor.
+
+**Minimal deliverables**
+- Tighten JSON/CSV schema docs with concrete examples.
+- Redaction preview consistency checks (what user sees vs what file contains).
+- Safer export error messaging with clear recovery actions.
+
+**Explicit non-goals**
+- No auto-upload/sync.
+- No external service integration.
+
+**Acceptance criteria**
+- Exported JSON/CSV matches documented format.
+- Redacted exports consistently remove configured fields.
+- Export failure states are actionable and non-technical.
+
+**Test strategy**
+- JVM snapshot tests for JSON/CSV outputs (normal + redacted).
+- ViewModel tests for export-state messaging.
+
+**Risks/failure modes**
+- CSV formatting drift can break spreadsheet compatibility.
+- Redaction regressions could expose unintended context.
+
+### Phase 27: Add Food performance budget enforcement
+**Goal**
+- Keep Add Food interaction latency stable as local dataset size grows.
+
+**Why it matters**
+- Daily adoption depends on predictable speed, not peak benchmark numbers.
+
+**Minimal deliverables**
+- Explicit latency budgets for query update -> local results render.
+- Lightweight deterministic benchmark/smoke checks in local tooling.
+- Small hotspot fixes only where budget breaches are observed.
+
+**Explicit non-goals**
+- No architecture rewrite.
+- No speculative optimization work.
+
+**Acceptance criteria**
+- Measured interactions remain within defined budget on reference devices/data.
+- No regressions in explicit-action online behavior.
+
+**Test strategy**
+- Deterministic local perf smoke scripts + targeted JVM tests for hotspots.
+- Keep instrumentation assertions focused on final UI state, not timing flake.
+
+**Risks/failure modes**
+- Micro-optimizations can reduce readability without real user impact.
+- Device variance can mask true regressions without fixed baselines.
 
 ### Phase 28: Security hardening pass (local-first)
-- Goal: reduce residual risk in logs, key handling, and local attack surface.
-- Why: security posture is core product value.
-- Minimal deliverables: log scrub review, key-handling audit, updated threat model evidence.
-- Acceptance criteria: no sensitive content in logs, no secrets in repo, docs match runtime.
-- Test strategy: static grep checks + documentation consistency tests.
-- Risks/non-goals: no backend introduction.
+**Goal**
+- Reduce residual risk in key handling, logs, and explicit network boundaries.
+
+**Why it matters**
+- Security posture is a product feature, not an afterthought.
+
+**Minimal deliverables**
+- Secret-handling and log-surface audit with concrete fixes.
+- Security/threat docs updated to match runtime exactly.
+- Small static checks for accidental secret exposure patterns.
+
+**Explicit non-goals**
+- No backend/service expansion.
+- No additional data collection.
+
+**Acceptance criteria**
+- No committed secrets.
+- No sensitive user content in logs.
+- Security and threat docs are consistent with runtime and tests.
+
+**Test strategy**
+- JVM/static checks (regex/grep style) for known high-risk patterns.
+- Documentation consistency tests for explicit-action claims.
+
+**Risks/failure modes**
+- Over-broad static checks can create noisy false positives.
+- Missed edge logs in debug-only paths can still leak context.
 
 ### Phase 29: Release automation maturity
-- Goal: make release readiness checks repeatable and auditable.
-- Why: lowers human error in shipping.
-- Minimal deliverables: stricter PR checks and release checklist automation hooks.
-- Acceptance criteria: release checklist can be executed from repo with deterministic outputs.
-- Test strategy: CI workflow checks + docs consistency tests.
-- Risks/non-goals: no paid CI vendor lock-in decisions in this phase.
+**Goal**
+- Make release readiness checks repeatable, auditable, and low-friction.
 
-### Phase 30: Product simplification pass
-- Goal: remove low-value UI complexity and keep primary flows fast.
-- Why: increases perceived quality and long-term maintainability.
-- Minimal deliverables: evidence-backed simplification changes with test coverage.
-- Acceptance criteria: fewer steps in primary log flow; no regressions in explicit-action guardrails.
-- Test strategy: deterministic UI smoke + targeted VM tests.
-- Risks/non-goals: no feature expansion outside simplification findings.
+**Why it matters**
+- Manual release drift causes avoidable production risk.
+
+**Minimal deliverables**
+- Tighten PR and release workflows around deterministic gate commands.
+- Add checklist automation hooks for docs/runtime consistency checks.
+- Publish a single canonical release runbook.
+
+**Explicit non-goals**
+- No CI vendor migration.
+- No external hosted test dependencies.
+
+**Acceptance criteria**
+- PRs and release candidates run the same required gates reliably.
+- Release checklist steps are scriptable and reproducible from repo.
+
+**Test strategy**
+- Workflow validation tests + docs consistency checks.
+- Periodic dry-run release simulation.
+
+**Risks/failure modes**
+- Overly strict automation can slow iteration if noisy.
+- Missing emulator stability handling can create false CI failures.
+
+### Phase 30: Product simplification and utility pruning
+**Goal**
+- Remove low-value UI/flow complexity while preserving high-value capture speed.
+
+**Why it matters**
+- Simpler products are easier to trust, maintain, and scale.
+
+**Minimal deliverables**
+- Evidence-based simplification proposals from usage walkthroughs.
+- Implement only highest-leverage reductions in steps/cognitive load.
+- Guardrail tests proving no behavior regressions.
+
+**Explicit non-goals**
+- No feature expansion.
+- No redesign-for-redesign’s-sake.
+
+**Acceptance criteria**
+- Primary log loop requires fewer choices/steps where changed.
+- No regressions in explicit-action networking or privacy posture.
+- Existing deterministic tests remain green with minimal churn.
+
+**Test strategy**
+- Deterministic instrumentation smoke tests on affected flows.
+- ViewModel regression tests for message/state behavior.
+
+**Risks/failure modes**
+- Over-pruning can remove power-user workflows.
+- Copy simplification can reduce clarity if not validated against error cases.
 
 ## Deferred
 - Photo-based logging.

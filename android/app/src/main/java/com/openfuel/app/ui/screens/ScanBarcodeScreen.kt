@@ -182,8 +182,10 @@ fun ScanBarcodeScreen(
                             style = MaterialTheme.typography.bodyMedium,
                         )
                         Row(horizontalArrangement = Arrangement.spacedBy(Dimens.s)) {
-                            Button(onClick = { viewModel.retryLookup() }) {
-                                Text("Retry")
+                            if (uiState.canRetry) {
+                                Button(onClick = { viewModel.retryLookup() }) {
+                                    Text("Retry")
+                                }
                             }
                             Button(onClick = { viewModel.clearPreviewAndResume() }) {
                                 Text("Scan again")

@@ -256,7 +256,10 @@ class AddFoodViewModelTest {
         viewModel.searchOnline()
         advanceUntilIdle()
 
-        assertEquals("No connection.", viewModel.uiState.value.onlineErrorMessage)
+        assertEquals(
+            "A source failed. See statuses below.",
+            viewModel.uiState.value.onlineErrorMessage,
+        )
         assertTrue(viewModel.uiState.value.onlineResults.isEmpty())
         assertFalse(viewModel.uiState.value.isOnlineSearchInProgress)
         collectJob.cancel()

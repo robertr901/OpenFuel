@@ -353,6 +353,7 @@ fun AddFoodScreen(
                                         text = uiState.onlineErrorMessage.orEmpty(),
                                         style = MaterialTheme.typography.bodyMedium,
                                         color = MaterialTheme.colorScheme.error,
+                                        modifier = Modifier.testTag("add_food_unified_online_error"),
                                     )
                                 }
                             }

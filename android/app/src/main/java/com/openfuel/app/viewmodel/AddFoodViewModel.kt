@@ -197,7 +197,7 @@ class AddFoodViewModel(
                     onlineHasSearched = false,
                     onlineIsLoading = false,
                     onlineResults = emptyList(),
-                    onlineError = "Online search is turned off. Enable it in Settings to continue.",
+                    onlineError = SearchUserCopy.ONLINE_SEARCH_DISABLED,
                     providerRuns = emptyList(),
                     providerResults = emptyList(),
                     onlineElapsedMs = 0L,
@@ -213,7 +213,7 @@ class AddFoodViewModel(
                     onlineHasSearched = false,
                     onlineIsLoading = false,
                     onlineResults = emptyList(),
-                    onlineError = "Enter a search term to look up online.",
+                    onlineError = SearchUserCopy.ONLINE_SEARCH_QUERY_REQUIRED,
                     providerRuns = emptyList(),
                     providerResults = emptyList(),
                     onlineElapsedMs = 0L,
@@ -267,7 +267,7 @@ class AddFoodViewModel(
                         onlineHasSearched = true,
                         onlineIsLoading = false,
                         onlineResults = emptyList(),
-                        onlineError = "Online search failed. Check connection and try again.",
+                        onlineError = SearchUserCopy.ONLINE_SEARCH_FAILED_GENERIC,
                         providerRuns = emptyList(),
                         providerResults = emptyList(),
                         onlineElapsedMs = 0L,
@@ -452,17 +452,17 @@ private fun deriveOnlineErrorMessage(
 
     if (missingConfigRuns.isNotEmpty() && failedRuns.isEmpty()) {
         return if (missingConfigRuns.size == 1) {
-            "Source needs setup. See statuses below."
+            SearchUserCopy.ONLINE_SOURCE_NEEDS_SETUP_SINGLE
         } else {
-            "Some sources need setup. See statuses below."
+            SearchUserCopy.ONLINE_SOURCE_NEEDS_SETUP_MULTIPLE
         }
     }
 
     if (failedRuns.isNotEmpty()) {
         return if (failedRuns.size == 1 && missingConfigRuns.isEmpty()) {
-            failedRuns.single().message ?: "A source failed. See statuses below."
+            SearchUserCopy.ONLINE_SOURCE_FAILED_SINGLE
         } else {
-            "Some sources failed. See statuses below."
+            SearchUserCopy.ONLINE_SOURCE_FAILED_MULTIPLE
         }
     }
 

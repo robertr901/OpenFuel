@@ -64,7 +64,7 @@ class ScanBarcodeViewModel(
     fun onBarcodeDetected(barcode: String) {
         if (!uiState.value.onlineLookupEnabled) {
             _uiState.update { current ->
-                current.copy(message = "Online search is turned off. Enable it in Settings to use barcode lookup.")
+                current.copy(message = SearchUserCopy.BARCODE_LOOKUP_DISABLED)
             }
             return
         }
@@ -82,7 +82,7 @@ class ScanBarcodeViewModel(
     fun retryLookup() {
         if (!uiState.value.onlineLookupEnabled) {
             _uiState.update { current ->
-                current.copy(message = "Online search is turned off. Enable it in Settings to use barcode lookup.")
+                current.copy(message = SearchUserCopy.BARCODE_LOOKUP_DISABLED)
             }
             return
         }
@@ -232,7 +232,7 @@ class ScanBarcodeViewModel(
                         current.copy(
                             lookupStatus = outcome.status,
                             previewFood = current.previewFood,
-                            errorMessage = outcome.message ?: "No matching food found for barcode.",
+                            errorMessage = outcome.message ?: SearchUserCopy.BARCODE_NO_MATCH,
                             providerResults = report.providerResults,
                         )
                     }
@@ -347,7 +347,7 @@ private fun deriveBarcodeOutcome(
         return if (hasFailures) {
             BarcodeLookupOutcome(
                 status = BarcodeLookupStatus.SUCCESS,
-                message = "Some providers were unavailable. Showing available match.",
+                message = SearchUserCopy.BARCODE_PARTIAL_RESULT,
             )
         } else {
             BarcodeLookupOutcome(status = BarcodeLookupStatus.SUCCESS)
@@ -362,20 +362,20 @@ private fun deriveBarcodeOutcome(
     if (hasMissingUsdaKey) {
         return BarcodeLookupOutcome(
             status = BarcodeLookupStatus.ERROR,
-            message = "USDA provider is not configured. Add USDA_API_KEY in local.properties.",
+            message = SearchUserCopy.BARCODE_USDA_SETUP_REQUIRED,
         )
     }
 
     if (providerResults.any { result -> result.status == ProviderStatus.TIMEOUT }) {
         return BarcodeLookupOutcome(
             status = BarcodeLookupStatus.TIMEOUT,
-            message = "Timed out (check connection).",
+            message = SearchUserCopy.TIMEOUT,
         )
     }
     if (providerResults.any { result -> result.status == ProviderStatus.NETWORK_UNAVAILABLE }) {
         return BarcodeLookupOutcome(
             status = BarcodeLookupStatus.NO_CONNECTION,
-            message = "No connection.",
+            message = SearchUserCopy.NO_CONNECTION,
         )
     }
 
@@ -389,7 +389,7 @@ private fun deriveBarcodeOutcome(
     if (providerResults.any { result -> result.status in serviceFailureStatuses }) {
         return BarcodeLookupOutcome(
             status = BarcodeLookupStatus.ERROR,
-            message = "Service error.",
+            message = SearchUserCopy.SERVICE_ERROR,
         )
     }
 
@@ -402,15 +402,15 @@ private fun mapExceptionToBarcodeOutcome(
     return when (exception.rootCause()) {
         is SocketTimeoutException -> BarcodeLookupOutcome(
             status = BarcodeLookupStatus.TIMEOUT,
-            message = "Timed out (check connection).",
+            message = SearchUserCopy.TIMEOUT,
         )
         is IOException -> BarcodeLookupOutcome(
             status = BarcodeLookupStatus.NO_CONNECTION,
-            message = "No connection.",
+            message = SearchUserCopy.NO_CONNECTION,
         )
         else -> BarcodeLookupOutcome(
             status = BarcodeLookupStatus.ERROR,
-            message = "Lookup failed. Check connection and retry.",
+            message = SearchUserCopy.LOOKUP_FAILED_RETRY,
         )
     }
 }

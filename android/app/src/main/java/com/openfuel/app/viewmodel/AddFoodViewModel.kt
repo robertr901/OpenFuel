@@ -12,6 +12,7 @@ import com.openfuel.app.domain.model.RemoteFoodCandidate
 import com.openfuel.app.domain.model.toLocalFoodItem
 import com.openfuel.app.domain.search.OnlineProviderRun
 import com.openfuel.app.domain.search.OnlineProviderRunStatus
+import com.openfuel.app.domain.search.OnlineCandidateDecision
 import com.openfuel.app.domain.search.OnlineSearchOrchestrator
 import com.openfuel.app.domain.search.OnlineSearchRequest
 import com.openfuel.app.domain.repository.FoodRepository
@@ -154,6 +155,7 @@ class AddFoodViewModel(
             onlineResults = effectiveUnifiedSearch.onlineResults,
             onlineProviderRuns = effectiveUnifiedSearch.providerRuns,
             onlineProviderResults = effectiveUnifiedSearch.providerResults,
+            onlineCandidateDecisions = effectiveUnifiedSearch.onlineCandidateDecisions,
             onlineExecutionElapsedMs = effectiveUnifiedSearch.onlineElapsedMs,
             onlineExecutionCount = effectiveUnifiedSearch.onlineExecutionCount,
             isOnlineSearchInProgress = effectiveUnifiedSearch.onlineIsLoading,
@@ -180,6 +182,7 @@ class AddFoodViewModel(
                 onlineError = null,
                 providerRuns = emptyList(),
                 providerResults = emptyList(),
+                onlineCandidateDecisions = emptyMap(),
                 onlineElapsedMs = 0L,
                 onlineExecutionCount = 0,
             )
@@ -212,6 +215,7 @@ class AddFoodViewModel(
                     onlineError = SearchUserCopy.ONLINE_SEARCH_DISABLED,
                     providerRuns = emptyList(),
                     providerResults = emptyList(),
+                    onlineCandidateDecisions = emptyMap(),
                     onlineElapsedMs = 0L,
                 )
             }
@@ -228,6 +232,7 @@ class AddFoodViewModel(
                     onlineError = SearchUserCopy.ONLINE_SEARCH_QUERY_REQUIRED,
                     providerRuns = emptyList(),
                     providerResults = emptyList(),
+                    onlineCandidateDecisions = emptyMap(),
                     onlineElapsedMs = 0L,
                 )
             }
@@ -243,6 +248,7 @@ class AddFoodViewModel(
                     onlineError = null,
                     providerRuns = emptyList(),
                     providerResults = emptyList(),
+                    onlineCandidateDecisions = emptyMap(),
                     onlineElapsedMs = 0L,
                 )
             }
@@ -269,6 +275,7 @@ class AddFoodViewModel(
                         onlineError = error,
                         providerRuns = result.providerRuns,
                         providerResults = result.providerResults,
+                        onlineCandidateDecisions = result.candidateDecisions,
                         onlineElapsedMs = result.overallDurationMs,
                         onlineExecutionCount = current.onlineExecutionCount + 1,
                     )
@@ -282,6 +289,7 @@ class AddFoodViewModel(
                         onlineError = SearchUserCopy.ONLINE_SEARCH_FAILED_GENERIC,
                         providerRuns = emptyList(),
                         providerResults = emptyList(),
+                        onlineCandidateDecisions = emptyMap(),
                         onlineElapsedMs = 0L,
                         onlineExecutionCount = current.onlineExecutionCount + 1,
                     )
@@ -436,6 +444,7 @@ data class AddFoodUiState(
     val onlineResults: List<RemoteFoodCandidate> = emptyList(),
     val onlineProviderRuns: List<OnlineProviderRun> = emptyList(),
     val onlineProviderResults: List<ProviderResult> = emptyList(),
+    val onlineCandidateDecisions: Map<String, OnlineCandidateDecision> = emptyMap(),
     val onlineExecutionElapsedMs: Long = 0L,
     val onlineExecutionCount: Int = 0,
     val isOnlineSearchInProgress: Boolean = false,

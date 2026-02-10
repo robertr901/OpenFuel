@@ -64,10 +64,13 @@ import com.openfuel.app.domain.model.FoodItem
 import com.openfuel.app.domain.model.FoodUnit
 import com.openfuel.app.domain.model.MealType
 import com.openfuel.app.domain.model.RemoteFoodCandidate
-import com.openfuel.app.domain.model.RemoteFoodSource
+import com.openfuel.app.domain.search.OnlineCandidateDecision
+import com.openfuel.app.domain.search.OnlineServingReviewStatus
 import com.openfuel.app.domain.search.OnlineProviderRun
 import com.openfuel.app.domain.search.OnlineProviderRunStatus
 import com.openfuel.app.domain.search.SearchSourceFilter
+import com.openfuel.app.domain.search.deriveOnlineCandidateTrustSignals
+import com.openfuel.app.domain.search.onlineCandidateDecisionKey
 import com.openfuel.app.domain.service.ProviderStatus
 import com.openfuel.app.domain.voice.VoiceTranscribeConfig
 import com.openfuel.app.domain.voice.VoiceTranscribeResult
@@ -87,6 +90,7 @@ import com.openfuel.app.ui.util.formatCalories
 import com.openfuel.app.ui.util.formatMacro
 import com.openfuel.app.ui.util.parseDecimalInput
 import com.openfuel.app.viewmodel.AddFoodViewModel
+import com.openfuel.app.viewmodel.SearchUserCopy
 import java.util.Locale
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
@@ -382,8 +386,11 @@ fun AddFoodScreen(
 
                             if (uiState.onlineResults.isNotEmpty()) {
                                 items(uiState.onlineResults, key = { "${it.source}:${it.sourceId}" }) { food ->
+                                    val candidateDecision =
+                                        uiState.onlineCandidateDecisions[onlineCandidateDecisionKey(food)]
                                     OnlineResultRow(
                                         food = food,
+                                        candidateDecision = candidateDecision,
                                         onOpenPreview = { viewModel.openOnlineFoodPreview(food) },
                                         modifier = Modifier.testTag("add_food_unified_online_result_${food.sourceId}"),
                                     )
@@ -528,8 +535,10 @@ fun AddFoodScreen(
 
     val selectedOnlineFood = uiState.selectedOnlineFood
     if (selectedOnlineFood != null) {
+        val candidateDecision = uiState.onlineCandidateDecisions[onlineCandidateDecisionKey(selectedOnlineFood)]
         OnlineFoodPreviewDialog(
             food = selectedOnlineFood,
+            candidateDecision = candidateDecision,
             onDismiss = { viewModel.closeOnlineFoodPreview() },
             onSave = { viewModel.saveOnlineFood(selectedOnlineFood) },
             onSaveAndLog = { quantity, unit, mealType ->
@@ -1129,9 +1138,19 @@ private fun SearchResultFoodRow(
 @Composable
 private fun OnlineResultRow(
     food: RemoteFoodCandidate,
+    candidateDecision: OnlineCandidateDecision?,
     onOpenPreview: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val trustSignals = deriveOnlineCandidateTrustSignals(food)
+    val sourceAndCompleteness = buildString {
+        append("${SearchUserCopy.ONLINE_SOURCE_LABEL_PREFIX}: ${trustSignals.provenanceLabel}")
+        append(" · ")
+        append(
+            "${SearchUserCopy.ONLINE_COMPLETENESS_LABEL_PREFIX}: " +
+                SearchUserCopy.completenessLabel(trustSignals.completeness),
+        )
+    }
     OFCard(modifier = modifier.fillMaxWidth()) {
         Column(
             modifier = Modifier.fillMaxWidth(),
@@ -1141,8 +1160,13 @@ private fun OnlineResultRow(
                 title = food.name,
                 subtitle = food.brand?.takeIf { it.isNotBlank() },
                 trailing = {
-                    OFPill(text = provenanceLabel(food))
+                    OFPill(text = trustSignals.provenanceLabel)
                 },
+            )
+            Text(
+                text = sourceAndCompleteness,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             val calories = food.caloriesKcalPer100g
             val protein = food.proteinGPer100g
@@ -1156,8 +1180,26 @@ private fun OnlineResultRow(
                 )
             } else {
                 Text(
-                    text = "${formatCalories(calories ?: 0.0)} kcal · ${formatMacro(protein ?: 0.0)}p ${formatMacro(carbs ?: 0.0)}c ${formatMacro(fat ?: 0.0)}f per 100g",
+                    text = "Per 100 g · " +
+                        "kcal ${formatCaloriesOrUnknown(calories)} · " +
+                        "p ${formatMacroOrUnknown(protein)} · " +
+                        "c ${formatMacroOrUnknown(carbs)} · " +
+                        "f ${formatMacroOrUnknown(fat)}",
                     style = instrumentTextStyle(),
+                )
+            }
+            if (trustSignals.servingReviewStatus == OnlineServingReviewStatus.NEEDS_REVIEW) {
+                Text(
+                    text = SearchUserCopy.ONLINE_REVIEW_REQUIRED_HINT,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            candidateDecision?.let { decision ->
+                Text(
+                    text = SearchUserCopy.whyThisResult(decision.reason),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
             OFSecondaryButton(
@@ -1166,22 +1208,6 @@ private fun OnlineResultRow(
                 modifier = Modifier.fillMaxWidth(),
             )
         }
-    }
-}
-
-private fun provenanceLabel(food: RemoteFoodCandidate): String {
-    val providerKey = food.providerKey.orEmpty()
-    return when {
-        providerKey.equals("open_food_facts", ignoreCase = true) -> "OFF"
-        providerKey.equals("usda_fdc", ignoreCase = true) -> "USDA"
-        providerKey.equals("nutritionix", ignoreCase = true) -> "Nutritionix"
-        providerKey.equals("static_sample", ignoreCase = true) -> "Sample"
-        providerKey.isNotBlank() -> providerKey
-        food.source == RemoteFoodSource.OPEN_FOOD_FACTS -> "OFF"
-        food.source == RemoteFoodSource.USDA_FOODDATA_CENTRAL -> "USDA"
-        food.source == RemoteFoodSource.NUTRITIONIX -> "Nutritionix"
-        food.source == RemoteFoodSource.STATIC_SAMPLE -> "Sample"
-        else -> "Online"
     }
 }
 
@@ -1200,10 +1226,12 @@ private fun OnlineProviderRun.toStatusLine(): String {
 @Composable
 private fun OnlineFoodPreviewDialog(
     food: RemoteFoodCandidate,
+    candidateDecision: OnlineCandidateDecision?,
     onDismiss: () -> Unit,
     onSave: () -> Unit,
     onSaveAndLog: (Double, FoodUnit, MealType) -> Unit,
 ) {
+    val trustSignals = deriveOnlineCandidateTrustSignals(food)
     var quantityInput by rememberSaveable(food.sourceId) { mutableStateOf("1") }
     var selectedUnit by rememberSaveable(food.sourceId) { mutableStateOf(FoodUnit.SERVING) }
     var selectedMealType by rememberSaveable(food.sourceId) { mutableStateOf(MealType.BREAKFAST) }
@@ -1225,24 +1253,42 @@ private fun OnlineFoodPreviewDialog(
                     )
                 }
                 Text(
+                    text = "${SearchUserCopy.ONLINE_SOURCE_LABEL_PREFIX}: ${trustSignals.provenanceLabel}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Text(
+                    text = "${SearchUserCopy.ONLINE_COMPLETENESS_LABEL_PREFIX}: " +
+                        SearchUserCopy.completenessLabel(trustSignals.completeness),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                candidateDecision?.let { decision ->
+                    Text(
+                        text = SearchUserCopy.whyThisResult(decision.reason),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                Text(
                     text = "Per 100 g",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
                 Text(
-                    text = "Calories: ${formatCalories(food.caloriesKcalPer100g ?: 0.0)} kcal",
+                    text = "Calories: ${formatCaloriesOrUnknown(food.caloriesKcalPer100g)}",
                     style = instrumentTextStyle(),
                 )
                 Text(
-                    text = "Protein: ${formatMacro(food.proteinGPer100g ?: 0.0)} g",
+                    text = "Protein: ${formatMacroOrUnknown(food.proteinGPer100g)}",
                     style = instrumentTextStyle(),
                 )
                 Text(
-                    text = "Carbs: ${formatMacro(food.carbsGPer100g ?: 0.0)} g",
+                    text = "Carbs: ${formatMacroOrUnknown(food.carbsGPer100g)}",
                     style = instrumentTextStyle(),
                 )
                 Text(
-                    text = "Fat: ${formatMacro(food.fatGPer100g ?: 0.0)} g",
+                    text = "Fat: ${formatMacroOrUnknown(food.fatGPer100g)}",
                     style = instrumentTextStyle(),
                 )
                 if (!food.servingSize.isNullOrBlank()) {
@@ -1255,6 +1301,13 @@ private fun OnlineFoodPreviewDialog(
                         text = "Serving info unavailable. Values are shown per 100 g.",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                if (trustSignals.servingReviewStatus == OnlineServingReviewStatus.NEEDS_REVIEW) {
+                    Text(
+                        text = SearchUserCopy.ONLINE_REVIEW_REQUIRED_HINT,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.error,
                     )
                 }
                 OutlinedTextField(
@@ -1312,3 +1365,11 @@ private fun instrumentTextStyle() = MaterialTheme.typography.labelLarge.copy(
     fontWeight = FontWeight.Medium,
     fontFeatureSettings = "tnum",
 )
+
+private fun formatCaloriesOrUnknown(value: Double?): String {
+    return value?.let { "${formatCalories(it)} kcal" } ?: "Unknown"
+}
+
+private fun formatMacroOrUnknown(value: Double?): String {
+    return value?.let { "${formatMacro(it)} g" } ?: "Unknown"
+}

@@ -5,6 +5,7 @@ import androidx.compose.ui.test.assertTextContains
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onAllNodesWithTag
+import androidx.compose.ui.test.hasAnyDescendant
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.onNodeWithTag
@@ -88,6 +89,14 @@ class UnifiedSearchSmokeTest {
         composeRule.onNodeWithTag("add_food_unified_results_list")
             .performScrollToNode(hasTestTag("add_food_unified_online_result_sample-oatmeal-1"))
         composeRule.onNodeWithTag("add_food_unified_online_result_sample-oatmeal-1").assertIsDisplayed()
+        composeRule.onNode(
+            hasTestTag("add_food_unified_online_result_sample-oatmeal-1")
+                .and(hasAnyDescendant(hasText("Source:", substring = true))),
+        ).assertIsDisplayed()
+        composeRule.onNode(
+            hasTestTag("add_food_unified_online_result_sample-oatmeal-1")
+                .and(hasAnyDescendant(hasText("Completeness:", substring = true))),
+        ).assertIsDisplayed()
         composeRule.onNodeWithTag("add_food_unified_results_list")
             .performScrollToNode(hasTestTag("add_food_unified_online_sources"))
         composeRule.onNodeWithTag("add_food_unified_online_sources").assertIsDisplayed()

@@ -56,6 +56,7 @@ class UsdaProviderContractTest : ProviderContractAssertions() {
             )
 
             assertCommonInvariants(providerName = "usda", fixtureName = fixtureName, candidates = first)
+            assertTrustSignals(providerName = "usda", fixtureName = fixtureName, candidates = first)
             assertDeterministic(
                 providerName = "usda",
                 fixtureName = fixtureName,
@@ -129,6 +130,7 @@ class UsdaProviderContractTest : ProviderContractAssertions() {
             val firstList = listOfNotNull(first)
             val secondList = listOfNotNull(second)
             assertCommonInvariants(providerName = "usda", fixtureName = fixtureName, candidates = firstList)
+            assertTrustSignals(providerName = "usda", fixtureName = fixtureName, candidates = firstList)
             assertDeterministic(
                 providerName = "usda",
                 fixtureName = fixtureName,

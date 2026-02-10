@@ -24,6 +24,7 @@ data class UnifiedSearchState(
     val onlineError: String? = null,
     val providerRuns: List<OnlineProviderRun> = emptyList(),
     val providerResults: List<ProviderResult> = emptyList(),
+    val onlineCandidateDecisions: Map<String, OnlineCandidateDecision> = emptyMap(),
     val onlineElapsedMs: Long = 0L,
     val onlineExecutionCount: Int = 0,
 )

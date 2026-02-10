@@ -14,6 +14,8 @@ import com.openfuel.app.domain.repository.FoodRepository
 import com.openfuel.app.domain.repository.LogRepository
 import com.openfuel.app.domain.repository.SettingsRepository
 import com.openfuel.app.domain.search.SearchSourceFilter
+import com.openfuel.app.domain.search.OnlineServingReviewStatus
+import com.openfuel.app.domain.search.deriveServingReviewStatus
 import com.openfuel.app.domain.service.ProviderExecutionReport
 import com.openfuel.app.domain.service.ProviderExecutionRequest
 import com.openfuel.app.domain.service.ProviderExecutor
@@ -677,6 +679,46 @@ class AddFoodViewModelTest {
         assertEquals(1, foodRepository.upsertedFoods.size)
         assertEquals(1, logRepository.loggedEntries.size)
         assertEquals(foodRepository.upsertedFoods.single().id, logRepository.loggedEntries.single().foodItemId)
+    }
+
+    @Test
+    fun saveAndLogOnlineFood_needsReviewServingInfo_doesNotBlockLogging() = runTest {
+        val foodRepository = AddFoodFakeFoodRepository()
+        val logRepository = AddFoodFakeLogRepository()
+        val candidate = RemoteFoodCandidate(
+            source = RemoteFoodSource.STATIC_SAMPLE,
+            sourceId = "needs-review-1",
+            barcode = null,
+            name = "Test food",
+            brand = null,
+            caloriesKcalPer100g = 120.0,
+            proteinGPer100g = 4.0,
+            carbsGPer100g = 18.0,
+            fatGPer100g = 2.0,
+            servingSize = "mystery portion",
+        )
+        assertEquals(
+            OnlineServingReviewStatus.NEEDS_REVIEW,
+            deriveServingReviewStatus(candidate.servingSize),
+        )
+        val viewModel = AddFoodViewModel(
+            foodRepository = foodRepository,
+            logRepository = logRepository,
+            settingsRepository = FakeSettingsRepository(enabled = true),
+            providerExecutor = FakeProviderExecutor(),
+            userInitiatedNetworkGuard = UserInitiatedNetworkGuard(),
+        )
+
+        viewModel.saveAndLogOnlineFood(
+            food = candidate,
+            mealType = MealType.LUNCH,
+            quantity = 1.0,
+            unit = FoodUnit.SERVING,
+        )
+        advanceUntilIdle()
+
+        assertEquals(1, foodRepository.upsertedFoods.size)
+        assertEquals(1, logRepository.loggedEntries.size)
     }
 }
 

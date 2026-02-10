@@ -1,6 +1,9 @@
 package com.openfuel.app.provider.contracts
 
 import com.openfuel.app.domain.model.RemoteFoodCandidate
+import com.openfuel.app.domain.search.OnlineServingReviewStatus
+import com.openfuel.app.domain.search.deriveOnlineCandidateTrustSignals
+import com.openfuel.app.domain.search.onlineCandidateDecisionKey
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -46,6 +49,30 @@ open class ProviderContractAssertions {
             first,
             second,
         )
+    }
+
+    protected fun assertTrustSignals(
+        providerName: String,
+        fixtureName: String,
+        candidates: List<RemoteFoodCandidate>,
+    ) {
+        candidates.forEachIndexed { index, candidate ->
+            val prefix = "[$providerName/$fixtureName][$index]"
+            val trustSignals = deriveOnlineCandidateTrustSignals(candidate)
+            assertEquals(
+                "$prefix decision key must be stable",
+                onlineCandidateDecisionKey(candidate),
+                trustSignals.decisionKey,
+            )
+            assertTrue("$prefix provenance label must be non-blank", trustSignals.provenanceLabel.isNotBlank())
+            if (candidate.servingSize.isNullOrBlank()) {
+                assertEquals(
+                    "$prefix missing serving must be marked needs review",
+                    OnlineServingReviewStatus.NEEDS_REVIEW,
+                    trustSignals.servingReviewStatus,
+                )
+            }
+        }
     }
 
     private fun assertStringHygiene(label: String, value: String) {

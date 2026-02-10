@@ -61,6 +61,11 @@ class NutritionixProviderContractTest : ProviderContractAssertions() {
                 fixtureName = fixtureName,
                 candidates = first,
             )
+            assertTrustSignals(
+                providerName = "nutritionix",
+                fixtureName = fixtureName,
+                candidates = first,
+            )
             assertDeterministic(
                 providerName = "nutritionix",
                 fixtureName = fixtureName,
@@ -134,6 +139,11 @@ class NutritionixProviderContractTest : ProviderContractAssertions() {
             val firstList = listOfNotNull(first)
             val secondList = listOfNotNull(second)
             assertCommonInvariants(
+                providerName = "nutritionix",
+                fixtureName = fixtureName,
+                candidates = firstList,
+            )
+            assertTrustSignals(
                 providerName = "nutritionix",
                 fixtureName = fixtureName,
                 candidates = firstList,

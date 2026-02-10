@@ -54,6 +54,7 @@ class OpenFoodFactsProviderContractTest : ProviderContractAssertions() {
             )
 
             assertCommonInvariants(providerName = "off", fixtureName = fixtureName, candidates = first)
+            assertTrustSignals(providerName = "off", fixtureName = fixtureName, candidates = first)
             assertDeterministic(
                 providerName = "off",
                 fixtureName = fixtureName,
@@ -112,6 +113,7 @@ class OpenFoodFactsProviderContractTest : ProviderContractAssertions() {
             val firstList = listOfNotNull(first)
             val secondList = listOfNotNull(second)
             assertCommonInvariants(providerName = "off", fixtureName = fixtureName, candidates = firstList)
+            assertTrustSignals(providerName = "off", fixtureName = fixtureName, candidates = firstList)
             assertDeterministic(
                 providerName = "off",
                 fixtureName = fixtureName,

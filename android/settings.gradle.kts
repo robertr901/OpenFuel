@@ -21,3 +21,4 @@ dependencyResolutionManagement {
 
 rootProject.name = "OpenFuel"
 include(":app")
+include(":shared-core")

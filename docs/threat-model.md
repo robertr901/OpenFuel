@@ -44,7 +44,8 @@ Out of scope (for now):
 **Mitigations:**
 - Export is always explicit user action.
 - Export format is documented, inspectable JSON with schemaVersion/appVersion.
-- UI should warn users that export contains their full local history (future hardening: optional redacted export).
+- Advanced export includes explicit redaction options before sharing.
+- UI copy warns that export may contain sensitive personal history.
 
 ### 3) Local data compromise
 **Threat:** Other apps, malware, or physical attacker accesses local database/files.
@@ -61,6 +62,7 @@ Out of scope (for now):
 - Defensive parsing (missing fields tolerated, nutrients bounded/sanitised).
 - Provenance labels shown in UI.
 - User must explicitly Save or Save+Log, no auto-log from online results.
+- Provider mapping is locked by deterministic fixture contract tests (OFF/USDA/Nutritionix) to catch payload drift regressions.
 
 ### 5) Voice privacy and persistence
 **Threat:** Voice capture records audio, stores it, or sends it off-device.
@@ -80,7 +82,7 @@ Out of scope (for now):
 ## Residual risks / open questions
 - Offline speech recognition availability varies by device/language packs.
 - INTERNET permission is broad when optional online features exist; no TLS pinning currently.
-- Export sharing risk remains user-driven; consider adding redaction options and stronger warnings.
+- Export sharing risk remains user-driven even with redaction options; users may still share sensitive context inadvertently.
 
 ## Verification strategy
 - Unit tests for domain logic and parsers.

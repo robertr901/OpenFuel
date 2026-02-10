@@ -4,6 +4,19 @@ All notable changes to OpenFuel are documented here.
 
 ## Unreleased
 
+### Phase 21.5: Documentation and direction alignment
+- Refreshed product vision into explicit principles and non-goals (`docs/product-vision.md`).
+- Updated architecture guidance with:
+  - a concise system map
+  - provider contract fixture/testing boundaries
+  - a practical "where to change what" guide.
+- Rewrote phases 22–30 roadmap into acceptance-criteria-first slices with explicit non-goals and test strategy per phase.
+- Tightened verification docs and README build/test guidance (including emulator prerequisite for connected tests).
+- Aligned security/threat documentation with current runtime behavior:
+  - explicit export redaction support is documented as shipped
+  - provider payload drift controls now cite the fixture contract test harness.
+- No runtime behavior changes, schema changes, or networking policy changes.
+
 ### Phase 21: Provider contract conformance pack
 - Added a canonical, versioned provider fixture corpus under `android/app/src/test/resources/provider_fixtures/` for:
   - Open Food Facts (search + barcode lookup, normal + edge cases)

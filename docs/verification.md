@@ -1,6 +1,11 @@
 # Verification
 
 ## Full release gate (run from `android`)
+Device prerequisite for connected tests:
+- Ensure `Medium_Phone_API_35` is running before step 3.
+- If needed, start it with:
+  - `emulator -avd Medium_Phone_API_35 -no-window -no-audio`
+
 1) Run unit tests:
    - `./gradlew test`
 2) Build debug APK:
@@ -28,6 +33,7 @@
 - Deterministic androidTest coverage still validates:
   - Add Food unified search and quick-add flows without live network dependencies.
   - Pro-gated paywall lock and restore flows using fake/debug entitlement wiring in tests.
+  - Provider orchestration and provider status UX without live network dependency.
 
 ## Provider verification checklist (manual, release-oriented)
 - With provider defaults enabled and missing `USDA_API_KEY` and/or Nutritionix credentials:

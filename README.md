@@ -2,6 +2,11 @@
 Privacy-first, local-first nutrition tracker.
 Status: bootstrapping.
 
+## Vision and principles
+- Product vision and non-goals: `docs/product-vision.md`
+- Architecture boundaries and change guide: `docs/architecture.md`
+- Delivery roadmap (acceptance-first): `docs/roadmap.md`
+
 ## Current Delivery Status
 - 2026-02-08: Completed Phase 8 provider execution architecture (multi-provider executor, deterministic stub provider path for tests, Room cache with TTL, local-only diagnostics).
 - 2026-02-08: Completed Phase 9 provider reliability and UX polish (structured provider error statuses, cache versioning/invalidation, explicit refresh control, provenance surfacing, save/log hardening, deterministic refresh instrumentation coverage).
@@ -25,6 +30,12 @@ cd android
 ./gradlew test
 ./gradlew assembleDebug
 ./gradlew :app:connectedDebugAndroidTest
+```
+
+If no emulator/device is attached for connected tests, start the reference AVD first:
+
+```bash
+emulator -avd Medium_Phone_API_35 -no-window -no-audio
 ```
 
 `./gradlew :app:connectedDebugAndroidTest` is part of the primary release gate. It uses `OpenFuelAndroidTestRunner`, which overrides the app container with deterministic providers and fake voice transcription. This keeps instrumentation tests offline and reproducible by disabling live Open Food Facts execution and avoiding system microphone/speech UI dependencies.

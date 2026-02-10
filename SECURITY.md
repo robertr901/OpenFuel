@@ -19,6 +19,11 @@ High-level controls:
 - No background network sync of personal logs.
 - Deterministic release gates are enforced in CI (`.github/workflows/android-gates.yml`).
 
+Provider payload drift controls:
+- Deterministic provider contract fixtures and JVM contract tests lock OFF/USDA/Nutritionix mapping behavior.
+- Canonical fixtures live under `android/app/src/test/resources/provider_fixtures/`.
+- Contract harness lives under `android/app/src/test/java/com/openfuel/app/provider/contracts/`.
+
 ## Permissions Inventory (AndroidManifest)
 Declared in `android/app/src/main/AndroidManifest.xml`:
 

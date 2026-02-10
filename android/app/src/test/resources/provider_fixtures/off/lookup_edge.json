@@ -1,0 +1,15 @@
+{
+  "status": 1,
+  "product": {
+    "code": "ABC-123",
+    "product_name_en": "Protein Shake",
+    "brands": "Fit Co",
+    "serving_size": "1 bottle (500 ml)",
+    "nutriments": {
+      "energy-kcal_100g": 60.5,
+      "proteins_100g": 8.0,
+      "carbohydrates_100g": 4.0,
+      "fat_100g": 1.0
+    }
+  }
+}

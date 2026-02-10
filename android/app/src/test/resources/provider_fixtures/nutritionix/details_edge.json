@@ -1,0 +1,17 @@
+{
+  "foods": [
+    {
+      "food_name": "Energy Bar",
+      "brand_name": "Trail Co",
+      "nix_item_id": null,
+      "upc": null,
+      "serving_qty": 1,
+      "serving_unit": "bar",
+      "serving_weight_grams": 40,
+      "nf_calories": 190,
+      "nf_protein": 7,
+      "nf_total_carbohydrate": 22,
+      "nf_total_fat": 8
+    }
+  ]
+}

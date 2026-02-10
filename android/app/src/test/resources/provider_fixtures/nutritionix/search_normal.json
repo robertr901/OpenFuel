@@ -1,0 +1,30 @@
+{
+  "foods": [
+    {
+      "food_name": " Greek Yogurt ",
+      "brand_name": " OpenFuel Brand ",
+      "nix_item_id": "nix-123",
+      "upc": "000123456789",
+      "serving_qty": 1,
+      "serving_unit": "cup",
+      "serving_weight_grams": 200,
+      "nf_calories": 120,
+      "nf_protein": 20,
+      "nf_total_carbohydrate": 8,
+      "nf_total_fat": 2
+    },
+    {
+      "food_name": "Protein Shake",
+      "brand_name": "Fit Co",
+      "nix_item_id": "nix-124",
+      "upc": "000987654321",
+      "serving_qty": 1,
+      "serving_unit": "bottle",
+      "serving_weight_grams": 500,
+      "nf_calories": 250,
+      "nf_protein": 30,
+      "nf_total_carbohydrate": 15,
+      "nf_total_fat": 5
+    }
+  ]
+}

@@ -1,0 +1,19 @@
+{
+  "foods": [
+    {
+      "fdcId": 4001,
+      "description": "Unknown Unit Item",
+      "brandOwner": "House Label",
+      "gtinUpc": null,
+      "servingSize": 1.0,
+      "servingSizeUnit": "piece",
+      "foodNutrients": [
+        {
+          "nutrientNumber": "1008",
+          "nutrientName": "Energy",
+          "value": 95.0
+        }
+      ]
+    }
+  ]
+}

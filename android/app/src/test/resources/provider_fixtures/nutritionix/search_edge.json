@@ -1,0 +1,33 @@
+{
+  "foods": [
+    {
+      "food_name": "   ",
+      "nix_item_name": "   ",
+      "brand_name": "Should Be Ignored"
+    },
+    {
+      "food_name": "Trail Mix",
+      "brand_name": "Acme Foods",
+      "upc": "UPC-ABC-01",
+      "serving_qty": 1.5,
+      "serving_unit": "packet",
+      "serving_weight_grams": null,
+      "nf_calories": -100,
+      "nf_protein": 6,
+      "nf_total_carbohydrate": 18,
+      "nf_total_fat": 7
+    },
+    {
+      "food_name": "Oat Bites",
+      "brand_name": "Granola Co",
+      "nix_item_id": "nix-edge-2",
+      "serving_qty": 40,
+      "serving_unit": "g",
+      "serving_weight_grams": 40,
+      "nf_calories": 180,
+      "nf_protein": 4,
+      "nf_total_carbohydrate": 9999999,
+      "nf_total_fat": 6
+    }
+  ]
+}

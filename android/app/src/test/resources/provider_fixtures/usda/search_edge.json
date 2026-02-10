@@ -1,0 +1,53 @@
+{
+  "foods": [
+    {
+      "fdcId": 2001,
+      "description": "  ",
+      "brandOwner": "Ignore",
+      "gtinUpc": "111",
+      "servingSize": 100.0,
+      "servingSizeUnit": "g",
+      "foodNutrients": []
+    },
+    {
+      "fdcId": 2002,
+      "description": "Protein Biscuit",
+      "brandOwner": "Acme Bakes",
+      "gtinUpc": "ABC-UPC-01",
+      "servingSize": 2.0,
+      "servingSizeUnit": "biscuit",
+      "foodNutrients": [
+        {
+          "nutrientNumber": "1008",
+          "nutrientName": "Energy",
+          "value": 220.0
+        },
+        {
+          "nutrientNumber": "1003",
+          "nutrientName": "Protein",
+          "value": -2.0
+        }
+      ]
+    },
+    {
+      "fdcId": null,
+      "description": "Trail Mix",
+      "brandName": "Daily Nuts",
+      "gtinUpc": null,
+      "servingSize": 40.0,
+      "servingSizeUnit": "g",
+      "foodNutrients": [
+        {
+          "nutrientNumber": "1008",
+          "nutrientName": "Energy",
+          "value": 400.0
+        },
+        {
+          "nutrientNumber": "1005",
+          "nutrientName": "Carbohydrate",
+          "value": 9999999.0
+        }
+      ]
+    }
+  ]
+}

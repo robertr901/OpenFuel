@@ -14,6 +14,21 @@ enum class OnlineProviderRunStatus {
     SKIPPED_DISABLED,
 }
 
+enum class OnlineCandidateSelectionReason {
+    SINGLE_SOURCE_RESULT,
+    BARCODE_MATCH,
+    BEST_MATCH_ACROSS_SOURCES,
+    MOST_COMPLETE_NUTRITION,
+    PREFERRED_SOURCE,
+    DETERMINISTIC_TIE_BREAK,
+}
+
+data class OnlineCandidateDecision(
+    val selectedProviderId: String,
+    val contributingProviderIds: List<String>,
+    val reason: OnlineCandidateSelectionReason,
+)
+
 data class OnlineProviderRun(
     val providerId: String,
     val providerDisplayName: String,
@@ -36,6 +51,7 @@ data class OnlineSearchResult(
     val summary: OnlineSearchSummary,
     val overallDurationMs: Long,
     val providerResults: List<ProviderResult>,
+    val candidateDecisions: Map<String, OnlineCandidateDecision> = emptyMap(),
 )
 
 data class OnlineSearchRequest(

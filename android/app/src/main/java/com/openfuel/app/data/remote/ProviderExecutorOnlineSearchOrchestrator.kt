@@ -1,5 +1,7 @@
 package com.openfuel.app.data.remote
 
+import com.openfuel.app.domain.search.OnlineCandidateDecision
+import com.openfuel.app.domain.search.OnlineCandidateSelectionReason
 import com.openfuel.app.domain.search.OnlineProviderRun
 import com.openfuel.app.domain.search.OnlineProviderRunStatus
 import com.openfuel.app.domain.search.OnlineSearchOrchestrator
@@ -8,6 +10,7 @@ import com.openfuel.app.domain.search.OnlineSearchResult
 import com.openfuel.app.domain.search.OnlineSearchSummary
 import com.openfuel.app.domain.model.RemoteFoodCandidate
 import com.openfuel.app.domain.search.SearchSourceFilter
+import com.openfuel.app.domain.search.onlineCandidateDecisionKey
 import com.openfuel.app.domain.service.FoodCatalogExecutionProvider
 import com.openfuel.app.domain.service.FoodCatalogProviderRegistry
 import com.openfuel.app.domain.service.ProviderExecutionRequest
@@ -74,10 +77,11 @@ class ProviderExecutorOnlineSearchOrchestrator(
         val priorityByProviderId = sortedProviders
             .mapIndexed { index, provider -> provider.descriptor.key to index }
             .toMap()
-        val candidates = mergeCandidates(
+        val mergedCandidatesReport = mergeCandidates(
             providerResults = report.providerResults,
             priorityByProviderId = priorityByProviderId,
         )
+        val candidates = mergedCandidatesReport.candidates
         val summary = OnlineSearchSummary(
             totalCandidates = candidates.size,
             successfulProviders = providerRuns.count { run ->
@@ -99,6 +103,7 @@ class ProviderExecutorOnlineSearchOrchestrator(
             summary = summary,
             overallDurationMs = report.overallElapsedMs,
             providerResults = report.providerResults,
+            candidateDecisions = mergedCandidatesReport.candidateDecisions,
         )
     }
 }
@@ -106,7 +111,7 @@ class ProviderExecutorOnlineSearchOrchestrator(
 private fun mergeCandidates(
     providerResults: List<ProviderResult>,
     priorityByProviderId: Map<String, Int>,
-): List<RemoteFoodCandidate> {
+): MergedCandidatesReport {
     val buckets = LinkedHashMap<String, CandidateBucket>()
     val sortedResults = providerResults.sortedWith(
         compareBy<ProviderResult> { result ->
@@ -127,17 +132,19 @@ private fun mergeCandidates(
                     selectedProviderId = result.providerId,
                     selectedCandidate = candidate,
                     contributingProviders = linkedSetOf(result.providerId),
+                    latestSelectionReason = null,
                 )
             } else {
                 bucket.contributingProviders += result.providerId
-                if (shouldSelectIncoming(
-                        existing = bucket.selectedCandidate,
-                        existingProviderId = bucket.selectedProviderId,
-                        incoming = candidate,
-                        incomingProviderId = result.providerId,
-                        priorityByProviderId = priorityByProviderId,
-                    )
-                ) {
+                val selectionDecision = evaluateIncomingSelection(
+                    existing = bucket.selectedCandidate,
+                    existingProviderId = bucket.selectedProviderId,
+                    incoming = candidate,
+                    incomingProviderId = result.providerId,
+                    priorityByProviderId = priorityByProviderId,
+                )
+                bucket.latestSelectionReason = selectionDecision.reason
+                if (selectionDecision.selectIncoming) {
                     bucket.selectedCandidate = candidate
                     bucket.selectedProviderId = result.providerId
                 }
@@ -145,7 +152,7 @@ private fun mergeCandidates(
         }
     }
 
-    return buckets.values
+    val sortedBuckets = buckets.values
         .sortedWith(
             compareBy<CandidateBucket> { bucket -> bucket.key.rank }
                 .thenBy { bucket -> bucket.key.identity }
@@ -153,34 +160,68 @@ private fun mergeCandidates(
                 .thenBy { bucket -> bucket.selectedProviderId }
                 .thenBy { bucket -> "${bucket.selectedCandidate.source}:${bucket.selectedCandidate.sourceId}" },
         )
-        .map { bucket ->
-            bucket.selectedCandidate.copy(providerKey = bucket.selectedProviderId)
-        }
+    val candidates = sortedBuckets.map { bucket ->
+        bucket.selectedCandidate.copy(providerKey = bucket.selectedProviderId)
+    }
+    val decisions = sortedBuckets.associate { bucket ->
+        val selectedCandidate = bucket.selectedCandidate.copy(providerKey = bucket.selectedProviderId)
+        onlineCandidateDecisionKey(selectedCandidate) to OnlineCandidateDecision(
+            selectedProviderId = bucket.selectedProviderId,
+            contributingProviderIds = bucket.contributingProviders.toList(),
+            reason = finalSelectionReason(bucket),
+        )
+    }
+    return MergedCandidatesReport(
+        candidates = candidates,
+        candidateDecisions = decisions,
+    )
 }
 
-private fun shouldSelectIncoming(
+private fun finalSelectionReason(bucket: CandidateBucket): OnlineCandidateSelectionReason {
+    if (bucket.key.rank == 0) {
+        return OnlineCandidateSelectionReason.BARCODE_MATCH
+    }
+    if (bucket.contributingProviders.size == 1) {
+        return OnlineCandidateSelectionReason.SINGLE_SOURCE_RESULT
+    }
+    return bucket.latestSelectionReason ?: OnlineCandidateSelectionReason.BEST_MATCH_ACROSS_SOURCES
+}
+
+private fun evaluateIncomingSelection(
     existing: RemoteFoodCandidate,
     existingProviderId: String,
     incoming: RemoteFoodCandidate,
     incomingProviderId: String,
     priorityByProviderId: Map<String, Int>,
-): Boolean {
+): CandidateSelectionDecision {
     val incomingRichness = candidateRichnessScore(incoming)
     val existingRichness = candidateRichnessScore(existing)
     if (incomingRichness != existingRichness) {
-        return incomingRichness > existingRichness
+        return CandidateSelectionDecision(
+            selectIncoming = incomingRichness > existingRichness,
+            reason = OnlineCandidateSelectionReason.MOST_COMPLETE_NUTRITION,
+        )
     }
     val incomingPriority = priorityByProviderId[incomingProviderId] ?: Int.MAX_VALUE
     val existingPriority = priorityByProviderId[existingProviderId] ?: Int.MAX_VALUE
     if (incomingPriority != existingPriority) {
-        return incomingPriority < existingPriority
+        return CandidateSelectionDecision(
+            selectIncoming = incomingPriority < existingPriority,
+            reason = OnlineCandidateSelectionReason.PREFERRED_SOURCE,
+        )
     }
     val incomingIdentity = "${incoming.source}:${incoming.sourceId}"
     val existingIdentity = "${existing.source}:${existing.sourceId}"
     if (incomingIdentity != existingIdentity) {
-        return incomingIdentity < existingIdentity
+        return CandidateSelectionDecision(
+            selectIncoming = incomingIdentity < existingIdentity,
+            reason = OnlineCandidateSelectionReason.DETERMINISTIC_TIE_BREAK,
+        )
     }
-    return incomingProviderId < existingProviderId
+    return CandidateSelectionDecision(
+        selectIncoming = incomingProviderId < existingProviderId,
+        reason = OnlineCandidateSelectionReason.DETERMINISTIC_TIE_BREAK,
+    )
 }
 
 private fun candidateRichnessScore(candidate: RemoteFoodCandidate): Int {
@@ -246,6 +287,17 @@ private data class CandidateBucket(
     var selectedProviderId: String,
     var selectedCandidate: RemoteFoodCandidate,
     val contributingProviders: LinkedHashSet<String>,
+    var latestSelectionReason: OnlineCandidateSelectionReason?,
+)
+
+private data class CandidateSelectionDecision(
+    val selectIncoming: Boolean,
+    val reason: OnlineCandidateSelectionReason,
+)
+
+private data class MergedCandidatesReport(
+    val candidates: List<RemoteFoodCandidate>,
+    val candidateDecisions: Map<String, OnlineCandidateDecision>,
 )
 
 private fun ProviderResult?.toOnlineProviderRun(

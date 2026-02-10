@@ -112,6 +112,32 @@ class AddFoodViewModelTest {
     }
 
     @Test
+    fun updateSearchQuery_typingAndDebounce_doNotTriggerOnlineExecution() = runTest {
+        val remoteDataSource = FakeProviderExecutor()
+        val viewModel = AddFoodViewModel(
+            foodRepository = AddFoodFakeFoodRepository(
+                foods = listOf(fakeFood(id = "f1", name = "Oatmeal")),
+            ),
+            logRepository = AddFoodFakeLogRepository(),
+            settingsRepository = FakeSettingsRepository(enabled = true),
+            providerExecutor = remoteDataSource,
+            userInitiatedNetworkGuard = UserInitiatedNetworkGuard(),
+        )
+        val collectJob = launch { viewModel.uiState.collect { } }
+
+        viewModel.updateSearchQuery("o")
+        advanceTimeBy(100)
+        viewModel.updateSearchQuery("oa")
+        advanceTimeBy(100)
+        viewModel.updateSearchQuery("oat")
+        advanceTimeBy(300)
+        advanceUntilIdle()
+
+        assertEquals(0, remoteDataSource.searchCalls)
+        collectJob.cancel()
+    }
+
+    @Test
     fun updateSearchQuery_normalizesPunctuationAndUnitsForLocalSearch() = runTest {
         val foodRepository = AddFoodFakeFoodRepository(
             foods = listOf(

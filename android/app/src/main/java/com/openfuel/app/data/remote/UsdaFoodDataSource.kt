@@ -164,8 +164,8 @@ private fun UsdaFoodDto.toRemoteFoodCandidate(): RemoteFoodCandidate? {
         barcode = barcode,
     )
     val servingUnit = servingSizeUnit.normalizedOrNull()
-    val servingText = buildServingSizeText(
-        servingSize = servingSize,
+    val servingText = buildServingText(
+        servingQuantity = servingSize,
         servingUnit = servingUnit,
     )
     val nutrients = foodNutrients.toUsdaNutrients(
@@ -194,19 +194,51 @@ private fun List<UsdaFoodNutrientDto>?.toUsdaNutrients(
     val calories = nutrients.firstNutrientValue(
         nutrientNumber = "1008",
         nutrientNameFallback = "energy",
-    ).per100Equivalent(servingSize = servingSize, servingUnit = servingUnit)
+    ).let { value ->
+        per100EquivalentFromServing(
+            nutrientValue = value,
+            nutrientKind = ServingNutrientKind.CALORIES,
+            servingWeightGrams = null,
+            servingQuantity = servingSize,
+            servingUnit = servingUnit,
+        )
+    }
     val protein = nutrients.firstNutrientValue(
         nutrientNumber = "1003",
         nutrientNameFallback = "protein",
-    ).per100Equivalent(servingSize = servingSize, servingUnit = servingUnit)
+    ).let { value ->
+        per100EquivalentFromServing(
+            nutrientValue = value,
+            nutrientKind = ServingNutrientKind.MACRO,
+            servingWeightGrams = null,
+            servingQuantity = servingSize,
+            servingUnit = servingUnit,
+        )
+    }
     val carbs = nutrients.firstNutrientValue(
         nutrientNumber = "1005",
         nutrientNameFallback = "carbohydrate",
-    ).per100Equivalent(servingSize = servingSize, servingUnit = servingUnit)
+    ).let { value ->
+        per100EquivalentFromServing(
+            nutrientValue = value,
+            nutrientKind = ServingNutrientKind.MACRO,
+            servingWeightGrams = null,
+            servingQuantity = servingSize,
+            servingUnit = servingUnit,
+        )
+    }
     val fat = nutrients.firstNutrientValue(
         nutrientNumber = "1004",
         nutrientNameFallback = "fat",
-    ).per100Equivalent(servingSize = servingSize, servingUnit = servingUnit)
+    ).let { value ->
+        per100EquivalentFromServing(
+            nutrientValue = value,
+            nutrientKind = ServingNutrientKind.MACRO,
+            servingWeightGrams = null,
+            servingQuantity = servingSize,
+            servingUnit = servingUnit,
+        )
+    }
     return UsdaNutrients(
         caloriesKcal = calories,
         proteinG = protein,
@@ -221,7 +253,7 @@ private fun List<UsdaFoodNutrientDto>.firstNutrientValue(
 ): Double? {
     val exact = firstOrNull { nutrient ->
         nutrient.nutrientNumber.normalizedOrNull() == nutrientNumber
-    }?.value.sanitizeNutrient()
+    }?.value
     if (exact != null) {
         return exact
     }
@@ -229,48 +261,7 @@ private fun List<UsdaFoodNutrientDto>.firstNutrientValue(
         nutrient.nutrientName.normalizedOrNull()
             ?.lowercase(Locale.ROOT)
             ?.contains(nutrientNameFallback.lowercase(Locale.ROOT)) == true
-    }?.value.sanitizeNutrient()
-}
-
-private fun Double?.per100Equivalent(
-    servingSize: Double?,
-    servingUnit: String?,
-): Double? {
-    val sanitized = sanitizeNutrient() ?: return null
-    val normalizedUnit = servingUnit
-        ?.trim()
-        ?.lowercase(Locale.ROOT)
-        ?.replace("\\.".toRegex(), "")
-        ?: return sanitized
-    val size = servingSize?.takeIf { it.isFinite() && it > 0.0 } ?: return sanitized
-    return when (normalizedUnit) {
-        "g", "gram", "grams", "ml", "milliliter", "milliliters", "millilitre", "millilitres" -> {
-            (sanitized * (100.0 / size)).sanitizeNutrient()
-        }
-
-        else -> sanitized
-    }
-}
-
-private fun buildServingSizeText(
-    servingSize: Double?,
-    servingUnit: String?,
-): String? {
-    val unit = servingUnit.normalizedOrNull()
-    val size = servingSize?.takeIf { it.isFinite() && it > 0.0 }
-    return when {
-        size != null && unit != null -> "${size.trimmedForDisplay()} $unit"
-        size != null -> size.trimmedForDisplay()
-        else -> unit
-    }
-}
-
-private fun Double.trimmedForDisplay(): String {
-    return if (this % 1.0 == 0.0) {
-        this.toLong().toString()
-    } else {
-        this.toString()
-    }
+    }?.value
 }
 
 private fun String?.normalizedOrNull(): String? {
@@ -279,11 +270,6 @@ private fun String?.normalizedOrNull(): String? {
 
 private fun String?.orIfBlank(fallback: String?): String? {
     return if (this.isNullOrBlank()) fallback else this
-}
-
-private fun Double?.sanitizeNutrient(): Double? {
-    val value = this ?: return null
-    return value.takeIf { it.isFinite() && it >= 0.0 }
 }
 
 private fun buildUsdaDerivedId(

@@ -74,6 +74,9 @@ class OpenFoodFactsProviderContractTest : ProviderContractAssertions() {
                     assertEquals(2, first.size)
                     val fiberBar = first.first { it.sourceId == "9001" }
                     assertEquals(180.0, fiberBar.caloriesKcalPer100g ?: 0.0, 0.0)
+                    assertEquals("1 bar (40 g)", fiberBar.servingSize)
+                    val oatCookies = first.first { it.sourceId == "off-edge-2" }
+                    assertEquals("2 biscuits", oatCookies.servingSize)
                     assertTrue(first.none { it.name.isBlank() })
                 }
             }

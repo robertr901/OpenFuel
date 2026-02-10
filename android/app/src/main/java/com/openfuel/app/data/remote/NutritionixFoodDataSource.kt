@@ -177,6 +177,7 @@ private fun NutritionixFoodDto.toRemoteFoodCandidate(): RemoteFoodCandidate? {
             brand = brand,
             barcode = barcode,
         )
+    val normalizedServingUnit = normalizeServingUnit(servingUnit)
 
     return RemoteFoodCandidate(
         source = RemoteFoodSource.NUTRITIONIX,
@@ -184,43 +185,40 @@ private fun NutritionixFoodDto.toRemoteFoodCandidate(): RemoteFoodCandidate? {
         barcode = barcode,
         name = name,
         brand = brand,
-        caloriesKcalPer100g = calories.per100Equivalent(servingWeightGrams),
-        proteinGPer100g = protein.per100Equivalent(servingWeightGrams),
-        carbsGPer100g = carbs.per100Equivalent(servingWeightGrams),
-        fatGPer100g = fat.per100Equivalent(servingWeightGrams),
-        servingSize = buildServingSizeText(
-            servingQty = servingQty,
-            servingUnit = servingUnit,
+        caloriesKcalPer100g = per100EquivalentFromServing(
+            nutrientValue = calories,
+            nutrientKind = ServingNutrientKind.CALORIES,
+            servingWeightGrams = servingWeightGrams,
+            servingQuantity = servingQty,
+            servingUnit = normalizedServingUnit,
+        ),
+        proteinGPer100g = per100EquivalentFromServing(
+            nutrientValue = protein,
+            nutrientKind = ServingNutrientKind.MACRO,
+            servingWeightGrams = servingWeightGrams,
+            servingQuantity = servingQty,
+            servingUnit = normalizedServingUnit,
+        ),
+        carbsGPer100g = per100EquivalentFromServing(
+            nutrientValue = carbs,
+            nutrientKind = ServingNutrientKind.MACRO,
+            servingWeightGrams = servingWeightGrams,
+            servingQuantity = servingQty,
+            servingUnit = normalizedServingUnit,
+        ),
+        fatGPer100g = per100EquivalentFromServing(
+            nutrientValue = fat,
+            nutrientKind = ServingNutrientKind.MACRO,
+            servingWeightGrams = servingWeightGrams,
+            servingQuantity = servingQty,
+            servingUnit = normalizedServingUnit,
+        ),
+        servingSize = buildServingText(
+            servingQuantity = servingQty,
+            servingUnit = normalizedServingUnit,
             servingWeightGrams = servingWeightGrams,
         ),
     )
-}
-
-private fun Double?.per100Equivalent(servingWeightGrams: Double?): Double? {
-    val sanitized = sanitizeNutrient() ?: return null
-    val grams = servingWeightGrams?.takeIf { it.isFinite() && it > 0.0 } ?: return sanitized
-    return (sanitized * (100.0 / grams)).sanitizeNutrient()
-}
-
-private fun buildServingSizeText(
-    servingQty: Double?,
-    servingUnit: String?,
-    servingWeightGrams: Double?,
-): String? {
-    val qty = servingQty?.takeIf { it.isFinite() && it > 0.0 }
-    val unit = servingUnit.normalizedOrNull()
-    val grams = servingWeightGrams?.takeIf { it.isFinite() && it > 0.0 }
-
-    return when {
-        qty != null && unit != null && grams != null -> {
-            "${qty.trimmedForDisplay()} $unit (${grams.trimmedForDisplay()} g)"
-        }
-
-        qty != null && unit != null -> "${qty.trimmedForDisplay()} $unit"
-        grams != null -> "${grams.trimmedForDisplay()} g"
-        unit != null -> unit
-        else -> null
-    }
 }
 
 private fun String?.normalizedOrNull(): String? {
@@ -229,19 +227,6 @@ private fun String?.normalizedOrNull(): String? {
 
 private fun String?.orIfBlank(fallback: String?): String? {
     return if (this.isNullOrBlank()) fallback else this
-}
-
-private fun Double?.sanitizeNutrient(): Double? {
-    val value = this ?: return null
-    return value.takeIf { it.isFinite() && it >= 0.0 }
-}
-
-private fun Double.trimmedForDisplay(): String {
-    return if (this % 1.0 == 0.0) {
-        toLong().toString()
-    } else {
-        toString()
-    }
 }
 
 private fun buildNutritionixDerivedId(

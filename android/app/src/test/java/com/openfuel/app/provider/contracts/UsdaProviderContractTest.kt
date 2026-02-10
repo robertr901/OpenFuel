@@ -70,10 +70,14 @@ class UsdaProviderContractTest : ProviderContractAssertions() {
                     assertEquals("Greek Yogurt", yogurt.name)
                     assertEquals("OpenFuel Labs", yogurt.brand)
                     assertEquals("000123456789", yogurt.barcode)
+                    assertEquals("170 g", yogurt.servingSize)
                     assertEquals(58.8235294, yogurt.caloriesKcalPer100g ?: 0.0, 0.0001)
                     assertEquals(10.0, yogurt.proteinGPer100g ?: 0.0, 0.0001)
                     assertEquals(4.4117647, yogurt.carbsGPer100g ?: 0.0, 0.0001)
                     assertEquals(0.4705882, yogurt.fatGPer100g ?: 0.0, 0.0001)
+
+                    val juice = first.first { it.sourceId == "1002" }
+                    assertEquals("240 ml", juice.servingSize)
                 }
 
                 "search_edge.json" -> {
@@ -85,7 +89,7 @@ class UsdaProviderContractTest : ProviderContractAssertions() {
 
                     val trailMix = first.first { it.name == "Trail Mix" }
                     assertTrue(trailMix.sourceId.startsWith("usda-derived-"))
-                    assertEquals(1000.0, trailMix.caloriesKcalPer100g ?: 0.0, 0.0001)
+                    assertNull(trailMix.caloriesKcalPer100g)
                 }
             }
         }

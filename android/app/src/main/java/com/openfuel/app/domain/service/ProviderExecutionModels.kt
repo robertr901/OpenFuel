@@ -3,9 +3,14 @@ package com.openfuel.app.domain.service
 import com.openfuel.app.data.remote.UserInitiatedNetworkToken
 import com.openfuel.app.domain.model.RemoteFoodCandidate
 import com.openfuel.app.domain.search.SearchSourceFilter
+import com.openfuel.sharedcore.model.CoreRemoteFoodCandidate
+import com.openfuel.sharedcore.normalization.CoreProviderRequestType
+import com.openfuel.sharedcore.normalization.buildProviderCacheKey as coreBuildProviderCacheKey
+import com.openfuel.sharedcore.normalization.buildProviderDedupeKey as coreBuildProviderDedupeKey
+import com.openfuel.sharedcore.normalization.normalizeProviderBarcode as coreNormalizeProviderBarcode
+import com.openfuel.sharedcore.normalization.normalizeProviderText as coreNormalizeProviderText
 import java.time.Duration
 import java.time.Instant
-import java.util.Locale
 
 enum class ProviderCapability {
     TEXT_SEARCH,
@@ -123,21 +128,7 @@ interface ProviderExecutor {
 }
 
 fun buildProviderDedupeKey(candidate: RemoteFoodCandidate): String {
-    val barcode = normalizeProviderBarcode(candidate.barcode)
-    if (barcode != null) {
-        return "barcode:$barcode"
-    }
-    val name = normalizeProviderText(candidate.name)
-    val brand = normalizeProviderText(candidate.brand.orEmpty())
-    val servingSize = normalizeProviderText(candidate.servingSize.orEmpty())
-    val sourceScopedIdentity = "source:${candidate.source.name.lowercase(Locale.ROOT)}|${normalizeProviderText(candidate.sourceId)}"
-    if (name.isBlank()) {
-        return sourceScopedIdentity
-    }
-    if (brand.isBlank() && servingSize.isBlank()) {
-        return "$sourceScopedIdentity|$name"
-    }
-    return "text:$name|$brand|$servingSize"
+    return coreBuildProviderDedupeKey(candidate.toCore())
 }
 
 fun buildProviderCacheKey(
@@ -145,21 +136,40 @@ fun buildProviderCacheKey(
     requestType: ProviderRequestType,
     rawInput: String,
 ): String {
-    val normalizedProviderId = normalizeProviderText(providerId)
-    val normalizedInput = when (requestType) {
-        ProviderRequestType.TEXT_SEARCH -> normalizeProviderText(rawInput)
-        ProviderRequestType.BARCODE_LOOKUP -> normalizeProviderBarcode(rawInput).orEmpty()
-    }
-    return "$normalizedProviderId|${requestType.name}|$normalizedInput"
+    return coreBuildProviderCacheKey(
+        providerId = providerId,
+        requestType = requestType.toCore(),
+        rawInput = rawInput,
+    )
 }
 
 fun normalizeProviderText(value: String): String {
-    return value
-        .trim()
-        .lowercase(Locale.ROOT)
-        .replace("\\s+".toRegex(), " ")
+    return coreNormalizeProviderText(value)
 }
 
 fun normalizeProviderBarcode(value: String?): String? {
-    return value?.trim()?.takeIf { it.isNotEmpty() }
+    return coreNormalizeProviderBarcode(value)
+}
+
+private fun ProviderRequestType.toCore(): CoreProviderRequestType {
+    return when (this) {
+        ProviderRequestType.TEXT_SEARCH -> CoreProviderRequestType.TEXT_SEARCH
+        ProviderRequestType.BARCODE_LOOKUP -> CoreProviderRequestType.BARCODE_LOOKUP
+    }
+}
+
+private fun RemoteFoodCandidate.toCore(): CoreRemoteFoodCandidate {
+    return CoreRemoteFoodCandidate(
+        source = source.name,
+        sourceId = sourceId,
+        providerKey = providerKey,
+        barcode = barcode,
+        name = name,
+        brand = brand,
+        caloriesKcalPer100g = caloriesKcalPer100g,
+        proteinGPer100g = proteinGPer100g,
+        carbsGPer100g = carbsGPer100g,
+        fatGPer100g = fatGPer100g,
+        servingSize = servingSize,
+    )
 }

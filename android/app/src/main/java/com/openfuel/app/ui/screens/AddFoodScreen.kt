@@ -49,6 +49,7 @@ import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
@@ -285,8 +286,14 @@ fun AddFoodScreen(
                                         OFSectionHeader(
                                             title = "Online sources",
                                             subtitle = "Runs only after explicit online actions.",
+                                            modifier = Modifier.semantics { heading() },
                                         )
+                                        val sourceStatusSummary = uiState.onlineProviderRuns
+                                            .joinToString(separator = ". ") { run -> run.toStatusLine() }
                                         Column(
+                                            modifier = Modifier.semantics {
+                                                contentDescription = "Online source statuses. $sourceStatusSummary"
+                                            },
                                             verticalArrangement = Arrangement.spacedBy(Dimens.xs),
                                         ) {
                                             uiState.onlineProviderRuns.forEach { run ->
@@ -353,7 +360,12 @@ fun AddFoodScreen(
                                         text = uiState.onlineErrorMessage.orEmpty(),
                                         style = MaterialTheme.typography.bodyMedium,
                                         color = MaterialTheme.colorScheme.error,
-                                        modifier = Modifier.testTag("add_food_unified_online_error"),
+                                        modifier = Modifier
+                                            .testTag("add_food_unified_online_error")
+                                            .semantics {
+                                                liveRegion = LiveRegionMode.Polite
+                                                contentDescription = uiState.onlineErrorMessage.orEmpty()
+                                            },
                                     )
                                 }
                             }
@@ -557,6 +569,7 @@ private fun UnifiedSearchControls(
         OFSectionHeader(
             title = "Local search",
             subtitle = "Search foods already saved on this device.",
+            modifier = Modifier.semantics { heading() },
         )
         OutlinedTextField(
             value = query,
@@ -868,6 +881,7 @@ private fun QuickActionsCard(
         OFSectionHeader(
             title = "Quick actions",
             subtitle = "Scan or launch quick add with explicit actions.",
+            modifier = Modifier.semantics { heading() },
         )
         Row(
             modifier = Modifier.fillMaxWidth(),

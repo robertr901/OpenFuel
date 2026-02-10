@@ -3,10 +3,13 @@ package com.openfuel.app.ui.screens
 import android.content.Context
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onAllNodesWithTag
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.performTextInput
 import androidx.datastore.preferences.core.edit
 import androidx.test.core.app.ApplicationProvider
@@ -44,6 +47,9 @@ class OnlineSearchGatingTest {
             composeRule.onNodeWithTag("add_food_unified_query_input").performTextInput("coke zero")
             composeRule.onNodeWithTag("add_food_unified_search_online").performClick()
             composeRule.waitForIdle()
+            composeRule.onNodeWithTag("add_food_unified_results_list")
+                .performScrollToNode(hasTestTag("add_food_unified_online_error"))
+            composeRule.onNodeWithTag("add_food_unified_online_error").assertIsDisplayed()
             composeRule.onAllNodesWithTag("add_food_unified_online_loading").assertCountEquals(0)
         } finally {
             runBlocking {
@@ -64,5 +70,6 @@ class OnlineSearchGatingTest {
         composeRule.onNodeWithTag("screen_settings").assertIsDisplayed()
         composeRule.onNodeWithTag("settings_online_provider_setup_section").assertIsDisplayed()
         composeRule.onNodeWithTag("settings_online_provider_setup_row_open_food_facts").assertIsDisplayed()
+        composeRule.onNodeWithContentDescription("Online food lookup toggle").assertIsDisplayed()
     }
 }

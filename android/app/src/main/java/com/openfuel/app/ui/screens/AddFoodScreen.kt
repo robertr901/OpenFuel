@@ -387,7 +387,10 @@ fun AddFoodScreen(
                                 ProviderStatus.GUARD_REJECTED,
                                 ProviderStatus.RATE_LIMITED,
                             )
-                            if (BuildConfig.DEBUG && uiState.onlineProviderResults.isNotEmpty()) {
+                            val hasDebugDiagnostics = uiState.onlineProviderResults.isNotEmpty() ||
+                                uiState.localSearchLatencyMs != null ||
+                                uiState.addFlowCompletionMs != null
+                            if (BuildConfig.DEBUG && hasDebugDiagnostics) {
                                 item {
                                     OFCard(
                                         modifier = Modifier
@@ -410,17 +413,35 @@ fun AddFoodScreen(
                                                 }
                                             },
                                         )
-                                        Text(
-                                            text = "Execution #${uiState.onlineExecutionCount}",
-                                            style = MaterialTheme.typography.bodySmall,
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                            modifier = Modifier.testTag("add_food_unified_provider_debug_execution_count"),
-                                        )
+                                        if (uiState.onlineExecutionCount > 0) {
+                                            Text(
+                                                text = "Execution #${uiState.onlineExecutionCount}",
+                                                style = MaterialTheme.typography.bodySmall,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                modifier = Modifier.testTag("add_food_unified_provider_debug_execution_count"),
+                                            )
+                                        }
                                         Text(
                                             text = "Elapsed ${uiState.onlineExecutionElapsedMs} ms · cache ${uiState.onlineProviderResults.count { it.fromCache }} hit(s)",
                                             style = MaterialTheme.typography.bodySmall,
                                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                                         )
+                                        uiState.localSearchLatencyMs?.let { localSearchLatencyMs ->
+                                            Text(
+                                                text = "Local search ${localSearchLatencyMs} ms · ${uiState.localSearchResultCount} item(s)",
+                                                style = MaterialTheme.typography.bodySmall,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                modifier = Modifier.testTag("add_food_unified_debug_local_search_latency"),
+                                            )
+                                        }
+                                        uiState.addFlowCompletionMs?.let { addFlowCompletionMs ->
+                                            Text(
+                                                text = "Add flow completion ${addFlowCompletionMs} ms",
+                                                style = MaterialTheme.typography.bodySmall,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                modifier = Modifier.testTag("add_food_unified_debug_add_flow_completion_latency"),
+                                            )
+                                        }
                                         AnimatedVisibility(
                                             visible = isDiagnosticsExpanded,
                                             enter = fadeIn(),

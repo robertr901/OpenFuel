@@ -1,6 +1,7 @@
 package com.openfuel.app.viewmodel
 
 import com.openfuel.app.MainDispatcherRule
+import com.openfuel.app.domain.entitlement.PaywallPromptPolicy
 import com.openfuel.app.domain.model.EntitlementActionResult
 import com.openfuel.app.domain.model.EntitlementSource
 import com.openfuel.app.domain.model.EntitlementState
@@ -17,6 +18,7 @@ import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -39,6 +41,7 @@ class InsightsViewModelTest {
         val viewModel = InsightsViewModel(
             entitlementService = entitlementService,
             logRepository = FakeInsightsLogRepository(),
+            paywallPromptPolicy = PaywallPromptPolicy(),
             zoneId = ZoneId.of("UTC"),
         )
         val collectJob = launch { viewModel.uiState.collect { } }
@@ -49,6 +52,72 @@ class InsightsViewModelTest {
         entitlementService.emit(isPro = true)
         advanceUntilIdle()
         assertTrue(viewModel.uiState.value.isPro)
+
+        collectJob.cancel()
+    }
+
+    @Test
+    fun openPaywall_sessionLimitedPromptOnlyShowsOncePerSession() = runTest {
+        val viewModel = InsightsViewModel(
+            entitlementService = FakeEntitlementService(
+                EntitlementState(
+                    isPro = false,
+                    source = EntitlementSource.DEBUG_OVERRIDE,
+                    canToggleDebugOverride = true,
+                ),
+            ),
+            logRepository = FakeInsightsLogRepository(),
+            paywallPromptPolicy = PaywallPromptPolicy(),
+            zoneId = ZoneId.of("UTC"),
+        )
+        val collectJob = launch { viewModel.uiState.collect { } }
+
+        advanceUntilIdle()
+        assertFalse(viewModel.uiState.value.showPaywall)
+
+        viewModel.openPaywall()
+        advanceUntilIdle()
+        assertTrue(viewModel.uiState.value.showPaywall)
+
+        viewModel.dismissPaywall()
+        advanceUntilIdle()
+        assertFalse(viewModel.uiState.value.showPaywall)
+
+        viewModel.openPaywall()
+        advanceUntilIdle()
+        assertFalse(viewModel.uiState.value.showPaywall)
+
+        collectJob.cancel()
+    }
+
+    @Test
+    fun openPaywallForGatedFeature_alwaysShowsPaywall() = runTest {
+        val viewModel = InsightsViewModel(
+            entitlementService = FakeEntitlementService(
+                EntitlementState(
+                    isPro = false,
+                    source = EntitlementSource.DEBUG_OVERRIDE,
+                    canToggleDebugOverride = true,
+                ),
+            ),
+            logRepository = FakeInsightsLogRepository(),
+            paywallPromptPolicy = PaywallPromptPolicy(),
+            zoneId = ZoneId.of("UTC"),
+        )
+        val collectJob = launch { viewModel.uiState.collect { } }
+
+        advanceUntilIdle()
+        viewModel.openPaywallForGatedFeature()
+        advanceUntilIdle()
+        assertTrue(viewModel.uiState.value.showPaywall)
+
+        viewModel.dismissPaywall()
+        advanceUntilIdle()
+        assertFalse(viewModel.uiState.value.showPaywall)
+
+        viewModel.openPaywallForGatedFeature()
+        advanceUntilIdle()
+        assertEquals(true, viewModel.uiState.value.showPaywall)
 
         collectJob.cancel()
     }

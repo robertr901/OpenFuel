@@ -2,6 +2,8 @@ package com.openfuel.app.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.openfuel.app.domain.entitlement.PaywallPromptPolicy
+import com.openfuel.app.domain.entitlement.PaywallPromptSource
 import com.openfuel.app.domain.model.EntitlementActionResult
 import com.openfuel.app.domain.model.InsightsSnapshot
 import com.openfuel.app.domain.repository.LogRepository
@@ -20,6 +22,7 @@ import kotlinx.coroutines.launch
 class InsightsViewModel(
     private val entitlementService: EntitlementService,
     logRepository: LogRepository,
+    private val paywallPromptPolicy: PaywallPromptPolicy,
     private val zoneId: ZoneId = ZoneId.systemDefault(),
     private val clock: Clock = Clock.systemDefaultZone(),
 ) : ViewModel() {
@@ -55,6 +58,15 @@ class InsightsViewModel(
     )
 
     fun openPaywall() {
+        if (!paywallPromptPolicy.shouldShowPrompt(PaywallPromptSource.SESSION_LIMITED_UPSELL)) return
+        paywallUiState.value = paywallUiState.value.copy(
+            showPaywall = true,
+            message = null,
+        )
+    }
+
+    fun openPaywallForGatedFeature() {
+        if (!paywallPromptPolicy.shouldShowPrompt(PaywallPromptSource.GATED_FEATURE_ENTRY)) return
         paywallUiState.value = paywallUiState.value.copy(
             showPaywall = true,
             message = null,

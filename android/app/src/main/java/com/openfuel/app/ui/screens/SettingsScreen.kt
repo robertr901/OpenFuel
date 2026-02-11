@@ -547,7 +547,7 @@ fun SettingsScreen(
                     )
                     OFPrimaryButton(
                         text = "See Pro options",
-                        onClick = viewModel::openPaywall,
+                        onClick = viewModel::openPaywallForGatedFeature,
                         testTag = "settings_open_paywall_button",
                     )
                 }

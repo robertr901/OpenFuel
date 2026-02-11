@@ -39,6 +39,7 @@ import com.openfuel.app.domain.repository.FoodRepository
 import com.openfuel.app.domain.repository.GoalsRepository
 import com.openfuel.app.domain.repository.LogRepository
 import com.openfuel.app.domain.repository.SettingsRepository
+import com.openfuel.app.domain.entitlement.PaywallPromptPolicy
 import com.openfuel.app.domain.security.SecurityPostureProvider
 import com.openfuel.app.domain.intelligence.IntelligenceService
 import com.openfuel.app.domain.intelligence.RuleBasedIntelligenceService
@@ -95,6 +96,7 @@ class AppContainer(
             proProductId = BuildConfig.PRO_PRODUCT_ID,
         )
     }
+    val paywallPromptPolicy: PaywallPromptPolicy = PaywallPromptPolicy()
     val remoteFoodDataSource: RemoteFoodDataSource = OpenFoodFactsRemoteFoodDataSource.create(
         okHttpClient = onlineHttpClient,
         userInitiatedNetworkGuard = userInitiatedNetworkGuard,

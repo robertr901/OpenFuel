@@ -39,6 +39,7 @@ class OpenFuelViewModelFactory(
             InsightsViewModel::class.java -> InsightsViewModel(
                 entitlementService = container.entitlementService,
                 logRepository = container.logRepository,
+                paywallPromptPolicy = container.paywallPromptPolicy,
             )
             ScanBarcodeViewModel::class.java -> ScanBarcodeViewModel(
                 providerExecutor = container.providerExecutor,
@@ -50,6 +51,7 @@ class OpenFuelViewModelFactory(
             SettingsViewModel::class.java -> SettingsViewModel(
                 settingsRepository = container.settingsRepository,
                 entitlementService = container.entitlementService,
+                paywallPromptPolicy = container.paywallPromptPolicy,
                 goalsRepository = container.goalsRepository,
                 exportManager = container.exportManager,
                 foodCatalogProviderRegistry = container.foodCatalogProviderRegistry,

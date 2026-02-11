@@ -2,6 +2,8 @@ package com.openfuel.app.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.openfuel.app.domain.entitlement.PaywallPromptPolicy
+import com.openfuel.app.domain.entitlement.PaywallPromptSource
 import com.openfuel.app.domain.model.DailyGoal
 import com.openfuel.app.domain.model.EntitlementActionResult
 import com.openfuel.app.domain.repository.GoalsRepository
@@ -29,6 +31,7 @@ import kotlinx.coroutines.launch
 class SettingsViewModel(
     private val settingsRepository: SettingsRepository,
     private val entitlementService: EntitlementService,
+    private val paywallPromptPolicy: PaywallPromptPolicy,
     private val goalsRepository: GoalsRepository,
     private val exportManager: ExportManager,
     private val foodCatalogProviderRegistry: FoodCatalogProviderRegistry,
@@ -155,6 +158,15 @@ class SettingsViewModel(
     }
 
     fun openPaywall() {
+        if (!paywallPromptPolicy.shouldShowPrompt(PaywallPromptSource.SESSION_LIMITED_UPSELL)) return
+        paywallUiState.value = paywallUiState.value.copy(
+            showPaywall = true,
+            message = null,
+        )
+    }
+
+    fun openPaywallForGatedFeature() {
+        if (!paywallPromptPolicy.shouldShowPrompt(PaywallPromptSource.GATED_FEATURE_ENTRY)) return
         paywallUiState.value = paywallUiState.value.copy(
             showPaywall = true,
             message = null,
@@ -237,6 +249,7 @@ class SettingsViewModel(
 
     fun exportAdvancedData(cacheDir: File, appVersion: String) {
         if (!uiState.value.isPro) {
+            if (!paywallPromptPolicy.shouldShowPrompt(PaywallPromptSource.GATED_FEATURE_ENTRY)) return
             paywallUiState.value = paywallUiState.value.copy(
                 showPaywall = true,
                 message = "Advanced export is available on Pro.",

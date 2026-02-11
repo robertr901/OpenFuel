@@ -43,6 +43,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
@@ -88,6 +89,13 @@ fun HomeScreen(
     var deleteEntry by remember { mutableStateOf<MealEntryUi?>(null) }
     var isTotalsDetailsExpanded by rememberSaveable { mutableStateOf(false) }
     val snackbarHostState = remember { SnackbarHostState() }
+    val mealsWithEntries = remember(uiState.meals) {
+        uiState.meals.filter { it.entries.isNotEmpty() }
+    }
+    val emptyMealSlots = remember(uiState.meals) {
+        uiState.meals.filter { it.entries.isEmpty() }
+    }
+    var showEmptyMealSlots by rememberSaveable { mutableStateOf(false) }
 
     val formattedDate = remember(uiState.date) {
         uiState.date.format(DateTimeFormatter.ofPattern("EEE, MMM d", Locale.getDefault()))
@@ -210,19 +218,32 @@ fun HomeScreen(
                     onToggleDetails = { isTotalsDetailsExpanded = !isTotalsDetailsExpanded },
                 )
             }
-            if (uiState.meals.all { it.entries.isEmpty() }) {
+            if (mealsWithEntries.isEmpty()) {
                 item {
-                    EmptyDayState()
+                    EmptyDayState(onAddFood = onAddFood)
                 }
             }
-            items(uiState.meals, key = { it.mealType.name }) { meal ->
-                MealSection(
-                    modifier = Modifier.animateContentSize(),
-                    mealSection = meal,
-                    onEntryClick = onOpenFoodDetail,
-                    onEditEntry = { editEntry = it },
-                    onDeleteEntry = { deleteEntry = it },
-                )
+            if (mealsWithEntries.isNotEmpty()) {
+                items(mealsWithEntries, key = { it.mealType.name }) { meal ->
+                    MealSection(
+                        modifier = Modifier
+                            .animateContentSize()
+                            .testTag("home_meal_sections_logged"),
+                        mealSection = meal,
+                        onEntryClick = onOpenFoodDetail,
+                        onEditEntry = { editEntry = it },
+                        onDeleteEntry = { deleteEntry = it },
+                    )
+                }
+            }
+            if (emptyMealSlots.isNotEmpty()) {
+                item {
+                    EmptyMealSlotsCard(
+                        emptyMealSlots = emptyMealSlots,
+                        isExpanded = showEmptyMealSlots,
+                        onToggleExpanded = { showEmptyMealSlots = !showEmptyMealSlots },
+                    )
+                }
             }
             item {
                 Spacer(modifier = Modifier.height(Dimens.xl))
@@ -232,13 +253,67 @@ fun HomeScreen(
 }
 
 @Composable
-private fun EmptyDayState() {
+private fun EmptyDayState(
+    onAddFood: () -> Unit,
+) {
     EmptyState(
         title = "No meals logged yet",
         body = "Tap Add food to start logging this day.",
         modifier = Modifier.fillMaxWidth(),
         icon = Icons.Rounded.Add,
+        primaryAction = {
+            OFPrimaryButton(
+                text = "Add food",
+                onClick = onAddFood,
+                modifier = Modifier.fillMaxWidth(),
+                testTag = "home_primary_log_action",
+            )
+        },
+        testTag = "home_empty_day_state",
     )
+}
+
+@Composable
+private fun EmptyMealSlotsCard(
+    emptyMealSlots: List<MealSectionUi>,
+    isExpanded: Boolean,
+    onToggleExpanded: () -> Unit,
+) {
+    StandardCard(modifier = Modifier.fillMaxWidth()) {
+        SectionHeader(
+            title = "Empty meal slots",
+            subtitle = "Show sections with no entries.",
+            modifier = Modifier.semantics { heading() },
+            trailing = {
+                TextButton(
+                    onClick = onToggleExpanded,
+                    modifier = Modifier
+                        .semantics {
+                            contentDescription = "Toggle empty meal slots"
+                        }
+                        .testTag("home_empty_meal_sections_toggle"),
+                ) {
+                    Text(if (isExpanded) "Hide" else "Show")
+                }
+            },
+        )
+        AnimatedVisibility(visible = isExpanded) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .testTag("home_empty_meal_sections_content"),
+                verticalArrangement = Arrangement.spacedBy(Dimens.xs),
+            ) {
+                emptyMealSlots.forEach { mealSection ->
+                    OFRow(
+                        title = mealSection.mealType.displayName(),
+                        subtitle = "No entries yet",
+                        contentDescription = "${mealSection.mealType.displayName()} has no entries yet",
+                    )
+                }
+            }
+        }
+    }
 }
 
 @Composable
@@ -261,7 +336,7 @@ private fun FastLogReminderCard(
             horizontalArrangement = Arrangement.spacedBy(Dimens.s),
         ) {
             OFPrimaryButton(
-                text = "Log now",
+                text = "Open add food",
                 onClick = onLogNow,
                 modifier = Modifier.weight(1f),
                 testTag = "home_fast_log_reminder_action",

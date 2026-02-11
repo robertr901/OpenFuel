@@ -29,6 +29,7 @@ Out of scope for this model iteration:
 ## Data egress boundaries
 - No ad IDs or tracking egress.
 - No sensitive free-text payload capture.
+- All online lookups must be initiated by explicit user action.
 - Online provider requests must be explicitly user-triggered.
 - Export/share is explicit and user-controlled.
 - No background provider calls from passive screens.

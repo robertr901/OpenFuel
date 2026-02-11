@@ -28,10 +28,12 @@ Not declared:
 - `android.permission.RECORD_AUDIO`
 
 ## Network behaviour summary
+- Online lookups are explicit-action only and guarded.
 - Online lookup runs only from explicit user actions (for example `Search online`, `Refresh online`, barcode lookup actions).
 - Typing in search fields and passive screen states must not trigger provider execution.
 - There are no background provider polling loops.
 - Online behaviour remains settings-gated and user-visible.
+- Online lookup default is currently `enabled = true`.
 
 ## Data storage summary
 - Room stores local foods and meal history.

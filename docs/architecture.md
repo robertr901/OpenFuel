@@ -38,6 +38,7 @@ Compose UI
 
 3. Explicit online search
 - Online provider execution only runs from explicit user actions.
+- Online provider execution paths require explicit user action tokens.
 - ViewModel issues guarded requests into provider orchestration.
 - Orchestrator merges provider outputs deterministically and returns stable UI models.
 

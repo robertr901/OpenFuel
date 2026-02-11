@@ -53,6 +53,7 @@ Canonical gate order is:
 3. `./gradlew :app:connectedDebugAndroidTest`
 
 See `docs/verification.md` for deterministic test guidance.
+Instrumentation tests use `OpenFuelAndroidTestRunner` for deterministic offline-safe overrides.
 
 ## Product status
 - Current direction: Phase 32 experience-first docs reset and roadmap alignment.

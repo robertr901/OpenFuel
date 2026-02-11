@@ -88,6 +88,13 @@ fun HomeScreen(
     var deleteEntry by remember { mutableStateOf<MealEntryUi?>(null) }
     var isTotalsDetailsExpanded by rememberSaveable { mutableStateOf(false) }
     val snackbarHostState = remember { SnackbarHostState() }
+    val mealsWithEntries = remember(uiState.meals) {
+        uiState.meals.filter { it.entries.isNotEmpty() }
+    }
+    val emptyMealSlots = remember(uiState.meals) {
+        uiState.meals.filter { it.entries.isEmpty() }
+    }
+    var showEmptyMealSlots by rememberSaveable { mutableStateOf(false) }
 
     val formattedDate = remember(uiState.date) {
         uiState.date.format(DateTimeFormatter.ofPattern("EEE, MMM d", Locale.getDefault()))
@@ -210,19 +217,32 @@ fun HomeScreen(
                     onToggleDetails = { isTotalsDetailsExpanded = !isTotalsDetailsExpanded },
                 )
             }
-            if (uiState.meals.all { it.entries.isEmpty() }) {
+            if (mealsWithEntries.isEmpty()) {
                 item {
                     EmptyDayState()
                 }
             }
-            items(uiState.meals, key = { it.mealType.name }) { meal ->
-                MealSection(
-                    modifier = Modifier.animateContentSize(),
-                    mealSection = meal,
-                    onEntryClick = onOpenFoodDetail,
-                    onEditEntry = { editEntry = it },
-                    onDeleteEntry = { deleteEntry = it },
-                )
+            if (mealsWithEntries.isNotEmpty()) {
+                items(mealsWithEntries, key = { it.mealType.name }) { meal ->
+                    MealSection(
+                        modifier = Modifier
+                            .animateContentSize()
+                            .testTag("home_meal_sections_logged"),
+                        mealSection = meal,
+                        onEntryClick = onOpenFoodDetail,
+                        onEditEntry = { editEntry = it },
+                        onDeleteEntry = { deleteEntry = it },
+                    )
+                }
+            }
+            if (emptyMealSlots.isNotEmpty()) {
+                item {
+                    EmptyMealSlotsCard(
+                        emptyMealSlots = emptyMealSlots,
+                        isExpanded = showEmptyMealSlots,
+                        onToggleExpanded = { showEmptyMealSlots = !showEmptyMealSlots },
+                    )
+                }
             }
             item {
                 Spacer(modifier = Modifier.height(Dimens.xl))
@@ -238,7 +258,46 @@ private fun EmptyDayState() {
         body = "Tap Add food to start logging this day.",
         modifier = Modifier.fillMaxWidth(),
         icon = Icons.Rounded.Add,
+        testTag = "home_empty_day_state",
     )
+}
+
+@Composable
+private fun EmptyMealSlotsCard(
+    emptyMealSlots: List<MealSectionUi>,
+    isExpanded: Boolean,
+    onToggleExpanded: () -> Unit,
+) {
+    StandardCard(modifier = Modifier.fillMaxWidth()) {
+        SectionHeader(
+            title = "Empty meal slots",
+            subtitle = "Show sections with no entries.",
+            modifier = Modifier.semantics { heading() },
+            trailing = {
+                TextButton(
+                    onClick = onToggleExpanded,
+                    modifier = Modifier.testTag("home_empty_meal_sections_toggle"),
+                ) {
+                    Text(if (isExpanded) "Hide" else "Show")
+                }
+            },
+        )
+        AnimatedVisibility(visible = isExpanded) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .testTag("home_empty_meal_sections_content"),
+                verticalArrangement = Arrangement.spacedBy(Dimens.xs),
+            ) {
+                emptyMealSlots.forEach { mealSection ->
+                    OFRow(
+                        title = mealSection.mealType.displayName(),
+                        subtitle = "No entries yet",
+                    )
+                }
+            }
+        }
+    }
 }
 
 @Composable

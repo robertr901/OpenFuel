@@ -2,6 +2,11 @@ package com.openfuel.app.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.openfuel.app.domain.analytics.AnalyticsService
+import com.openfuel.app.domain.analytics.NoOpAnalyticsService
+import com.openfuel.app.domain.analytics.ProductEventName
+import com.openfuel.app.domain.entitlement.PaywallPromptPolicy
+import com.openfuel.app.domain.entitlement.PaywallPromptSource
 import com.openfuel.app.domain.model.DailyGoal
 import com.openfuel.app.domain.model.EntitlementActionResult
 import com.openfuel.app.domain.repository.GoalsRepository
@@ -29,6 +34,8 @@ import kotlinx.coroutines.launch
 class SettingsViewModel(
     private val settingsRepository: SettingsRepository,
     private val entitlementService: EntitlementService,
+    private val paywallPromptPolicy: PaywallPromptPolicy,
+    private val analyticsService: AnalyticsService = NoOpAnalyticsService,
     private val goalsRepository: GoalsRepository,
     private val exportManager: ExportManager,
     private val foodCatalogProviderRegistry: FoodCatalogProviderRegistry,
@@ -42,7 +49,7 @@ class SettingsViewModel(
     private val advancedExportRedacted = MutableStateFlow(false)
     private val advancedExportPreview = MutableStateFlow(AdvancedExportPreview.empty())
 
-    private val baseUiState = combine(
+    private val baseSettingsUiState = combine(
         settingsRepository.onlineLookupEnabled,
         entitlementService.getEntitlementState(),
         exportState,
@@ -61,6 +68,17 @@ class SettingsViewModel(
             lastProviderExecution = providerExecutionSnapshot,
             exportState = exportStateValue,
             dailyGoal = dailyGoal,
+        )
+    }
+
+    private val baseUiState = combine(
+        baseSettingsUiState,
+        settingsRepository.fastLogReminderEnabled,
+        settingsRepository.fastLogQuietHoursEnabled,
+    ) { baseState, fastLogReminderEnabled, fastLogQuietHoursEnabled ->
+        baseState.copy(
+            fastLogReminderEnabled = fastLogReminderEnabled,
+            fastLogQuietHoursEnabled = fastLogQuietHoursEnabled,
         )
     }
 
@@ -93,6 +111,8 @@ class SettingsViewModel(
         started = SharingStarted.WhileSubscribed(5_000),
         initialValue = SettingsUiState(
             onlineLookupEnabled = true,
+            fastLogReminderEnabled = true,
+            fastLogQuietHoursEnabled = true,
             isPro = false,
             showDebugProToggle = false,
             showSecurityWarning = false,
@@ -123,6 +143,18 @@ class SettingsViewModel(
         }
     }
 
+    fun setFastLogReminderEnabled(enabled: Boolean) {
+        viewModelScope.launch {
+            settingsRepository.setFastLogReminderEnabled(enabled)
+        }
+    }
+
+    fun setFastLogQuietHoursEnabled(enabled: Boolean) {
+        viewModelScope.launch {
+            settingsRepository.setFastLogQuietHoursEnabled(enabled)
+        }
+    }
+
     fun setProEnabled(enabled: Boolean) {
         viewModelScope.launch {
             entitlementService.setDebugProOverride(enabled)
@@ -130,21 +162,57 @@ class SettingsViewModel(
     }
 
     fun openPaywall() {
+        if (!paywallPromptPolicy.shouldShowPrompt(PaywallPromptSource.SESSION_LIMITED_UPSELL)) return
         paywallUiState.value = paywallUiState.value.copy(
             showPaywall = true,
             message = null,
         )
+        trackPaywallShown(surface = "settings")
+    }
+
+    fun openPaywallForGatedFeature() {
+        if (!paywallPromptPolicy.shouldShowPrompt(PaywallPromptSource.GATED_FEATURE_ENTRY)) return
+        paywallUiState.value = paywallUiState.value.copy(
+            showPaywall = true,
+            message = null,
+        )
+        trackPaywallShown(surface = "settings")
     }
 
     fun dismissPaywall() {
         paywallUiState.value = paywallUiState.value.copy(showPaywall = false)
+        analyticsService.track(
+            ProductEventName.PAYWALL_CANCELLED,
+            mapOf(
+                "screen" to "settings",
+                "surface" to "paywall",
+                "result" to "cancelled",
+                "session_index" to "0",
+            ),
+        )
     }
 
     fun purchasePro() {
+        analyticsService.track(
+            ProductEventName.PAYWALL_UPGRADE_TAPPED,
+            mapOf(
+                "screen" to "settings",
+                "surface" to "paywall",
+                "session_index" to "0",
+            ),
+        )
         runEntitlementAction { entitlementService.purchasePro() }
     }
 
     fun restorePurchases() {
+        analyticsService.track(
+            ProductEventName.PAYWALL_RESTORE_TAPPED,
+            mapOf(
+                "screen" to "settings",
+                "surface" to "paywall",
+                "session_index" to "0",
+            ),
+        )
         runEntitlementAction { entitlementService.restorePurchases() }
     }
 
@@ -212,6 +280,7 @@ class SettingsViewModel(
 
     fun exportAdvancedData(cacheDir: File, appVersion: String) {
         if (!uiState.value.isPro) {
+            if (!paywallPromptPolicy.shouldShowPrompt(PaywallPromptSource.GATED_FEATURE_ENTRY)) return
             paywallUiState.value = paywallUiState.value.copy(
                 showPaywall = true,
                 message = "Advanced export is available on Pro.",
@@ -283,10 +352,23 @@ class SettingsViewModel(
             )
         }
     }
+
+    private fun trackPaywallShown(surface: String) {
+        analyticsService.track(
+            ProductEventName.PAYWALL_PROMPT_SHOWN,
+            mapOf(
+                "screen" to "settings",
+                "surface" to surface,
+                "session_index" to "0",
+            ),
+        )
+    }
 }
 
 data class SettingsUiState(
     val onlineLookupEnabled: Boolean = true,
+    val fastLogReminderEnabled: Boolean = true,
+    val fastLogQuietHoursEnabled: Boolean = true,
     val isPro: Boolean = false,
     val showDebugProToggle: Boolean = false,
     val showSecurityWarning: Boolean = false,

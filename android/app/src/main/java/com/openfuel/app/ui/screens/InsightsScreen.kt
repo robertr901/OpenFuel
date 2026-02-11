@@ -62,7 +62,7 @@ fun InsightsScreen(
                     )
                     OFPrimaryButton(
                         text = "See Pro options",
-                        onClick = viewModel::openPaywall,
+                        onClick = viewModel::openPaywallForGatedFeature,
                         testTag = "insights_open_paywall_button",
                     )
                 }

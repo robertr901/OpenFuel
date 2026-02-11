@@ -6,6 +6,7 @@ import android.content.Context
 import com.openfuel.app.data.entitlement.DebugEntitlementService
 import com.openfuel.app.data.entitlement.PlayBillingEntitlementService
 import com.openfuel.app.data.entitlement.PlayBillingGateway
+import com.openfuel.app.data.analytics.LocalAnalyticsStore
 import com.openfuel.app.data.datastore.settingsDataStore
 import com.openfuel.app.data.db.OpenFuelDatabase
 import com.openfuel.app.data.remote.DefaultFoodCatalogProviderRegistry
@@ -39,12 +40,14 @@ import com.openfuel.app.domain.repository.FoodRepository
 import com.openfuel.app.domain.repository.GoalsRepository
 import com.openfuel.app.domain.repository.LogRepository
 import com.openfuel.app.domain.repository.SettingsRepository
+import com.openfuel.app.domain.entitlement.PaywallPromptPolicy
 import com.openfuel.app.domain.security.SecurityPostureProvider
 import com.openfuel.app.domain.intelligence.IntelligenceService
 import com.openfuel.app.domain.intelligence.RuleBasedIntelligenceService
 import com.openfuel.app.domain.search.OnlineSearchOrchestrator
 import com.openfuel.app.domain.voice.VoiceTranscriber
 import com.openfuel.app.domain.service.EntitlementService
+import com.openfuel.app.domain.analytics.AnalyticsService
 import com.openfuel.app.domain.service.FoodCatalogProvider
 import com.openfuel.app.domain.service.FoodCatalogProviderDescriptor
 import com.openfuel.app.domain.service.FoodCatalogProviderRegistry
@@ -95,6 +98,8 @@ class AppContainer(
             proProductId = BuildConfig.PRO_PRODUCT_ID,
         )
     }
+    val paywallPromptPolicy: PaywallPromptPolicy = PaywallPromptPolicy()
+    val analyticsService: AnalyticsService = LocalAnalyticsStore()
     val remoteFoodDataSource: RemoteFoodDataSource = OpenFoodFactsRemoteFoodDataSource.create(
         okHttpClient = onlineHttpClient,
         userInitiatedNetworkGuard = userInitiatedNetworkGuard,

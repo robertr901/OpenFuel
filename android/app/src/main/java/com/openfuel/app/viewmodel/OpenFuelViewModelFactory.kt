@@ -13,8 +13,10 @@ class OpenFuelViewModelFactory(
         val viewModel: ViewModel = when (modelClass) {
             HomeViewModel::class.java -> HomeViewModel(
                 logRepository = container.logRepository,
+                settingsRepository = container.settingsRepository,
                 goalsRepository = container.goalsRepository,
                 savedStateHandle = extras.createSavedStateHandle(),
+                analyticsService = container.analyticsService,
             )
             HistoryViewModel::class.java -> HistoryViewModel(
                 logRepository = container.logRepository,
@@ -25,6 +27,7 @@ class OpenFuelViewModelFactory(
                 settingsRepository = container.settingsRepository,
                 providerExecutor = container.providerExecutor,
                 userInitiatedNetworkGuard = container.networkGuard,
+                analyticsService = container.analyticsService,
                 onlineSearchOrchestrator = container.onlineSearchOrchestrator,
             )
             FoodLibraryViewModel::class.java -> FoodLibraryViewModel(
@@ -38,6 +41,8 @@ class OpenFuelViewModelFactory(
             InsightsViewModel::class.java -> InsightsViewModel(
                 entitlementService = container.entitlementService,
                 logRepository = container.logRepository,
+                paywallPromptPolicy = container.paywallPromptPolicy,
+                analyticsService = container.analyticsService,
             )
             ScanBarcodeViewModel::class.java -> ScanBarcodeViewModel(
                 providerExecutor = container.providerExecutor,
@@ -49,6 +54,8 @@ class OpenFuelViewModelFactory(
             SettingsViewModel::class.java -> SettingsViewModel(
                 settingsRepository = container.settingsRepository,
                 entitlementService = container.entitlementService,
+                paywallPromptPolicy = container.paywallPromptPolicy,
+                analyticsService = container.analyticsService,
                 goalsRepository = container.goalsRepository,
                 exportManager = container.exportManager,
                 foodCatalogProviderRegistry = container.foodCatalogProviderRegistry,

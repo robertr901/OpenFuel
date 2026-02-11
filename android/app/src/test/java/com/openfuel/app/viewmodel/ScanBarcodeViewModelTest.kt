@@ -460,8 +460,46 @@ private class FakeScanSettingsRepository(
     enabled: Boolean,
 ) : SettingsRepository {
     override val onlineLookupEnabled: Flow<Boolean> = flowOf(enabled)
+    override val fastLogReminderEnabled: Flow<Boolean> = flowOf(true)
+    override val fastLogReminderWindowStartHour: Flow<Int> = flowOf(7)
+    override val fastLogReminderWindowEndHour: Flow<Int> = flowOf(21)
+    override val fastLogQuietHoursEnabled: Flow<Boolean> = flowOf(true)
+    override val fastLogQuietHoursStartHour: Flow<Int> = flowOf(21)
+    override val fastLogQuietHoursEndHour: Flow<Int> = flowOf(7)
+    override val fastLogLastImpressionEpochDay: Flow<Long?> = flowOf(null)
+    override val fastLogImpressionCountForDay: Flow<Int> = flowOf(0)
+    override val fastLogConsecutiveDismissals: Flow<Int> = flowOf(0)
+    override val fastLogLastDismissedEpochDay: Flow<Long?> = flowOf(null)
 
     override suspend fun setOnlineLookupEnabled(enabled: Boolean) {
+        // no-op
+    }
+
+    override suspend fun setFastLogReminderEnabled(enabled: Boolean) {
+        // no-op
+    }
+
+    override suspend fun setFastLogReminderWindow(startHour: Int, endHour: Int) {
+        // no-op
+    }
+
+    override suspend fun setFastLogQuietHoursEnabled(enabled: Boolean) {
+        // no-op
+    }
+
+    override suspend fun setFastLogQuietHoursWindow(startHour: Int, endHour: Int) {
+        // no-op
+    }
+
+    override suspend fun setFastLogReminderImpression(epochDay: Long, countForDay: Int) {
+        // no-op
+    }
+
+    override suspend fun setFastLogDismissalState(consecutiveDismissals: Int, lastDismissedEpochDay: Long?) {
+        // no-op
+    }
+
+    override suspend fun resetFastLogDismissalState() {
         // no-op
     }
 }

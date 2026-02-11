@@ -2,6 +2,11 @@ package com.openfuel.app.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.openfuel.app.domain.analytics.AnalyticsService
+import com.openfuel.app.domain.analytics.NoOpAnalyticsService
+import com.openfuel.app.domain.analytics.ProductEventName
+import com.openfuel.app.domain.entitlement.PaywallPromptPolicy
+import com.openfuel.app.domain.entitlement.PaywallPromptSource
 import com.openfuel.app.domain.model.EntitlementActionResult
 import com.openfuel.app.domain.model.InsightsSnapshot
 import com.openfuel.app.domain.repository.LogRepository
@@ -20,6 +25,8 @@ import kotlinx.coroutines.launch
 class InsightsViewModel(
     private val entitlementService: EntitlementService,
     logRepository: LogRepository,
+    private val paywallPromptPolicy: PaywallPromptPolicy,
+    private val analyticsService: AnalyticsService = NoOpAnalyticsService,
     private val zoneId: ZoneId = ZoneId.systemDefault(),
     private val clock: Clock = Clock.systemDefaultZone(),
 ) : ViewModel() {
@@ -55,21 +62,57 @@ class InsightsViewModel(
     )
 
     fun openPaywall() {
+        if (!paywallPromptPolicy.shouldShowPrompt(PaywallPromptSource.SESSION_LIMITED_UPSELL)) return
         paywallUiState.value = paywallUiState.value.copy(
             showPaywall = true,
             message = null,
         )
+        trackPaywallShown(surface = "insights")
+    }
+
+    fun openPaywallForGatedFeature() {
+        if (!paywallPromptPolicy.shouldShowPrompt(PaywallPromptSource.GATED_FEATURE_ENTRY)) return
+        paywallUiState.value = paywallUiState.value.copy(
+            showPaywall = true,
+            message = null,
+        )
+        trackPaywallShown(surface = "insights")
     }
 
     fun dismissPaywall() {
         paywallUiState.value = paywallUiState.value.copy(showPaywall = false)
+        analyticsService.track(
+            ProductEventName.PAYWALL_CANCELLED,
+            mapOf(
+                "screen" to "insights",
+                "surface" to "paywall",
+                "result" to "cancelled",
+                "session_index" to "0",
+            ),
+        )
     }
 
     fun purchasePro() {
+        analyticsService.track(
+            ProductEventName.PAYWALL_UPGRADE_TAPPED,
+            mapOf(
+                "screen" to "insights",
+                "surface" to "paywall",
+                "session_index" to "0",
+            ),
+        )
         runEntitlementAction { entitlementService.purchasePro() }
     }
 
     fun restorePurchases() {
+        analyticsService.track(
+            ProductEventName.PAYWALL_RESTORE_TAPPED,
+            mapOf(
+                "screen" to "insights",
+                "surface" to "paywall",
+                "session_index" to "0",
+            ),
+        )
         runEntitlementAction { entitlementService.restorePurchases() }
     }
 
@@ -99,6 +142,17 @@ class InsightsViewModel(
                 message = message,
             )
         }
+    }
+
+    private fun trackPaywallShown(surface: String) {
+        analyticsService.track(
+            ProductEventName.PAYWALL_PROMPT_SHOWN,
+            mapOf(
+                "screen" to "insights",
+                "surface" to surface,
+                "session_index" to "0",
+            ),
+        )
     }
 }
 

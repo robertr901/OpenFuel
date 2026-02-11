@@ -58,6 +58,40 @@ class PaywallFlowTest {
     }
 
     @Test
+    fun insightsLocked_paywallCanReopenFromGatedFeatureEntry() {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        runBlocking {
+            context.settingsDataStore.edit { preferences ->
+                preferences[SettingsKeys.ENTITLEMENT_IS_PRO] = false
+            }
+        }
+        composeRule.activityRule.scenario.recreate()
+
+        try {
+            composeRule.onNodeWithTag("tab_insights").performClick()
+            composeRule.waitUntil(timeoutMillis = 5_000) {
+                composeRule.onAllNodesWithTag("insights_open_paywall_button")
+                    .fetchSemanticsNodes().isNotEmpty()
+            }
+
+            composeRule.onNodeWithTag("insights_open_paywall_button").performClick()
+            composeRule.onNodeWithTag("paywall_dialog").assertIsDisplayed()
+            composeRule.onNodeWithTag("paywall_close_button").performClick()
+            composeRule.waitForIdle()
+            composeRule.onAllNodesWithTag("paywall_dialog").assertCountEquals(0)
+
+            composeRule.onNodeWithTag("insights_open_paywall_button").performClick()
+            composeRule.onNodeWithTag("paywall_dialog").assertIsDisplayed()
+        } finally {
+            runBlocking {
+                context.settingsDataStore.edit { preferences ->
+                    preferences[SettingsKeys.ENTITLEMENT_IS_PRO] = false
+                }
+            }
+        }
+    }
+
+    @Test
     fun settingsPaywall_restoreUnlocksAdvancedExport() {
         val context = ApplicationProvider.getApplicationContext<Context>()
         runBlocking {

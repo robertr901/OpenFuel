@@ -3,6 +3,9 @@ package com.openfuel.app.viewmodel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.viewModelScope
+import com.openfuel.app.domain.analytics.AnalyticsService
+import com.openfuel.app.domain.analytics.NoOpAnalyticsService
+import com.openfuel.app.domain.analytics.ProductEventName
 import com.openfuel.app.domain.retention.FastLogReminderContext
 import com.openfuel.app.domain.retention.FastLogReminderSettings
 import com.openfuel.app.domain.retention.RetentionPolicy
@@ -41,6 +44,7 @@ class HomeViewModel(
     private val settingsRepository: SettingsRepository,
     private val goalsRepository: GoalsRepository,
     private val savedStateHandle: SavedStateHandle,
+    private val analyticsService: AnalyticsService = NoOpAnalyticsService,
     private val zoneId: ZoneId = ZoneId.systemDefault(),
     private val clock: Clock = Clock.system(zoneId),
 ) : ViewModel() {
@@ -215,6 +219,14 @@ class HomeViewModel(
                 epochDay = todayEpochDay,
                 countForDay = nextCount,
             )
+            analyticsService.track(
+                ProductEventName.RETENTION_FASTLOG_REMINDER_SHOWN,
+                mapOf(
+                    "screen" to "today",
+                    "surface" to "home_card",
+                    "reminder_state" to "shown",
+                ),
+            )
             fastLogReminderConsumedInSession.value = true
             fastLogReminderVisibleInSession.value = true
         }
@@ -228,6 +240,14 @@ class HomeViewModel(
                 consecutiveDismissals = dismissals + 1,
                 lastDismissedEpochDay = todayEpochDay,
             )
+            analyticsService.track(
+                ProductEventName.RETENTION_FASTLOG_REMINDER_DISMISSED,
+                mapOf(
+                    "screen" to "today",
+                    "surface" to "home_card",
+                    "reminder_state" to "dismissed",
+                ),
+            )
             fastLogReminderVisibleInSession.value = false
         }
     }
@@ -235,6 +255,14 @@ class HomeViewModel(
     fun onFastLogReminderActioned() {
         viewModelScope.launch {
             settingsRepository.resetFastLogDismissalState()
+            analyticsService.track(
+                ProductEventName.RETENTION_FASTLOG_REMINDER_ACTED,
+                mapOf(
+                    "screen" to "today",
+                    "surface" to "home_card",
+                    "reminder_state" to "acted",
+                ),
+            )
             fastLogReminderVisibleInSession.value = false
         }
     }

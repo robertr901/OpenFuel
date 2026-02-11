@@ -4,6 +4,9 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.openfuel.app.data.remote.ProviderExecutorOnlineSearchOrchestrator
 import com.openfuel.app.data.remote.UserInitiatedNetworkGuard
+import com.openfuel.app.domain.analytics.AnalyticsService
+import com.openfuel.app.domain.analytics.NoOpAnalyticsService
+import com.openfuel.app.domain.analytics.ProductEventName
 import com.openfuel.app.domain.model.FoodItem
 import com.openfuel.app.domain.model.FoodUnit
 import com.openfuel.app.domain.model.MealEntry
@@ -56,6 +59,7 @@ class AddFoodViewModel(
     settingsRepository: SettingsRepository,
     providerExecutor: ProviderExecutor,
     private val userInitiatedNetworkGuard: UserInitiatedNetworkGuard,
+    private val analyticsService: AnalyticsService = NoOpAnalyticsService,
     private val nowEpochMillis: () -> Long = { System.currentTimeMillis() },
     private val onlineSearchOrchestrator: OnlineSearchOrchestrator = ProviderExecutorOnlineSearchOrchestrator(
         providerExecutor = providerExecutor,
@@ -71,6 +75,9 @@ class AddFoodViewModel(
     private val unifiedSearchState = MutableStateFlow(UnifiedSearchState())
     private val transientState = MutableStateFlow(AddFoodTransientState())
     private val sessionStartedAtMs = nowEpochMillis()
+    private var sessionSuccessfulLogs = 0
+    private var activationEmitted = false
+    private var ahaEmitted = false
 
     private val localSearchSnapshotState: StateFlow<LocalSearchSnapshot> = unifiedSearchState
         .map { state -> state.query }
@@ -331,6 +338,7 @@ class AddFoodViewModel(
         quantity: Double,
         unit: FoodUnit,
     ) {
+        trackLoggingStarted(sourceType = "online_saved")
         if (!EntryValidation.isValidQuantity(quantity)) {
             transientState.update { current ->
                 current.copy(message = "Enter a valid quantity greater than 0.")
@@ -358,7 +366,15 @@ class AddFoodViewModel(
                         message = "Saved and logged.",
                     )
                 }
+                trackLoggingCompleted(
+                    sourceType = "online_saved",
+                    result = "success",
+                )
             } catch (_: Exception) {
+                trackLoggingCompleted(
+                    sourceType = "online_saved",
+                    result = "error",
+                )
                 transientState.update { current ->
                     current.copy(message = "Could not save and log food. Please try again.")
                 }
@@ -371,6 +387,7 @@ class AddFoodViewModel(
     }
 
     fun logFood(foodId: String, mealType: MealType, quantity: Double, unit: FoodUnit) {
+        trackLoggingStarted(sourceType = "local_search")
         viewModelScope.launch {
             val entry = MealEntry(
                 id = UUID.randomUUID().toString(),
@@ -384,6 +401,10 @@ class AddFoodViewModel(
             transientState.update { current ->
                 current.copy(addFlowCompletionMs = elapsedSinceSessionStart())
             }
+            trackLoggingCompleted(
+                sourceType = "local_search",
+                result = "success",
+            )
         }
     }
 
@@ -395,6 +416,7 @@ class AddFoodViewModel(
         fatG: Double,
         mealType: MealType,
     ) {
+        trackLoggingStarted(sourceType = "quick_add")
         viewModelScope.launch {
             val safeCalories = caloriesKcal.coerceIn(0.0, MAX_CALORIES_KCAL)
             val safeProtein = proteinG.coerceIn(0.0, MAX_MACRO_GRAMS)
@@ -423,11 +445,80 @@ class AddFoodViewModel(
             transientState.update { current ->
                 current.copy(addFlowCompletionMs = elapsedSinceSessionStart())
             }
+            trackLoggingCompleted(
+                sourceType = "quick_add",
+                result = "success",
+            )
         }
     }
 
     private fun elapsedSinceSessionStart(): Long {
         return (nowEpochMillis() - sessionStartedAtMs).coerceAtLeast(0L)
+    }
+
+    private fun trackLoggingStarted(sourceType: String) {
+        analyticsService.track(
+            ProductEventName.LOGGING_STARTED,
+            mapOf(
+                "screen" to "add_food",
+                "surface" to "search",
+                "source_type" to sourceType,
+                "session_index" to "0",
+            ),
+        )
+    }
+
+    private fun trackLoggingCompleted(
+        sourceType: String,
+        result: String,
+    ) {
+        val elapsed = elapsedSinceSessionStart()
+        analyticsService.track(
+            ProductEventName.LOGGING_COMPLETED,
+            mapOf(
+                "screen" to "add_food",
+                "surface" to "search",
+                "source_type" to sourceType,
+                "result" to result,
+                "latency_bucket_ms" to latencyBucket(elapsed),
+                "session_index" to "0",
+            ),
+        )
+        if (result != "success") return
+
+        sessionSuccessfulLogs += 1
+        if (!activationEmitted && sessionSuccessfulLogs >= 3) {
+            activationEmitted = true
+            analyticsService.track(
+                ProductEventName.ACTIVATION_REACHED,
+                mapOf(
+                    "screen" to "add_food",
+                    "surface" to "search",
+                    "count_bucket" to "3_plus",
+                    "session_index" to "0",
+                ),
+            )
+        }
+        if (!ahaEmitted && sourceType == "quick_add") {
+            ahaEmitted = true
+            analyticsService.track(
+                ProductEventName.AHA_REACHED,
+                mapOf(
+                    "screen" to "add_food",
+                    "surface" to "quick_add",
+                    "source_type" to sourceType,
+                    "session_index" to "0",
+                ),
+            )
+        }
+    }
+
+    private fun latencyBucket(latencyMs: Long): String {
+        return when {
+            latencyMs < 1_000L -> "lt_1s"
+            latencyMs <= 5_000L -> "1_to_5s"
+            else -> "gt_5s"
+        }
     }
 }
 

@@ -2,6 +2,9 @@ package com.openfuel.app.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.openfuel.app.domain.analytics.AnalyticsService
+import com.openfuel.app.domain.analytics.NoOpAnalyticsService
+import com.openfuel.app.domain.analytics.ProductEventName
 import com.openfuel.app.domain.entitlement.PaywallPromptPolicy
 import com.openfuel.app.domain.entitlement.PaywallPromptSource
 import com.openfuel.app.domain.model.DailyGoal
@@ -32,6 +35,7 @@ class SettingsViewModel(
     private val settingsRepository: SettingsRepository,
     private val entitlementService: EntitlementService,
     private val paywallPromptPolicy: PaywallPromptPolicy,
+    private val analyticsService: AnalyticsService = NoOpAnalyticsService,
     private val goalsRepository: GoalsRepository,
     private val exportManager: ExportManager,
     private val foodCatalogProviderRegistry: FoodCatalogProviderRegistry,
@@ -163,6 +167,7 @@ class SettingsViewModel(
             showPaywall = true,
             message = null,
         )
+        trackPaywallShown(surface = "settings")
     }
 
     fun openPaywallForGatedFeature() {
@@ -171,17 +176,43 @@ class SettingsViewModel(
             showPaywall = true,
             message = null,
         )
+        trackPaywallShown(surface = "settings")
     }
 
     fun dismissPaywall() {
         paywallUiState.value = paywallUiState.value.copy(showPaywall = false)
+        analyticsService.track(
+            ProductEventName.PAYWALL_CANCELLED,
+            mapOf(
+                "screen" to "settings",
+                "surface" to "paywall",
+                "result" to "cancelled",
+                "session_index" to "0",
+            ),
+        )
     }
 
     fun purchasePro() {
+        analyticsService.track(
+            ProductEventName.PAYWALL_UPGRADE_TAPPED,
+            mapOf(
+                "screen" to "settings",
+                "surface" to "paywall",
+                "session_index" to "0",
+            ),
+        )
         runEntitlementAction { entitlementService.purchasePro() }
     }
 
     fun restorePurchases() {
+        analyticsService.track(
+            ProductEventName.PAYWALL_RESTORE_TAPPED,
+            mapOf(
+                "screen" to "settings",
+                "surface" to "paywall",
+                "session_index" to "0",
+            ),
+        )
         runEntitlementAction { entitlementService.restorePurchases() }
     }
 
@@ -320,6 +351,17 @@ class SettingsViewModel(
                 message = message,
             )
         }
+    }
+
+    private fun trackPaywallShown(surface: String) {
+        analyticsService.track(
+            ProductEventName.PAYWALL_PROMPT_SHOWN,
+            mapOf(
+                "screen" to "settings",
+                "surface" to surface,
+                "session_index" to "0",
+            ),
+        )
     }
 }
 

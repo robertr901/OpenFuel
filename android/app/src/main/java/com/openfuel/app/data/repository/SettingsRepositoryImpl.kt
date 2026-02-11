@@ -4,6 +4,8 @@ import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.edit
 import com.openfuel.app.data.datastore.SettingsKeys
+import com.openfuel.app.domain.model.DietaryOverlay
+import com.openfuel.app.domain.model.GoalProfile
 import com.openfuel.app.domain.repository.SettingsRepository
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
@@ -22,6 +24,28 @@ class SettingsRepositoryImpl(
 
     override val onlineLookupEnabled: Flow<Boolean> = dataStore.data
         .map { preferences -> preferences[SettingsKeys.ONLINE_LOOKUP_ENABLED] ?: true }
+
+    override val goalProfile: Flow<GoalProfile?> = dataStore.data
+        .map { preferences ->
+            preferences[SettingsKeys.GOAL_PROFILE]
+                ?.let(::goalProfileFromStoredValue)
+        }
+
+    override val goalProfileOverlays: Flow<Set<DietaryOverlay>> = dataStore.data
+        .map { preferences ->
+            val stored = preferences[SettingsKeys.GOAL_PROFILE_OVERLAYS].orEmpty()
+            stored.mapNotNull(::dietaryOverlayFromStoredValue).toSet()
+        }
+
+    override val goalProfileOnboardingCompleted: Flow<Boolean> = dataStore.data
+        .map { preferences ->
+            preferences[SettingsKeys.GOAL_PROFILE_ONBOARDING_COMPLETED] ?: false
+        }
+
+    override val goalsCustomised: Flow<Boolean> = dataStore.data
+        .map { preferences ->
+            preferences[SettingsKeys.GOALS_CUSTOMISED] ?: false
+        }
 
     override val fastLogReminderEnabled: Flow<Boolean> = dataStore.data
         .map { preferences ->
@@ -68,6 +92,38 @@ class SettingsRepositoryImpl(
     override suspend fun setOnlineLookupEnabled(enabled: Boolean) {
         dataStore.edit { preferences ->
             preferences[SettingsKeys.ONLINE_LOOKUP_ENABLED] = enabled
+        }
+    }
+
+    override suspend fun setGoalProfile(profile: GoalProfile?) {
+        dataStore.edit { preferences ->
+            if (profile == null) {
+                preferences.remove(SettingsKeys.GOAL_PROFILE)
+            } else {
+                preferences[SettingsKeys.GOAL_PROFILE] = profile.name
+            }
+        }
+    }
+
+    override suspend fun setGoalProfileOverlays(overlays: Set<DietaryOverlay>) {
+        dataStore.edit { preferences ->
+            if (overlays.isEmpty()) {
+                preferences.remove(SettingsKeys.GOAL_PROFILE_OVERLAYS)
+            } else {
+                preferences[SettingsKeys.GOAL_PROFILE_OVERLAYS] = overlays.mapTo(linkedSetOf()) { it.name }
+            }
+        }
+    }
+
+    override suspend fun setGoalProfileOnboardingCompleted(completed: Boolean) {
+        dataStore.edit { preferences ->
+            preferences[SettingsKeys.GOAL_PROFILE_ONBOARDING_COMPLETED] = completed
+        }
+    }
+
+    override suspend fun setGoalsCustomised(customised: Boolean) {
+        dataStore.edit { preferences ->
+            preferences[SettingsKeys.GOALS_CUSTOMISED] = customised
         }
     }
 
@@ -120,5 +176,13 @@ class SettingsRepositoryImpl(
             preferences[SettingsKeys.FAST_LOG_CONSECUTIVE_DISMISSALS] = 0
             preferences.remove(SettingsKeys.FAST_LOG_LAST_DISMISSED_EPOCH_DAY)
         }
+    }
+
+    private fun goalProfileFromStoredValue(raw: String): GoalProfile? {
+        return runCatching { GoalProfile.valueOf(raw) }.getOrNull()
+    }
+
+    private fun dietaryOverlayFromStoredValue(raw: String): DietaryOverlay? {
+        return runCatching { DietaryOverlay.valueOf(raw) }.getOrNull()
     }
 }

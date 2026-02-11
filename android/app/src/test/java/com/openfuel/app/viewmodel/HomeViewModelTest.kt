@@ -5,8 +5,10 @@ import com.openfuel.app.MainDispatcherRule
 import com.openfuel.app.domain.analytics.AnalyticsService
 import com.openfuel.app.domain.analytics.ProductEvent
 import com.openfuel.app.domain.analytics.ProductEventName
+import com.openfuel.app.domain.model.DietaryOverlay
 import com.openfuel.app.domain.model.FoodItem
 import com.openfuel.app.domain.model.FoodUnit
+import com.openfuel.app.domain.model.GoalProfile
 import com.openfuel.app.domain.model.MealEntry
 import com.openfuel.app.domain.model.MealEntryWithFood
 import com.openfuel.app.domain.model.MealType
@@ -337,6 +339,10 @@ private class FakeGoalsRepository : GoalsRepository {
 
 private class FakeHomeSettingsRepository : SettingsRepository {
     private val onlineLookupEnabledFlow = MutableStateFlow(true)
+    private val goalProfileFlow = MutableStateFlow<GoalProfile?>(null)
+    private val goalProfileOverlaysFlow = MutableStateFlow<Set<DietaryOverlay>>(emptySet())
+    private val goalProfileOnboardingCompletedFlow = MutableStateFlow(false)
+    private val goalsCustomisedFlow = MutableStateFlow(false)
     private val fastLogReminderEnabledFlow = MutableStateFlow(true)
     private val fastLogReminderWindowStartHourFlow = MutableStateFlow(7)
     private val fastLogReminderWindowEndHourFlow = MutableStateFlow(21)
@@ -351,6 +357,10 @@ private class FakeHomeSettingsRepository : SettingsRepository {
         private set
 
     override val onlineLookupEnabled: Flow<Boolean> = onlineLookupEnabledFlow
+    override val goalProfile: Flow<GoalProfile?> = goalProfileFlow
+    override val goalProfileOverlays: Flow<Set<DietaryOverlay>> = goalProfileOverlaysFlow
+    override val goalProfileOnboardingCompleted: Flow<Boolean> = goalProfileOnboardingCompletedFlow
+    override val goalsCustomised: Flow<Boolean> = goalsCustomisedFlow
     override val fastLogReminderEnabled: Flow<Boolean> = fastLogReminderEnabledFlow
     override val fastLogReminderWindowStartHour: Flow<Int> = fastLogReminderWindowStartHourFlow
     override val fastLogReminderWindowEndHour: Flow<Int> = fastLogReminderWindowEndHourFlow
@@ -364,6 +374,22 @@ private class FakeHomeSettingsRepository : SettingsRepository {
 
     override suspend fun setOnlineLookupEnabled(enabled: Boolean) {
         onlineLookupEnabledFlow.value = enabled
+    }
+
+    override suspend fun setGoalProfile(profile: GoalProfile?) {
+        goalProfileFlow.value = profile
+    }
+
+    override suspend fun setGoalProfileOverlays(overlays: Set<DietaryOverlay>) {
+        goalProfileOverlaysFlow.value = overlays
+    }
+
+    override suspend fun setGoalProfileOnboardingCompleted(completed: Boolean) {
+        goalProfileOnboardingCompletedFlow.value = completed
+    }
+
+    override suspend fun setGoalsCustomised(customised: Boolean) {
+        goalsCustomisedFlow.value = customised
     }
 
     override suspend fun setFastLogReminderEnabled(enabled: Boolean) {

@@ -43,6 +43,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
@@ -219,7 +220,7 @@ fun HomeScreen(
             }
             if (mealsWithEntries.isEmpty()) {
                 item {
-                    EmptyDayState()
+                    EmptyDayState(onAddFood = onAddFood)
                 }
             }
             if (mealsWithEntries.isNotEmpty()) {
@@ -252,12 +253,22 @@ fun HomeScreen(
 }
 
 @Composable
-private fun EmptyDayState() {
+private fun EmptyDayState(
+    onAddFood: () -> Unit,
+) {
     EmptyState(
         title = "No meals logged yet",
         body = "Tap Add food to start logging this day.",
         modifier = Modifier.fillMaxWidth(),
         icon = Icons.Rounded.Add,
+        primaryAction = {
+            OFPrimaryButton(
+                text = "Add food",
+                onClick = onAddFood,
+                modifier = Modifier.fillMaxWidth(),
+                testTag = "home_primary_log_action",
+            )
+        },
         testTag = "home_empty_day_state",
     )
 }
@@ -276,7 +287,11 @@ private fun EmptyMealSlotsCard(
             trailing = {
                 TextButton(
                     onClick = onToggleExpanded,
-                    modifier = Modifier.testTag("home_empty_meal_sections_toggle"),
+                    modifier = Modifier
+                        .semantics {
+                            contentDescription = "Toggle empty meal slots"
+                        }
+                        .testTag("home_empty_meal_sections_toggle"),
                 ) {
                     Text(if (isExpanded) "Hide" else "Show")
                 }
@@ -293,6 +308,7 @@ private fun EmptyMealSlotsCard(
                     OFRow(
                         title = mealSection.mealType.displayName(),
                         subtitle = "No entries yet",
+                        contentDescription = "${mealSection.mealType.displayName()} has no entries yet",
                     )
                 }
             }
@@ -320,7 +336,7 @@ private fun FastLogReminderCard(
             horizontalArrangement = Arrangement.spacedBy(Dimens.s),
         ) {
             OFPrimaryButton(
-                text = "Log now",
+                text = "Open add food",
                 onClick = onLogNow,
                 modifier = Modifier.weight(1f),
                 testTag = "home_fast_log_reminder_action",

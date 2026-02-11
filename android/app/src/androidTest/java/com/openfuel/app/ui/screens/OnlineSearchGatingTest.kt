@@ -68,8 +68,13 @@ class OnlineSearchGatingTest {
         composeRule.waitForIdle()
 
         composeRule.onNodeWithTag("screen_settings").assertIsDisplayed()
+        composeRule.onNodeWithTag("settings_section_privacy_online").assertIsDisplayed()
         composeRule.onNodeWithTag("settings_online_provider_setup_section").assertIsDisplayed()
         composeRule.onNodeWithTag("settings_online_provider_setup_row_open_food_facts").assertIsDisplayed()
         composeRule.onNodeWithContentDescription("Online food lookup toggle").assertIsDisplayed()
+        composeRule.onAllNodesWithTag("settings_provider_setup_details_content").assertCountEquals(0)
+        composeRule.onNodeWithTag("settings_provider_setup_details_toggle").performClick()
+        composeRule.onNodeWithTag("settings_provider_setup_details_content").assertIsDisplayed()
+        composeRule.onAllNodesWithTag("settings_section_goals_export").assertCountEquals(1)
     }
 }

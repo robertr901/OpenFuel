@@ -66,7 +66,10 @@ class SettingsViewModel(
     ) { values ->
         val onlineLookupEnabled = values[0] as Boolean
         val goalProfile = values[1] as GoalProfile?
-        val goalProfileOverlays = values[2] as Set<DietaryOverlay>
+        val goalProfileOverlays = (values[2] as? Set<*>)
+            ?.mapNotNull { it as? DietaryOverlay }
+            ?.toSet()
+            .orEmpty()
         val goalsCustomised = values[3] as Boolean
         val entitlementState = values[4] as com.openfuel.app.domain.model.EntitlementState
         val exportStateValue = values[5] as ExportState

@@ -127,6 +127,35 @@ class InsightsViewModelTest {
 
         collectJob.cancel()
     }
+
+    @Test
+    fun goalProfile_fields_areExposedInUiState() = runTest {
+        val settingsRepository = FakeInsightsSettingsRepository()
+        val viewModel = InsightsViewModel(
+            entitlementService = FakeEntitlementService(
+                EntitlementState(
+                    isPro = true,
+                    source = EntitlementSource.DEBUG_OVERRIDE,
+                    canToggleDebugOverride = true,
+                ),
+            ),
+            logRepository = FakeInsightsLogRepository(),
+            settingsRepository = settingsRepository,
+            paywallPromptPolicy = PaywallPromptPolicy(),
+            zoneId = ZoneId.of("UTC"),
+        )
+        val collectJob = launch { viewModel.uiState.collect { } }
+
+        settingsRepository.emitProfile(
+            profile = GoalProfile.MUSCLE_GAIN,
+            overlays = setOf(DietaryOverlay.LOW_FODMAP),
+        )
+        advanceUntilIdle()
+
+        assertEquals(GoalProfile.MUSCLE_GAIN, viewModel.uiState.value.goalProfile)
+        assertEquals(setOf(DietaryOverlay.LOW_FODMAP), viewModel.uiState.value.goalProfileOverlays)
+        collectJob.cancel()
+    }
 }
 
 private class FakeEntitlementService(
@@ -183,8 +212,10 @@ private class FakeInsightsLogRepository : LogRepository {
 
 private class FakeInsightsSettingsRepository : SettingsRepository {
     override val onlineLookupEnabled: Flow<Boolean> = flowOf(true)
-    override val goalProfile: Flow<GoalProfile?> = flowOf(null)
-    override val goalProfileOverlays: Flow<Set<DietaryOverlay>> = flowOf(emptySet())
+    private val goalProfileFlow = MutableStateFlow<GoalProfile?>(null)
+    private val overlaysFlow = MutableStateFlow<Set<DietaryOverlay>>(emptySet())
+    override val goalProfile: Flow<GoalProfile?> = goalProfileFlow
+    override val goalProfileOverlays: Flow<Set<DietaryOverlay>> = overlaysFlow
     override val goalProfileOnboardingCompleted: Flow<Boolean> = flowOf(false)
     override val goalsCustomised: Flow<Boolean> = flowOf(false)
     override val fastLogReminderEnabled: Flow<Boolean> = flowOf(true)
@@ -210,4 +241,9 @@ private class FakeInsightsSettingsRepository : SettingsRepository {
     override suspend fun setFastLogReminderImpression(epochDay: Long, countForDay: Int) = Unit
     override suspend fun setFastLogDismissalState(consecutiveDismissals: Int, lastDismissedEpochDay: Long?) = Unit
     override suspend fun resetFastLogDismissalState() = Unit
+
+    fun emitProfile(profile: GoalProfile?, overlays: Set<DietaryOverlay>) {
+        goalProfileFlow.value = profile
+        overlaysFlow.value = overlays
+    }
 }

@@ -6,6 +6,7 @@ import androidx.test.runner.AndroidJUnitRunner
 import com.openfuel.app.domain.voice.VoiceTranscribeConfig
 import com.openfuel.app.domain.voice.VoiceTranscribeResult
 import com.openfuel.app.domain.voice.VoiceTranscriber
+import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.delay
 
 class OpenFuelAndroidTestRunner : AndroidJUnitRunner() {
@@ -15,7 +16,7 @@ class OpenFuelAndroidTestRunner : AndroidJUnitRunner() {
         context: Context,
     ): Application {
         OpenFuelApp.containerFactoryOverride = { appContext ->
-            AppContainer(
+            val container = AppContainer(
                 context = appContext,
                 forceDeterministicProvidersOnly = true,
                 voiceTranscriberOverride = object : VoiceTranscriber {
@@ -25,6 +26,10 @@ class OpenFuelAndroidTestRunner : AndroidJUnitRunner() {
                     }
                 },
             )
+            runBlocking {
+                container.settingsRepository.setGoalProfileOnboardingCompleted(true)
+            }
+            container
         }
         return super.newApplication(
             cl,

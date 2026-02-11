@@ -118,7 +118,10 @@ class HomeViewModel(
         val reminderConsumed = values[12] as Boolean
         val reminderVisible = values[13] as Boolean
         val goalProfile = values[14] as GoalProfile?
-        val goalProfileOverlays = values[15] as Set<DietaryOverlay>
+        val goalProfileOverlays = (values[15] as? Set<*>)
+            ?.mapNotNull { it as? DietaryOverlay }
+            ?.toSet()
+            .orEmpty()
         val goalProfileOnboardingCompleted = values[16] as Boolean
 
         val now = LocalDateTime.now(clock.withZone(zoneId))

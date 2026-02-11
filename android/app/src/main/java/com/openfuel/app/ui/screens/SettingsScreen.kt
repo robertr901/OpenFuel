@@ -432,6 +432,7 @@ fun SettingsScreen(
                 OFRow(
                     title = "Selected profile: $profileLabel",
                     subtitle = uiState.goalProfileEmphasis.toEmphasisLabel(),
+                    testTag = "settings_goal_profile_summary",
                 )
                 if (uiState.goalProfileOverlays.isNotEmpty()) {
                     OFRow(

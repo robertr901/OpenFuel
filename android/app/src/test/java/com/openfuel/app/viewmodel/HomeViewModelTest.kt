@@ -26,10 +26,12 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -249,6 +251,94 @@ class HomeViewModelTest {
         collectJob.cancel()
     }
 
+    @Test
+    fun goalProfileOnboarding_shownInitially_andHiddenAfterSkip() = runTest {
+        val settingsRepository = FakeHomeSettingsRepository()
+        val viewModel = HomeViewModel(
+            logRepository = FakeLogRepository(),
+            settingsRepository = settingsRepository,
+            goalsRepository = FakeGoalsRepository(),
+            savedStateHandle = SavedStateHandle(),
+            zoneId = ZoneId.of("UTC"),
+            clock = Clock.fixed(Instant.parse("2026-02-11T12:00:00Z"), ZoneOffset.UTC),
+        )
+        val collectJob = launch { viewModel.uiState.collect { } }
+
+        advanceUntilIdle()
+        assertTrue(viewModel.uiState.value.showGoalProfileOnboarding)
+
+        viewModel.skipGoalProfileSelection()
+        advanceUntilIdle()
+
+        assertFalse(viewModel.uiState.value.showGoalProfileOnboarding)
+        assertTrue(settingsRepository.goalProfileOnboardingCompletedValue)
+        collectJob.cancel()
+    }
+
+    @Test
+    fun saveGoalProfileSelection_appliesDefaults_whenGoalsNotCustomised() = runTest {
+        val settingsRepository = FakeHomeSettingsRepository()
+        val goalsRepository = FakeGoalsRepository()
+        val viewModel = HomeViewModel(
+            logRepository = FakeLogRepository(),
+            settingsRepository = settingsRepository,
+            goalsRepository = goalsRepository,
+            savedStateHandle = SavedStateHandle(),
+            zoneId = ZoneId.of("UTC"),
+            clock = Clock.fixed(Instant.parse("2026-02-11T12:00:00Z"), ZoneOffset.UTC),
+        )
+        val collectJob = launch { viewModel.uiState.collect { } }
+
+        viewModel.saveGoalProfileSelection(
+            profile = GoalProfile.MUSCLE_GAIN,
+            overlays = setOf(DietaryOverlay.LOW_SODIUM),
+        )
+        advanceUntilIdle()
+
+        assertEquals(GoalProfile.MUSCLE_GAIN, settingsRepository.goalProfileValue)
+        assertEquals(setOf(DietaryOverlay.LOW_SODIUM), settingsRepository.goalProfileOverlaysValue)
+        assertTrue(settingsRepository.goalProfileOnboardingCompletedValue)
+        assertEquals(1, goalsRepository.upsertCalls)
+        val savedGoal = goalsRepository.lastUpsertedGoal
+        assertEquals(2700.0, savedGoal?.caloriesKcalTarget ?: 0.0, 0.0001)
+        assertEquals(180.0, savedGoal?.proteinGTarget ?: 0.0, 0.0001)
+        assertEquals(300.0, savedGoal?.carbsGTarget ?: 0.0, 0.0001)
+        assertEquals(90.0, savedGoal?.fatGTarget ?: 0.0, 0.0001)
+        collectJob.cancel()
+    }
+
+    @Test
+    fun saveGoalProfileSelection_doesNotOverwriteCustomGoals() = runTest {
+        val settingsRepository = FakeHomeSettingsRepository(initialGoalsCustomised = true)
+        val existingGoal = DailyGoal(
+            date = LocalDate.parse("2026-02-11"),
+            caloriesKcalTarget = 1950.0,
+            proteinGTarget = 120.0,
+            carbsGTarget = 180.0,
+            fatGTarget = 70.0,
+        )
+        val goalsRepository = FakeGoalsRepository(initialGoal = existingGoal)
+        val viewModel = HomeViewModel(
+            logRepository = FakeLogRepository(),
+            settingsRepository = settingsRepository,
+            goalsRepository = goalsRepository,
+            savedStateHandle = SavedStateHandle(),
+            zoneId = ZoneId.of("UTC"),
+            clock = Clock.fixed(Instant.parse("2026-02-11T12:00:00Z"), ZoneOffset.UTC),
+        )
+        val collectJob = launch { viewModel.uiState.collect { } }
+
+        viewModel.saveGoalProfileSelection(
+            profile = GoalProfile.FAT_LOSS,
+            overlays = emptySet(),
+        )
+        advanceUntilIdle()
+
+        assertEquals(0, goalsRepository.upsertCalls)
+        assertEquals(existingGoal, goalsRepository.currentGoal)
+        collectJob.cancel()
+    }
+
     private fun sampleUiEntry(): MealEntryUi {
         return MealEntryUi(
             id = "entry-1",
@@ -327,22 +417,36 @@ private class FakeLogRepository(
     }
 }
 
-private class FakeGoalsRepository : GoalsRepository {
+private class FakeGoalsRepository(
+    initialGoal: DailyGoal? = null,
+) : GoalsRepository {
+    private val goalFlow = MutableStateFlow(initialGoal)
+    var lastUpsertedGoal: DailyGoal? = null
+        private set
+    var upsertCalls: Int = 0
+        private set
+    val currentGoal: DailyGoal?
+        get() = goalFlow.value
+
     override fun goalForDate(date: LocalDate): Flow<DailyGoal?> {
-        return flowOf(null)
+        return goalFlow.map { goal -> goal?.copy(date = date) }
     }
 
     override suspend fun upsertGoal(goal: DailyGoal) {
-        // no-op for tests
+        upsertCalls += 1
+        lastUpsertedGoal = goal
+        goalFlow.value = goal
     }
 }
 
-private class FakeHomeSettingsRepository : SettingsRepository {
+private class FakeHomeSettingsRepository(
+    initialGoalsCustomised: Boolean = false,
+) : SettingsRepository {
     private val onlineLookupEnabledFlow = MutableStateFlow(true)
     private val goalProfileFlow = MutableStateFlow<GoalProfile?>(null)
     private val goalProfileOverlaysFlow = MutableStateFlow<Set<DietaryOverlay>>(emptySet())
     private val goalProfileOnboardingCompletedFlow = MutableStateFlow(false)
-    private val goalsCustomisedFlow = MutableStateFlow(false)
+    private val goalsCustomisedFlow = MutableStateFlow(initialGoalsCustomised)
     private val fastLogReminderEnabledFlow = MutableStateFlow(true)
     private val fastLogReminderWindowStartHourFlow = MutableStateFlow(7)
     private val fastLogReminderWindowEndHourFlow = MutableStateFlow(21)
@@ -355,6 +459,12 @@ private class FakeHomeSettingsRepository : SettingsRepository {
     private val fastLogLastDismissedEpochDayFlow = MutableStateFlow<Long?>(null)
     var dismissalCount: Int = 0
         private set
+    val goalProfileValue: GoalProfile?
+        get() = goalProfileFlow.value
+    val goalProfileOverlaysValue: Set<DietaryOverlay>
+        get() = goalProfileOverlaysFlow.value
+    val goalProfileOnboardingCompletedValue: Boolean
+        get() = goalProfileOnboardingCompletedFlow.value
 
     override val onlineLookupEnabled: Flow<Boolean> = onlineLookupEnabledFlow
     override val goalProfile: Flow<GoalProfile?> = goalProfileFlow

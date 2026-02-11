@@ -5,6 +5,8 @@ import com.openfuel.app.data.remote.UserInitiatedNetworkGuard
 import com.openfuel.app.data.remote.UserInitiatedNetworkToken
 import com.openfuel.app.domain.model.FoodItem
 import com.openfuel.app.domain.model.FoodUnit
+import com.openfuel.app.domain.model.DietaryOverlay
+import com.openfuel.app.domain.model.GoalProfile
 import com.openfuel.app.domain.model.MealEntry
 import com.openfuel.app.domain.model.MealEntryWithFood
 import com.openfuel.app.domain.model.MealType
@@ -826,6 +828,10 @@ private class FakeSettingsRepository(
     enabled: Boolean,
 ) : SettingsRepository {
     override val onlineLookupEnabled: Flow<Boolean> = flowOf(enabled)
+    override val goalProfile: Flow<GoalProfile?> = flowOf(null)
+    override val goalProfileOverlays: Flow<Set<DietaryOverlay>> = flowOf(emptySet())
+    override val goalProfileOnboardingCompleted: Flow<Boolean> = flowOf(false)
+    override val goalsCustomised: Flow<Boolean> = flowOf(false)
     override val fastLogReminderEnabled: Flow<Boolean> = flowOf(true)
     override val fastLogReminderWindowStartHour: Flow<Int> = flowOf(7)
     override val fastLogReminderWindowEndHour: Flow<Int> = flowOf(21)
@@ -838,6 +844,22 @@ private class FakeSettingsRepository(
     override val fastLogLastDismissedEpochDay: Flow<Long?> = flowOf(null)
 
     override suspend fun setOnlineLookupEnabled(enabled: Boolean) {
+        // no-op
+    }
+
+    override suspend fun setGoalProfile(profile: GoalProfile?) {
+        // no-op
+    }
+
+    override suspend fun setGoalProfileOverlays(overlays: Set<DietaryOverlay>) {
+        // no-op
+    }
+
+    override suspend fun setGoalProfileOnboardingCompleted(completed: Boolean) {
+        // no-op
+    }
+
+    override suspend fun setGoalsCustomised(customised: Boolean) {
         // no-op
     }
 

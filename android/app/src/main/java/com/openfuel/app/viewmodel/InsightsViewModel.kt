@@ -7,9 +7,14 @@ import com.openfuel.app.domain.analytics.NoOpAnalyticsService
 import com.openfuel.app.domain.analytics.ProductEventName
 import com.openfuel.app.domain.entitlement.PaywallPromptPolicy
 import com.openfuel.app.domain.entitlement.PaywallPromptSource
+import com.openfuel.app.domain.model.DietaryOverlay
 import com.openfuel.app.domain.model.EntitlementActionResult
+import com.openfuel.app.domain.model.GoalProfile
+import com.openfuel.app.domain.model.GoalProfileDefaults
+import com.openfuel.app.domain.model.GoalProfileEmphasis
 import com.openfuel.app.domain.model.InsightsSnapshot
 import com.openfuel.app.domain.repository.LogRepository
+import com.openfuel.app.domain.repository.SettingsRepository
 import com.openfuel.app.domain.service.EntitlementService
 import com.openfuel.app.domain.util.InsightsCalculator
 import java.time.Clock
@@ -25,6 +30,7 @@ import kotlinx.coroutines.launch
 class InsightsViewModel(
     private val entitlementService: EntitlementService,
     logRepository: LogRepository,
+    settingsRepository: SettingsRepository,
     private val paywallPromptPolicy: PaywallPromptPolicy,
     private val analyticsService: AnalyticsService = NoOpAnalyticsService,
     private val zoneId: ZoneId = ZoneId.systemDefault(),
@@ -40,11 +46,16 @@ class InsightsViewModel(
             endDateInclusive = today,
             zoneId = zoneId,
         ),
+        settingsRepository.goalProfile,
+        settingsRepository.goalProfileOverlays,
         paywallUiState,
-    ) { entitlementState, entries, paywall ->
+    ) { entitlementState, entries, goalProfile, goalProfileOverlays, paywall ->
         InsightsUiState(
             isPro = entitlementState.isPro,
             snapshot = InsightsCalculator.buildSnapshot(entries, today, zoneId),
+            goalProfile = goalProfile,
+            goalProfileOverlays = goalProfileOverlays,
+            goalProfileEmphasis = goalProfile?.let(GoalProfileDefaults::emphasisFor),
             showPaywall = paywall.showPaywall,
             isEntitlementActionInProgress = paywall.isActionInProgress,
             entitlementActionMessage = paywall.message,
@@ -55,6 +66,9 @@ class InsightsViewModel(
         initialValue = InsightsUiState(
             isPro = false,
             snapshot = InsightsSnapshot.empty(today),
+            goalProfile = null,
+            goalProfileOverlays = emptySet(),
+            goalProfileEmphasis = null,
             showPaywall = false,
             isEntitlementActionInProgress = false,
             entitlementActionMessage = null,
@@ -159,6 +173,9 @@ class InsightsViewModel(
 data class InsightsUiState(
     val isPro: Boolean,
     val snapshot: InsightsSnapshot,
+    val goalProfile: GoalProfile?,
+    val goalProfileOverlays: Set<DietaryOverlay>,
+    val goalProfileEmphasis: GoalProfileEmphasis?,
     val showPaywall: Boolean,
     val isEntitlementActionInProgress: Boolean,
     val entitlementActionMessage: String?,

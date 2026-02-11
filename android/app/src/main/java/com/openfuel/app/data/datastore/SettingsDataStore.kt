@@ -7,6 +7,8 @@ import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.doublePreferencesKey
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.longPreferencesKey
+import androidx.datastore.preferences.core.stringPreferencesKey
+import androidx.datastore.preferences.core.stringSetPreferencesKey
 import androidx.datastore.core.DataStore
 
 val Context.settingsDataStore: DataStore<Preferences> by preferencesDataStore(name = "settings")
@@ -28,4 +30,8 @@ object SettingsKeys {
     val GOAL_PROTEIN_G = doublePreferencesKey("goal_protein_g")
     val GOAL_CARBS_G = doublePreferencesKey("goal_carbs_g")
     val GOAL_FAT_G = doublePreferencesKey("goal_fat_g")
+    val GOAL_PROFILE = stringPreferencesKey("goal_profile")
+    val GOAL_PROFILE_OVERLAYS = stringSetPreferencesKey("goal_profile_overlays")
+    val GOAL_PROFILE_ONBOARDING_COMPLETED = booleanPreferencesKey("goal_profile_onboarding_completed")
+    val GOALS_CUSTOMISED = booleanPreferencesKey("goals_customised")
 }

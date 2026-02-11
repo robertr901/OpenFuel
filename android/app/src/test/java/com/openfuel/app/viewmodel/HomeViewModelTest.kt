@@ -2,6 +2,9 @@ package com.openfuel.app.viewmodel
 
 import androidx.lifecycle.SavedStateHandle
 import com.openfuel.app.MainDispatcherRule
+import com.openfuel.app.domain.analytics.AnalyticsService
+import com.openfuel.app.domain.analytics.ProductEvent
+import com.openfuel.app.domain.analytics.ProductEventName
 import com.openfuel.app.domain.model.FoodItem
 import com.openfuel.app.domain.model.FoodUnit
 import com.openfuel.app.domain.model.MealEntry
@@ -19,6 +22,7 @@ import java.time.ZoneOffset
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.advanceUntilIdle
@@ -209,6 +213,40 @@ class HomeViewModelTest {
         collectJob.cancel()
     }
 
+    @Test
+    fun fastLogReminder_tracksShownDismissedAndActedEvents() = runTest {
+        val analytics = FakeAnalyticsService()
+        val settingsRepository = FakeHomeSettingsRepository()
+        val viewModel = HomeViewModel(
+            logRepository = FakeLogRepository(),
+            settingsRepository = settingsRepository,
+            goalsRepository = FakeGoalsRepository(),
+            savedStateHandle = SavedStateHandle(),
+            analyticsService = analytics,
+            zoneId = ZoneId.of("UTC"),
+            clock = Clock.fixed(Instant.parse("2026-02-11T12:00:00Z"), ZoneOffset.UTC),
+        )
+        val collectJob = launch { viewModel.uiState.collect { } }
+
+        advanceUntilIdle()
+        viewModel.onFastLogReminderShown()
+        advanceUntilIdle()
+        viewModel.dismissFastLogReminder()
+        advanceUntilIdle()
+        viewModel.onFastLogReminderActioned()
+        advanceUntilIdle()
+
+        assertEquals(
+            listOf(
+                ProductEventName.RETENTION_FASTLOG_REMINDER_SHOWN,
+                ProductEventName.RETENTION_FASTLOG_REMINDER_DISMISSED,
+                ProductEventName.RETENTION_FASTLOG_REMINDER_ACTED,
+            ),
+            analytics.events.value.map { it.name },
+        )
+        collectJob.cancel()
+    }
+
     private fun sampleUiEntry(): MealEntryUi {
         return MealEntryUi(
             id = "entry-1",
@@ -360,5 +398,21 @@ private class FakeHomeSettingsRepository : SettingsRepository {
     override suspend fun resetFastLogDismissalState() {
         fastLogConsecutiveDismissalsFlow.value = 0
         fastLogLastDismissedEpochDayFlow.value = null
+    }
+}
+
+private class FakeAnalyticsService : AnalyticsService {
+    private val _events = MutableStateFlow<List<ProductEvent>>(emptyList())
+    override val events: StateFlow<List<ProductEvent>> = _events
+
+    override fun track(
+        name: ProductEventName,
+        properties: Map<String, String>,
+    ) {
+        _events.value = _events.value + ProductEvent(
+            name = name,
+            properties = properties,
+            occurredAtEpochMs = 0L,
+        )
     }
 }

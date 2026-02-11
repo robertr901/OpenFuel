@@ -9,7 +9,11 @@ import com.openfuel.app.domain.analytics.ProductEventName
 import com.openfuel.app.domain.retention.FastLogReminderContext
 import com.openfuel.app.domain.retention.FastLogReminderSettings
 import com.openfuel.app.domain.retention.RetentionPolicy
+import com.openfuel.app.domain.model.DietaryOverlay
 import com.openfuel.app.domain.model.FoodUnit
+import com.openfuel.app.domain.model.GoalProfile
+import com.openfuel.app.domain.model.GoalProfileDefaults
+import com.openfuel.app.domain.model.GoalProfileEmphasis
 import com.openfuel.app.domain.model.MacroTotals
 import com.openfuel.app.domain.model.DailyGoal
 import com.openfuel.app.domain.model.MealEntry
@@ -95,6 +99,9 @@ class HomeViewModel(
         settingsRepository.fastLogLastDismissedEpochDay,
         fastLogReminderConsumedInSession,
         fastLogReminderVisibleInSession,
+        settingsRepository.goalProfile,
+        settingsRepository.goalProfileOverlays,
+        settingsRepository.goalProfileOnboardingCompleted,
     ) { values ->
         val baseState = values[0] as HomeUiState
         val currentMessage = values[1] as String?
@@ -110,6 +117,9 @@ class HomeViewModel(
         val lastDismissedEpochDay = values[11] as Long?
         val reminderConsumed = values[12] as Boolean
         val reminderVisible = values[13] as Boolean
+        val goalProfile = values[14] as GoalProfile?
+        val goalProfileOverlays = values[15] as Set<DietaryOverlay>
+        val goalProfileOnboardingCompleted = values[16] as Boolean
 
         val now = LocalDateTime.now(clock.withZone(zoneId))
         val today = now.toLocalDate()
@@ -141,6 +151,10 @@ class HomeViewModel(
 
         baseState.copy(
             message = currentMessage,
+            goalProfile = goalProfile,
+            goalProfileOverlays = goalProfileOverlays,
+            goalProfileEmphasis = goalProfile?.let(GoalProfileDefaults::emphasisFor),
+            showGoalProfileOnboarding = !goalProfileOnboardingCompleted && goalProfile == null && baseState.date == today,
             showFastLogReminder = canRenderReminder &&
                 (reminderVisible || (evaluation.shouldShow && !reminderConsumed)),
         )
@@ -267,6 +281,36 @@ class HomeViewModel(
         }
     }
 
+    fun saveGoalProfileSelection(
+        profile: GoalProfile,
+        overlays: Set<DietaryOverlay>,
+    ) {
+        viewModelScope.launch {
+            settingsRepository.setGoalProfile(profile)
+            settingsRepository.setGoalProfileOverlays(overlays)
+            settingsRepository.setGoalProfileOnboardingCompleted(true)
+            val goalsCustomised = settingsRepository.goalsCustomised.first()
+            if (!goalsCustomised) {
+                val defaults = GoalProfileDefaults.targetsFor(profile)
+                goalsRepository.upsertGoal(
+                    DailyGoal(
+                        date = currentDate(),
+                        caloriesKcalTarget = defaults.caloriesKcal,
+                        proteinGTarget = defaults.proteinG,
+                        carbsGTarget = defaults.carbsG,
+                        fatGTarget = defaults.fatG,
+                    ),
+                )
+            }
+        }
+    }
+
+    fun skipGoalProfileSelection() {
+        viewModelScope.launch {
+            settingsRepository.setGoalProfileOnboardingCompleted(true)
+        }
+    }
+
     private fun selectDate(date: LocalDate) {
         if (_selectedDate.value == date) {
             return
@@ -316,6 +360,8 @@ class HomeViewModel(
         )
     }
 
+    private fun currentDate(): LocalDate = LocalDate.now(clock.withZone(zoneId))
+
     private companion object {
         private const val SELECTED_DATE_KEY = "selectedDate"
 
@@ -331,6 +377,10 @@ data class HomeUiState(
     val totals: MacroTotals,
     val goal: DailyGoal?,
     val meals: List<MealSectionUi>,
+    val goalProfile: GoalProfile? = null,
+    val goalProfileOverlays: Set<DietaryOverlay> = emptySet(),
+    val goalProfileEmphasis: GoalProfileEmphasis? = null,
+    val showGoalProfileOnboarding: Boolean = false,
     val showFastLogReminder: Boolean = false,
     val message: String? = null,
 )

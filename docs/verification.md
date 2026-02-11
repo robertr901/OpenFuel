@@ -1,82 +1,40 @@
 # Verification
 
-## Full release gate (run from `android`)
-Device prerequisite for connected tests:
-- Ensure `Medium_Phone_API_35` is running before step 3.
-- If needed, start it with:
-  - `emulator -avd Medium_Phone_API_35 -no-window -no-audio`
+## Release gate order (run from `android/`)
+1. `./gradlew test`
+2. `./gradlew assembleDebug`
+3. `./gradlew :app:connectedDebugAndroidTest`
 
-1) Run unit tests:
-   - `./gradlew test`
-2) Build debug APK:
-   - `./gradlew assembleDebug`
-3) Run deterministic instrumentation tests:
-   - `./gradlew :app:connectedDebugAndroidTest`
+If connected tests need an emulator:
+- `emulator -avd Medium_Phone_API_35 -no-window -no-audio`
 
-## CI gate (pull requests)
-- GitHub Actions workflow: `.github/workflows/android-gates.yml`
-- PRs to `main` run the same three gates in order:
-  1) `./gradlew test`
-  2) `./gradlew assembleDebug`
-  3) `./gradlew :app:connectedDebugAndroidTest`
+## Deterministic testing rules
+- No live network dependency in tests.
+- No fixed sleeps.
+- Prefer stable test tags and deterministic fakes.
+- Keep explicit-action networking assertions in regression coverage.
 
-## Expected results
-- All commands complete with no errors.
+## What must be true before merge
 - Unit tests pass.
-- Debug APK assembles successfully.
-- Intelligence golden corpus parser tests pass as part of `./gradlew test`.
-- Provider mapping contract fixture tests pass as part of `./gradlew test`:
-  - OFF fixtures: `android/app/src/test/resources/provider_fixtures/off/`
-  - USDA fixtures: `android/app/src/test/resources/provider_fixtures/usda/`
-  - Nutritionix fixtures: `android/app/src/test/resources/provider_fixtures/nutritionix/`
-- Instrumentation tests pass on the pinned emulator profile.
-- Deterministic androidTest coverage still validates:
-  - Add Food unified search and quick-add flows without live network dependencies.
-  - Pro-gated paywall lock and restore flows using fake/debug entitlement wiring in tests.
-  - Provider orchestration and provider status UX without live network dependency.
+- Debug build assembles.
+- Instrumentation suite passes on the pinned emulator profile.
+- Offline-first flows remain usable.
+- No online provider execution without explicit user action.
 
-## Phase 25 acceptance thresholds (reference)
-Source documents:
-- `docs/phase-25/acceptance-criteria.md`
-- `docs/phase-25/test-strategy.md`
+## Provider verification checks
+- Disabled provider states are clear and non-crashing.
+- Missing provider setup paths are explicit and user-safe.
+- Offline mode keeps local logging usable.
 
-Thresholds to verify and track:
-- Cold start latency on reference mid-range device: p50 <= 2.0s and p95 <= 3.0s.
-- Local search results visible p95 <= 250ms after debounce.
-- Known-food log completion median <= 20s.
-- Zero online requests without explicit user action.
-- Paywall appears only on gated surface entry or explicit upgrade action.
-- Export/import round-trip equality for required fields = 100%.
+## Documentation checks (Phase 32 docs slices)
+- Internal links resolve.
+- Active docs are listed in `docs/README.md`.
+- Superseded plans are archived and labelled historical.
+- No runtime claims are added without code evidence.
 
-## Provider verification checklist (manual, release-oriented)
-- With provider defaults enabled and missing `USDA_API_KEY` and/or Nutritionix credentials:
-  - Tapping `Search online` remains stable.
-  - `Online sources` shows missing-config providers as `needs setup` with clear messaging.
-  - Settings `Online provider setup` shows which provider is `Configured`, `Needs setup`, or `Disabled`.
-- With valid `USDA_API_KEY`, `NUTRITIONIX_APP_ID`, and `NUTRITIONIX_API_KEY` configured:
-  - Tapping `Search online` can return USDA-backed candidates.
-  - Tapping `Search online` can return Nutritionix-backed candidates.
-  - Tapping `Refresh online` performs a second explicit online execution (no silent background refresh).
-- With `ONLINE_PROVIDER_OPEN_FOOD_FACTS_ENABLED=false`, `ONLINE_PROVIDER_USDA_ENABLED=false`, or `ONLINE_PROVIDER_NUTRITIONIX_ENABLED=false`:
-  - `Online sources` shows the disabled provider as `disabled`.
-  - Other enabled providers still run and render results/failures independently.
-- Airplane mode:
-  - Explicit online action returns friendly failure copy per provider status.
-  - UI remains responsive and local search still works.
-- Confirm no online request is started unless the user taps an explicit online action.
-
-## Open Food Facts timeout troubleshooting (manual)
-- Trigger online search only via explicit button tap (`Search online` or `Refresh online`).
-- Validate `Online sources` status for OFF:
-  - `Timed out (check connection).`
-  - `No connection.`
-  - `Service error.`
-- Confirm retry behavior is explicit-action only:
-  - tap `Refresh online` to retry
-  - no automatic background retries/polling should occur.
-
-## UI consistency checklist
-- Use design tokens from `ui/design/OpenFuelDesignTokens.kt` and `ui/theme/Dimens.kt`.
-- Prefer shared components from `ui/components/OpenFuelComponents.kt` for cards, rows, buttons, and pills.
-- Keep a single primary action per surface; demote diagnostics/advanced controls with expanders when possible.
-- Preserve existing test tags and accessibility semantics when refactoring UI structure.
+## Reference documents
+- Product vision: `docs/product-vision.md`
+- Roadmap: `docs/roadmap.md`
+- Architecture: `docs/architecture.md`
+- Threat model: `docs/threat-model.md`
+- Security policy: `SECURITY.md`

@@ -87,6 +87,20 @@ class UnifiedSearchSmokeTest {
         composeRule.waitForIdle()
 
         composeRule.onNodeWithTag("add_food_unified_results_list")
+            .performScrollToNode(hasTestTag("add_food_unified_online_section_summary"))
+        composeRule.onNodeWithTag("add_food_unified_online_section_summary").assertIsDisplayed()
+        composeRule.onNodeWithTag("add_food_unified_online_section_toggle").assertTextContains("Show details")
+        composeRule.onAllNodesWithTag("add_food_unified_online_result_sample-oatmeal-1")
+            .assertCountEquals(0)
+
+        composeRule.onNodeWithTag("add_food_unified_online_section_toggle").performClick()
+        composeRule.waitForIdle()
+        composeRule.onNodeWithTag("add_food_unified_online_section_toggle").assertTextContains("Hide details")
+        composeRule.onNodeWithTag("add_food_unified_results_list")
+            .performScrollToNode(hasTestTag("add_food_unified_online_section_content"))
+        composeRule.onNodeWithTag("add_food_unified_online_section_content").assertIsDisplayed()
+
+        composeRule.onNodeWithTag("add_food_unified_results_list")
             .performScrollToNode(hasTestTag("add_food_unified_online_result_sample-oatmeal-1"))
         composeRule.onNodeWithTag("add_food_unified_online_result_sample-oatmeal-1").assertIsDisplayed()
         composeRule.onNode(
@@ -111,13 +125,15 @@ class UnifiedSearchSmokeTest {
 
         composeRule.onNodeWithTag("add_food_unified_results_list")
             .performScrollToNode(hasTestTag("add_food_unified_provider_debug"))
-        composeRule.onNodeWithTag("add_food_unified_provider_debug_execution_count")
-            .assertTextContains("Execution #1")
+        composeRule.onAllNodesWithTag("add_food_unified_provider_debug_execution_count")
+            .assertCountEquals(0)
         composeRule.onNodeWithTag("add_food_unified_provider_debug_toggle")
             .assertTextContains("Show advanced")
         composeRule.onNodeWithTag("add_food_unified_provider_debug_toggle").performClick()
         composeRule.onNodeWithTag("add_food_unified_provider_debug_toggle")
             .assertTextContains("Hide advanced")
+        composeRule.onNodeWithTag("add_food_unified_provider_debug_execution_count")
+            .assertTextContains("Execution #1")
 
         composeRule.onNodeWithTag("add_food_unified_results_list")
             .performScrollToNode(hasTestTag("add_food_unified_refresh_online"))
@@ -140,8 +156,8 @@ class UnifiedSearchSmokeTest {
         composeRule.waitForIdle()
 
         composeRule.onNodeWithTag("add_food_unified_results_list")
-            .performScrollToNode(hasTestTag("add_food_unified_online_idle_hint"))
-        composeRule.onNodeWithTag("add_food_unified_online_idle_hint").assertIsDisplayed()
+            .performScrollToNode(hasTestTag("add_food_unified_online_section_summary"))
+        composeRule.onNodeWithTag("add_food_unified_online_section_summary").assertIsDisplayed()
         composeRule.onAllNodesWithTag("add_food_unified_online_result_sample-oatmeal-1")
             .assertCountEquals(0)
         composeRule.onAllNodesWithTag("add_food_unified_provider_debug_execution_count")

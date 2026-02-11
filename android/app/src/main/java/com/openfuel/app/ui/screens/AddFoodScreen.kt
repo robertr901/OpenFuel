@@ -112,6 +112,7 @@ fun AddFoodScreen(
     val scope = rememberCoroutineScope()
     var searchInput by rememberSaveable { mutableStateOf(uiState.searchQuery) }
     var isQuickAddTextDialogVisible by rememberSaveable { mutableStateOf(false) }
+    var isOnlineSectionExpanded by rememberSaveable { mutableStateOf(false) }
     var isDiagnosticsExpanded by rememberSaveable { mutableStateOf(false) }
     var quickAddTextInput by rememberSaveable { mutableStateOf("") }
     val applySearchQuery: (String) -> Unit = { newQuery ->
@@ -280,39 +281,36 @@ fun AddFoodScreen(
                         }
 
                         UnifiedSearchSectionType.ONLINE -> {
-                            if (uiState.onlineProviderRuns.isNotEmpty()) {
-                                item {
-                                    OFCard(
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .testTag("add_food_unified_online_sources"),
-                                    ) {
-                                        OFSectionHeader(
-                                            title = "Online sources",
-                                            subtitle = "Runs only after explicit online actions.",
-                                            modifier = Modifier.semantics { heading() },
-                                        )
-                                        val sourceStatusSummary = uiState.onlineProviderRuns
-                                            .joinToString(separator = ". ") { run -> run.toStatusLine() }
-                                        Column(
-                                            modifier = Modifier.semantics {
-                                                contentDescription = "Online source statuses. $sourceStatusSummary"
-                                            },
-                                            verticalArrangement = Arrangement.spacedBy(Dimens.xs),
-                                        ) {
-                                            uiState.onlineProviderRuns.forEach { run ->
+                            item {
+                                OFCard(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .testTag("add_food_unified_online_section_summary"),
+                                ) {
+                                    OFSectionHeader(
+                                        title = "Online sources",
+                                        subtitle = "Runs only after explicit online actions.",
+                                        modifier = Modifier.semantics { heading() },
+                                        trailing = {
+                                            TextButton(
+                                                onClick = { isOnlineSectionExpanded = !isOnlineSectionExpanded },
+                                                modifier = Modifier.testTag("add_food_unified_online_section_toggle"),
+                                            ) {
                                                 Text(
-                                                    text = run.toStatusLine(),
-                                                    style = MaterialTheme.typography.bodySmall,
-                                                    color = if (run.status == OnlineProviderRunStatus.FAILED) {
-                                                        MaterialTheme.colorScheme.error
-                                                    } else {
-                                                        MaterialTheme.colorScheme.onSurfaceVariant
-                                                    },
+                                                    text = if (isOnlineSectionExpanded) "Hide details" else "Show details",
                                                 )
                                             }
-                                        }
-                                    }
+                                        },
+                                    )
+                                    val sourceStatusSummary = uiState.onlineProviderRuns.toSummaryLine()
+                                    Text(
+                                        text = sourceStatusSummary,
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        modifier = Modifier.semantics {
+                                            contentDescription = "Online source summary. $sourceStatusSummary"
+                                        },
+                                    )
                                 }
                             }
                             if (!uiState.onlineLookupEnabled) {
@@ -322,14 +320,6 @@ fun AddFoodScreen(
                                         style = MaterialTheme.typography.bodySmall,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                                         modifier = Modifier.testTag("add_food_unified_online_disabled_hint"),
-                                    )
-                                }
-                            } else if (!uiState.hasSearchedOnline && !uiState.isOnlineSearchInProgress && uiState.onlineErrorMessage == null) {
-                                item {
-                                    OFEmptyState(
-                                        title = "Ready to search online",
-                                        body = "Tap Search online to fetch matching foods.",
-                                        modifier = Modifier.testTag("add_food_unified_online_idle_hint"),
                                     )
                                 }
                             }
@@ -374,26 +364,72 @@ fun AddFoodScreen(
                                 }
                             }
 
-                            if (uiState.hasSearchedOnline && uiState.onlineResults.isEmpty() && !uiState.isOnlineSearchInProgress && uiState.onlineErrorMessage == null) {
-                                item {
-                                    OFEmptyState(
-                                        title = "No online matches found",
-                                        body = "No results for \"$searchInput\".",
-                                        modifier = Modifier.testTag("add_food_unified_online_empty_state"),
-                                    )
-                                }
-                            }
+                            item {
+                                AnimatedVisibility(
+                                    visible = isOnlineSectionExpanded,
+                                    enter = fadeIn(),
+                                    exit = fadeOut(),
+                                ) {
+                                    Column(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .testTag("add_food_unified_online_section_content"),
+                                        verticalArrangement = Arrangement.spacedBy(Dimens.s),
+                                    ) {
+                                        if (uiState.onlineProviderRuns.isNotEmpty()) {
+                                            OFCard(
+                                                modifier = Modifier
+                                                    .fillMaxWidth()
+                                                    .testTag("add_food_unified_online_sources"),
+                                            ) {
+                                                val fullStatusSummary = uiState.onlineProviderRuns
+                                                    .joinToString(separator = ". ") { run -> run.toStatusLine() }
+                                                Column(
+                                                    modifier = Modifier.semantics {
+                                                        contentDescription = "Online source statuses. $fullStatusSummary"
+                                                    },
+                                                    verticalArrangement = Arrangement.spacedBy(Dimens.xs),
+                                                ) {
+                                                    uiState.onlineProviderRuns.forEach { run ->
+                                                        Text(
+                                                            text = run.toStatusLine(),
+                                                            style = MaterialTheme.typography.bodySmall,
+                                                            color = if (run.status == OnlineProviderRunStatus.FAILED) {
+                                                                MaterialTheme.colorScheme.error
+                                                            } else {
+                                                                MaterialTheme.colorScheme.onSurfaceVariant
+                                                            },
+                                                        )
+                                                    }
+                                                }
+                                            }
+                                        } else if (!uiState.hasSearchedOnline && !uiState.isOnlineSearchInProgress && uiState.onlineErrorMessage == null) {
+                                            OFEmptyState(
+                                                title = "Ready to search online",
+                                                body = "Tap Search online to fetch matching foods.",
+                                                modifier = Modifier.testTag("add_food_unified_online_idle_hint"),
+                                            )
+                                        }
 
-                            if (uiState.onlineResults.isNotEmpty()) {
-                                items(uiState.onlineResults, key = { "${it.source}:${it.sourceId}" }) { food ->
-                                    val candidateDecision =
-                                        uiState.onlineCandidateDecisions[onlineCandidateDecisionKey(food)]
-                                    OnlineResultRow(
-                                        food = food,
-                                        candidateDecision = candidateDecision,
-                                        onOpenPreview = { viewModel.openOnlineFoodPreview(food) },
-                                        modifier = Modifier.testTag("add_food_unified_online_result_${food.sourceId}"),
-                                    )
+                                        if (uiState.hasSearchedOnline && uiState.onlineResults.isEmpty() && !uiState.isOnlineSearchInProgress && uiState.onlineErrorMessage == null) {
+                                            OFEmptyState(
+                                                title = "No online matches found",
+                                                body = "No results for \"$searchInput\".",
+                                                modifier = Modifier.testTag("add_food_unified_online_empty_state"),
+                                            )
+                                        }
+
+                                        uiState.onlineResults.forEach { food ->
+                                            val candidateDecision =
+                                                uiState.onlineCandidateDecisions[onlineCandidateDecisionKey(food)]
+                                            OnlineResultRow(
+                                                food = food,
+                                                candidateDecision = candidateDecision,
+                                                onOpenPreview = { viewModel.openOnlineFoodPreview(food) },
+                                                modifier = Modifier.testTag("add_food_unified_online_result_${food.sourceId}"),
+                                            )
+                                        }
+                                    }
                                 }
                             }
 
@@ -432,35 +468,6 @@ fun AddFoodScreen(
                                                 }
                                             },
                                         )
-                                        if (uiState.onlineExecutionCount > 0) {
-                                            Text(
-                                                text = "Execution #${uiState.onlineExecutionCount}",
-                                                style = MaterialTheme.typography.bodySmall,
-                                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                                modifier = Modifier.testTag("add_food_unified_provider_debug_execution_count"),
-                                            )
-                                        }
-                                        Text(
-                                            text = "Elapsed ${uiState.onlineExecutionElapsedMs} ms · cache ${uiState.onlineProviderResults.count { it.fromCache }} hit(s)",
-                                            style = MaterialTheme.typography.bodySmall,
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                        )
-                                        uiState.localSearchLatencyMs?.let { localSearchLatencyMs ->
-                                            Text(
-                                                text = "Local search ${localSearchLatencyMs} ms · ${uiState.localSearchResultCount} item(s)",
-                                                style = MaterialTheme.typography.bodySmall,
-                                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                                modifier = Modifier.testTag("add_food_unified_debug_local_search_latency"),
-                                            )
-                                        }
-                                        uiState.addFlowCompletionMs?.let { addFlowCompletionMs ->
-                                            Text(
-                                                text = "Add flow completion ${addFlowCompletionMs} ms",
-                                                style = MaterialTheme.typography.bodySmall,
-                                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                                modifier = Modifier.testTag("add_food_unified_debug_add_flow_completion_latency"),
-                                            )
-                                        }
                                         AnimatedVisibility(
                                             visible = isDiagnosticsExpanded,
                                             enter = fadeIn(),
@@ -469,6 +476,35 @@ fun AddFoodScreen(
                                             Column(
                                                 verticalArrangement = Arrangement.spacedBy(Dimens.s),
                                             ) {
+                                                if (uiState.onlineExecutionCount > 0) {
+                                                    Text(
+                                                        text = "Execution #${uiState.onlineExecutionCount}",
+                                                        style = MaterialTheme.typography.bodySmall,
+                                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                        modifier = Modifier.testTag("add_food_unified_provider_debug_execution_count"),
+                                                    )
+                                                }
+                                                Text(
+                                                    text = "Elapsed ${uiState.onlineExecutionElapsedMs} ms · cache ${uiState.onlineProviderResults.count { it.fromCache }} hit(s)",
+                                                    style = MaterialTheme.typography.bodySmall,
+                                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                )
+                                                uiState.localSearchLatencyMs?.let { localSearchLatencyMs ->
+                                                    Text(
+                                                        text = "Local search ${localSearchLatencyMs} ms · ${uiState.localSearchResultCount} item(s)",
+                                                        style = MaterialTheme.typography.bodySmall,
+                                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                        modifier = Modifier.testTag("add_food_unified_debug_local_search_latency"),
+                                                    )
+                                                }
+                                                uiState.addFlowCompletionMs?.let { addFlowCompletionMs ->
+                                                    Text(
+                                                        text = "Add flow completion ${addFlowCompletionMs} ms",
+                                                        style = MaterialTheme.typography.bodySmall,
+                                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                        modifier = Modifier.testTag("add_food_unified_debug_add_flow_completion_latency"),
+                                                    )
+                                                }
                                                 if (uiState.onlineProviderResults.any { it.fromCache }) {
                                                     Text(
                                                         text = "Cache hit",
@@ -1143,14 +1179,6 @@ private fun OnlineResultRow(
     modifier: Modifier = Modifier,
 ) {
     val trustSignals = deriveOnlineCandidateTrustSignals(food)
-    val sourceAndCompleteness = buildString {
-        append("${SearchUserCopy.ONLINE_SOURCE_LABEL_PREFIX}: ${trustSignals.provenanceLabel}")
-        append(" · ")
-        append(
-            "${SearchUserCopy.ONLINE_COMPLETENESS_LABEL_PREFIX}: " +
-                SearchUserCopy.completenessLabel(trustSignals.completeness),
-        )
-    }
     OFCard(modifier = modifier.fillMaxWidth()) {
         Column(
             modifier = Modifier.fillMaxWidth(),
@@ -1163,11 +1191,18 @@ private fun OnlineResultRow(
                     OFPill(text = trustSignals.provenanceLabel)
                 },
             )
-            Text(
-                text = sourceAndCompleteness,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
+            Row(horizontalArrangement = Arrangement.spacedBy(Dimens.xs)) {
+                OFPill(
+                    text = "${SearchUserCopy.ONLINE_SOURCE_LABEL_PREFIX}: ${trustSignals.provenanceLabel}",
+                )
+                OFPill(
+                    text = "${SearchUserCopy.ONLINE_COMPLETENESS_LABEL_PREFIX}: " +
+                        SearchUserCopy.completenessLabel(trustSignals.completeness),
+                )
+                if (trustSignals.servingReviewStatus == OnlineServingReviewStatus.NEEDS_REVIEW) {
+                    OFPill(text = "Needs review")
+                }
+            }
             val calories = food.caloriesKcalPer100g
             val protein = food.proteinGPer100g
             val carbs = food.carbsGPer100g
@@ -1221,6 +1256,35 @@ private fun OnlineProviderRun.toStatusLine(): String {
     }
     val suffix = message?.takeIf { it.isNotBlank() }?.let { value -> " - $value" }.orEmpty()
     return "$providerDisplayName: $state$suffix"
+}
+
+private fun List<OnlineProviderRun>.toSummaryLine(): String {
+    if (isEmpty()) {
+        return "Online sources (0): not run yet"
+    }
+    val okCount = count { run ->
+        run.status == OnlineProviderRunStatus.SUCCESS || run.status == OnlineProviderRunStatus.EMPTY
+    }
+    val failedCount = count { run -> run.status == OnlineProviderRunStatus.FAILED }
+    val needsSetupCount = count { run -> run.status == OnlineProviderRunStatus.SKIPPED_MISSING_CONFIG }
+    val disabledCount = count { run -> run.status == OnlineProviderRunStatus.SKIPPED_DISABLED }
+
+    return buildString {
+        append("Online sources (")
+        append(size)
+        append("): ")
+        append(okCount)
+        append(" ok, ")
+        append(failedCount)
+        append(" failed, ")
+        append(needsSetupCount)
+        append(" needs setup")
+        if (disabledCount > 0) {
+            append(", ")
+            append(disabledCount)
+            append(" disabled")
+        }
+    }
 }
 
 @Composable

@@ -7,8 +7,12 @@ import com.openfuel.app.domain.analytics.NoOpAnalyticsService
 import com.openfuel.app.domain.analytics.ProductEventName
 import com.openfuel.app.domain.entitlement.PaywallPromptPolicy
 import com.openfuel.app.domain.entitlement.PaywallPromptSource
+import com.openfuel.app.domain.model.DietaryOverlay
 import com.openfuel.app.domain.model.DailyGoal
 import com.openfuel.app.domain.model.EntitlementActionResult
+import com.openfuel.app.domain.model.GoalProfile
+import com.openfuel.app.domain.model.GoalProfileDefaults
+import com.openfuel.app.domain.model.GoalProfileEmphasis
 import com.openfuel.app.domain.repository.GoalsRepository
 import com.openfuel.app.domain.repository.SettingsRepository
 import com.openfuel.app.domain.service.EntitlementService
@@ -28,6 +32,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
@@ -51,13 +56,28 @@ class SettingsViewModel(
 
     private val baseSettingsUiState = combine(
         settingsRepository.onlineLookupEnabled,
+        settingsRepository.goalProfile,
+        settingsRepository.goalProfileOverlays,
+        settingsRepository.goalsCustomised,
         entitlementService.getEntitlementState(),
         exportState,
         goalsRepository.goalForDate(today()),
         providerExecutionDiagnosticsStore.latestExecution,
-    ) { onlineLookupEnabled, entitlementState, exportStateValue, dailyGoal, providerExecutionSnapshot ->
+    ) { values ->
+        val onlineLookupEnabled = values[0] as Boolean
+        val goalProfile = values[1] as GoalProfile?
+        val goalProfileOverlays = values[2] as Set<DietaryOverlay>
+        val goalsCustomised = values[3] as Boolean
+        val entitlementState = values[4] as com.openfuel.app.domain.model.EntitlementState
+        val exportStateValue = values[5] as ExportState
+        val dailyGoal = values[6] as DailyGoal?
+        val providerExecutionSnapshot = values[7] as ProviderExecutionSnapshot?
         SettingsUiState(
             onlineLookupEnabled = onlineLookupEnabled,
+            goalProfile = goalProfile,
+            goalProfileOverlays = goalProfileOverlays,
+            goalProfileEmphasis = goalProfile?.let(GoalProfileDefaults::emphasisFor),
+            goalsCustomised = goalsCustomised,
             isPro = entitlementState.isPro,
             showDebugProToggle = entitlementState.canToggleDebugOverride,
             showSecurityWarning = entitlementState.canToggleDebugOverride &&
@@ -111,6 +131,10 @@ class SettingsViewModel(
         started = SharingStarted.WhileSubscribed(5_000),
         initialValue = SettingsUiState(
             onlineLookupEnabled = true,
+            goalProfile = null,
+            goalProfileOverlays = emptySet(),
+            goalProfileEmphasis = null,
+            goalsCustomised = false,
             fastLogReminderEnabled = true,
             fastLogQuietHoursEnabled = true,
             isPro = false,
@@ -158,6 +182,30 @@ class SettingsViewModel(
     fun setProEnabled(enabled: Boolean) {
         viewModelScope.launch {
             entitlementService.setDebugProOverride(enabled)
+        }
+    }
+
+    fun saveGoalProfile(
+        profile: GoalProfile,
+        overlays: Set<DietaryOverlay>,
+    ) {
+        viewModelScope.launch {
+            settingsRepository.setGoalProfile(profile)
+            settingsRepository.setGoalProfileOverlays(overlays)
+            settingsRepository.setGoalProfileOnboardingCompleted(true)
+            val goalsCustomised = settingsRepository.goalsCustomised.first()
+            if (!goalsCustomised) {
+                val defaults = GoalProfileDefaults.targetsFor(profile)
+                goalsRepository.upsertGoal(
+                    DailyGoal(
+                        date = today(),
+                        caloriesKcalTarget = defaults.caloriesKcal,
+                        proteinGTarget = defaults.proteinG,
+                        carbsGTarget = defaults.carbsG,
+                        fatGTarget = defaults.fatG,
+                    ),
+                )
+            }
         }
     }
 
@@ -248,6 +296,12 @@ class SettingsViewModel(
         )
         viewModelScope.launch {
             goalsRepository.upsertGoal(goal)
+            settingsRepository.setGoalsCustomised(
+                customised = goal.caloriesKcalTarget > 0.0 ||
+                    goal.proteinGTarget > 0.0 ||
+                    goal.carbsGTarget > 0.0 ||
+                    goal.fatGTarget > 0.0,
+            )
         }
         return GoalSaveResult.Success
     }
@@ -367,6 +421,10 @@ class SettingsViewModel(
 
 data class SettingsUiState(
     val onlineLookupEnabled: Boolean = true,
+    val goalProfile: GoalProfile? = null,
+    val goalProfileOverlays: Set<DietaryOverlay> = emptySet(),
+    val goalProfileEmphasis: GoalProfileEmphasis? = null,
+    val goalsCustomised: Boolean = false,
     val fastLogReminderEnabled: Boolean = true,
     val fastLogQuietHoursEnabled: Boolean = true,
     val isPro: Boolean = false,

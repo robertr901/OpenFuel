@@ -25,6 +25,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
@@ -52,7 +53,11 @@ import androidx.core.content.FileProvider
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.openfuel.app.BuildConfig
 import com.openfuel.app.domain.service.FoodCatalogProviderDescriptor
+import com.openfuel.app.domain.model.DietaryOverlay
 import com.openfuel.app.domain.model.DailyGoal
+import com.openfuel.app.domain.model.GoalProfile
+import com.openfuel.app.domain.model.GoalProfileDefaults
+import com.openfuel.app.domain.model.GoalProfileEmphasis
 import com.openfuel.app.domain.util.GoalValidation
 import com.openfuel.app.export.ExportFormat
 import com.openfuel.app.ui.components.StandardCard
@@ -80,6 +85,7 @@ fun SettingsScreen(
     val context = LocalContext.current
     val snackbarHostState = remember { SnackbarHostState() }
     var showGoalsDialog by rememberSaveable { mutableStateOf(false) }
+    var showGoalProfileDialog by rememberSaveable { mutableStateOf(false) }
     var isProviderSetupDetailsExpanded by rememberSaveable { mutableStateOf(false) }
     var isDiagnosticsExpanded by rememberSaveable { mutableStateOf(false) }
 
@@ -142,6 +148,18 @@ fun SettingsScreen(
             onDismiss = { showGoalsDialog = false },
             onSave = { calories, protein, carbs, fat ->
                 viewModel.saveGoals(calories, protein, carbs, fat)
+            },
+        )
+    }
+
+    if (showGoalProfileDialog) {
+        GoalProfileDialog(
+            currentProfile = uiState.goalProfile,
+            currentOverlays = uiState.goalProfileOverlays,
+            onDismiss = { showGoalProfileDialog = false },
+            onSave = { profile, overlays ->
+                viewModel.saveGoalProfile(profile, overlays)
+                showGoalProfileDialog = false
             },
         )
     }
@@ -400,6 +418,38 @@ fun SettingsScreen(
                     .testTag("settings_section_goals_export")
                     .semantics { heading() },
             )
+
+            StandardCard(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .testTag("settings_goal_profile_card"),
+            ) {
+                SectionHeader(
+                    title = "Goal profile",
+                    subtitle = "Sets focus labels and default targets when goals are not custom.",
+                )
+                val profileLabel = uiState.goalProfile?.displayLabel() ?: "Not selected"
+                OFRow(
+                    title = "Selected profile: $profileLabel",
+                    subtitle = uiState.goalProfileEmphasis.toEmphasisLabel(),
+                )
+                if (uiState.goalProfileOverlays.isNotEmpty()) {
+                    OFRow(
+                        title = "Overlays: ${uiState.goalProfileOverlays.sortedBy { it.name }.joinToString { it.displayLabel() }}",
+                        subtitle = "Guidance labels only.",
+                    )
+                }
+                Text(
+                    text = GoalProfileDefaults.NON_CLINICAL_DISCLAIMER,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                OFSecondaryButton(
+                    text = "Edit goal profile",
+                    onClick = { showGoalProfileDialog = true },
+                    testTag = "settings_edit_goal_profile_button",
+                )
+            }
 
             StandardCard(modifier = Modifier.fillMaxWidth()) {
                 SectionHeader(
@@ -715,6 +765,126 @@ private fun GoalsDialog(
     )
 }
 
+@Composable
+private fun GoalProfileDialog(
+    currentProfile: GoalProfile?,
+    currentOverlays: Set<DietaryOverlay>,
+    onDismiss: () -> Unit,
+    onSave: (GoalProfile, Set<DietaryOverlay>) -> Unit,
+) {
+    var selectedProfile by rememberSaveable { mutableStateOf(currentProfile ?: GoalProfile.MAINTENANCE) }
+    var lowFodmapEnabled by rememberSaveable {
+        mutableStateOf(currentOverlays.contains(DietaryOverlay.LOW_FODMAP))
+    }
+    var lowSodiumEnabled by rememberSaveable {
+        mutableStateOf(currentOverlays.contains(DietaryOverlay.LOW_SODIUM))
+    }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Goal profile") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(Dimens.s)) {
+                GoalProfileDialogOption(
+                    profile = GoalProfile.FAT_LOSS,
+                    selected = selectedProfile == GoalProfile.FAT_LOSS,
+                    onSelect = { selectedProfile = GoalProfile.FAT_LOSS },
+                )
+                GoalProfileDialogOption(
+                    profile = GoalProfile.MUSCLE_GAIN,
+                    selected = selectedProfile == GoalProfile.MUSCLE_GAIN,
+                    onSelect = { selectedProfile = GoalProfile.MUSCLE_GAIN },
+                )
+                GoalProfileDialogOption(
+                    profile = GoalProfile.MAINTENANCE,
+                    selected = selectedProfile == GoalProfile.MAINTENANCE,
+                    onSelect = { selectedProfile = GoalProfile.MAINTENANCE },
+                )
+                GoalProfileDialogOption(
+                    profile = GoalProfile.BLOOD_SUGAR_AWARENESS,
+                    selected = selectedProfile == GoalProfile.BLOOD_SUGAR_AWARENESS,
+                    onSelect = { selectedProfile = GoalProfile.BLOOD_SUGAR_AWARENESS },
+                )
+                OFRow(
+                    title = DietaryOverlay.LOW_FODMAP.displayLabel(),
+                    subtitle = "Guidance label only.",
+                    trailing = {
+                        Switch(
+                            checked = lowFodmapEnabled,
+                            onCheckedChange = { lowFodmapEnabled = it },
+                            modifier = Modifier.testTag("settings_goal_overlay_low_fodmap_toggle"),
+                        )
+                    },
+                )
+                OFRow(
+                    title = DietaryOverlay.LOW_SODIUM.displayLabel(),
+                    subtitle = "Guidance label only.",
+                    trailing = {
+                        Switch(
+                            checked = lowSodiumEnabled,
+                            onCheckedChange = { lowSodiumEnabled = it },
+                            modifier = Modifier.testTag("settings_goal_overlay_low_sodium_toggle"),
+                        )
+                    },
+                )
+                Text(
+                    text = GoalProfileDefaults.NON_CLINICAL_DISCLAIMER,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        },
+        confirmButton = {
+            TextButton(
+                modifier = Modifier.testTag("settings_goal_profile_save_button"),
+                onClick = {
+                    val overlays = buildSet {
+                        if (lowFodmapEnabled) add(DietaryOverlay.LOW_FODMAP)
+                        if (lowSodiumEnabled) add(DietaryOverlay.LOW_SODIUM)
+                    }
+                    onSave(selectedProfile, overlays)
+                },
+            ) {
+                Text("Save")
+            }
+        },
+        dismissButton = {
+            TextButton(
+                onClick = onDismiss,
+            ) {
+                Text("Cancel")
+            }
+        },
+    )
+}
+
+@Composable
+private fun GoalProfileDialogOption(
+    profile: GoalProfile,
+    selected: Boolean,
+    onSelect: () -> Unit,
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .testTag("settings_goal_profile_option_${profile.name.lowercase(Locale.ROOT)}")
+            .semantics {
+                contentDescription = profile.displayLabel()
+            },
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(Dimens.s),
+    ) {
+        RadioButton(
+            selected = selected,
+            onClick = onSelect,
+        )
+        Text(
+            text = profile.displayLabel(),
+            style = MaterialTheme.typography.bodyMedium,
+        )
+    }
+}
+
 private fun parseOptionalDouble(raw: String): Double? {
     val value = raw.trim()
     if (value.isEmpty()) return null
@@ -738,5 +908,31 @@ private fun providerSetupState(provider: FoodCatalogProviderDescriptor): String 
         "Needs setup"
     } else {
         "Disabled"
+    }
+}
+
+private fun GoalProfile.displayLabel(): String {
+    return when (this) {
+        GoalProfile.FAT_LOSS -> "Fat loss"
+        GoalProfile.MUSCLE_GAIN -> "Muscle gain"
+        GoalProfile.MAINTENANCE -> "Maintenance"
+        GoalProfile.BLOOD_SUGAR_AWARENESS -> "Blood sugar awareness"
+    }
+}
+
+private fun DietaryOverlay.displayLabel(): String {
+    return when (this) {
+        DietaryOverlay.LOW_FODMAP -> "Low FODMAP"
+        DietaryOverlay.LOW_SODIUM -> "Low sodium"
+    }
+}
+
+private fun GoalProfileEmphasis?.toEmphasisLabel(): String {
+    return when (this) {
+        GoalProfileEmphasis.CALORIES -> "What this changes: calories target gets stronger emphasis."
+        GoalProfileEmphasis.PROTEIN -> "What this changes: protein target gets stronger emphasis."
+        GoalProfileEmphasis.CARBS -> "What this changes: carbs target gets stronger emphasis."
+        GoalProfileEmphasis.BALANCED -> "What this changes: balanced emphasis across targets."
+        null -> "What this changes: balanced emphasis across targets."
     }
 }

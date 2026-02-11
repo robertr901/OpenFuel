@@ -41,6 +41,7 @@ class OpenFuelViewModelFactory(
             InsightsViewModel::class.java -> InsightsViewModel(
                 entitlementService = container.entitlementService,
                 logRepository = container.logRepository,
+                settingsRepository = container.settingsRepository,
                 paywallPromptPolicy = container.paywallPromptPolicy,
                 analyticsService = container.analyticsService,
             )

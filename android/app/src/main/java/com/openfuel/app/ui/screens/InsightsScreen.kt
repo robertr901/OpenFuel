@@ -15,6 +15,9 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.openfuel.app.domain.model.DietaryOverlay
+import com.openfuel.app.domain.model.GoalProfile
+import com.openfuel.app.domain.model.GoalProfileEmphasis
 import com.openfuel.app.domain.model.InsightWindow
 import com.openfuel.app.ui.components.OFCard
 import com.openfuel.app.ui.components.OFMetricRow
@@ -54,6 +57,14 @@ fun InsightsScreen(
                 .padding(Dimens.m),
             verticalArrangement = Arrangement.spacedBy(Dimens.m),
         ) {
+            val goalProfile = uiState.goalProfile
+            if (goalProfile != null) {
+                GoalProfileFocusCard(
+                    profile = goalProfile,
+                    overlays = uiState.goalProfileOverlays,
+                    emphasis = uiState.goalProfileEmphasis,
+                )
+            }
             if (!uiState.isPro) {
                 OFCard(modifier = Modifier.fillMaxWidth()) {
                     OFSectionHeader(
@@ -87,8 +98,14 @@ fun InsightsScreen(
                         )
                     }
                 }
-                InsightWindowCard(window = uiState.snapshot.last7Days)
-                InsightWindowCard(window = uiState.snapshot.last30Days)
+                InsightWindowCard(
+                    window = uiState.snapshot.last7Days,
+                    emphasis = uiState.goalProfileEmphasis,
+                )
+                InsightWindowCard(
+                    window = uiState.snapshot.last30Days,
+                    emphasis = uiState.goalProfileEmphasis,
+                )
             }
         }
 
@@ -106,6 +123,7 @@ fun InsightsScreen(
 @Composable
 private fun InsightWindowCard(
     window: InsightWindow,
+    emphasis: GoalProfileEmphasis?,
 ) {
     OFCard(modifier = Modifier.fillMaxWidth()) {
         OFSectionHeader(title = window.label)
@@ -117,17 +135,73 @@ private fun InsightWindowCard(
             label = "Calories avg",
             value = "${formatCalories(window.average.caloriesKcal)} kcal",
         )
-        OFMetricRow(
-            label = "Protein avg",
-            value = "${formatMacro(window.average.proteinG)} g",
+        val macroRows = when (emphasis) {
+            GoalProfileEmphasis.PROTEIN -> listOf(
+                "Protein avg" to "${formatMacro(window.average.proteinG)} g",
+                "Carbs avg" to "${formatMacro(window.average.carbsG)} g",
+                "Fat avg" to "${formatMacro(window.average.fatG)} g",
+            )
+            GoalProfileEmphasis.CARBS -> listOf(
+                "Carbs avg" to "${formatMacro(window.average.carbsG)} g",
+                "Protein avg" to "${formatMacro(window.average.proteinG)} g",
+                "Fat avg" to "${formatMacro(window.average.fatG)} g",
+            )
+            else -> listOf(
+                "Protein avg" to "${formatMacro(window.average.proteinG)} g",
+                "Carbs avg" to "${formatMacro(window.average.carbsG)} g",
+                "Fat avg" to "${formatMacro(window.average.fatG)} g",
+            )
+        }
+        macroRows.forEach { (label, value) ->
+            OFMetricRow(
+                label = label,
+                value = value,
+            )
+        }
+    }
+}
+
+@Composable
+private fun GoalProfileFocusCard(
+    profile: GoalProfile,
+    overlays: Set<DietaryOverlay>,
+    emphasis: GoalProfileEmphasis?,
+) {
+    OFCard(modifier = Modifier.fillMaxWidth()) {
+        OFSectionHeader(
+            title = "Profile focus",
+            subtitle = profile.displayLabel(),
         )
-        OFMetricRow(
-            label = "Carbs avg",
-            value = "${formatMacro(window.average.carbsG)} g",
+        OFPill(
+            text = when (emphasis) {
+                GoalProfileEmphasis.CALORIES -> "Calories target focus"
+                GoalProfileEmphasis.PROTEIN -> "Protein target focus"
+                GoalProfileEmphasis.CARBS -> "Carbs target focus"
+                GoalProfileEmphasis.BALANCED -> "Balanced target focus"
+                null -> "Balanced target focus"
+            },
+            testTag = "insights_goal_profile_focus",
         )
-        OFMetricRow(
-            label = "Fat avg",
-            value = "${formatMacro(window.average.fatG)} g",
-        )
+        if (overlays.isNotEmpty()) {
+            OFPill(
+                text = "Overlays: ${overlays.sortedBy { it.name }.joinToString { it.displayLabel() }}",
+            )
+        }
+    }
+}
+
+private fun GoalProfile.displayLabel(): String {
+    return when (this) {
+        GoalProfile.FAT_LOSS -> "Fat loss"
+        GoalProfile.MUSCLE_GAIN -> "Muscle gain"
+        GoalProfile.MAINTENANCE -> "Maintenance"
+        GoalProfile.BLOOD_SUGAR_AWARENESS -> "Blood sugar awareness"
+    }
+}
+
+private fun DietaryOverlay.displayLabel(): String {
+    return when (this) {
+        DietaryOverlay.LOW_FODMAP -> "Low FODMAP"
+        DietaryOverlay.LOW_SODIUM -> "Low sodium"
     }
 }

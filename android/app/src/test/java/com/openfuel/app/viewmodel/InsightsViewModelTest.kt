@@ -2,12 +2,15 @@ package com.openfuel.app.viewmodel
 
 import com.openfuel.app.MainDispatcherRule
 import com.openfuel.app.domain.entitlement.PaywallPromptPolicy
+import com.openfuel.app.domain.model.DietaryOverlay
 import com.openfuel.app.domain.model.EntitlementActionResult
 import com.openfuel.app.domain.model.EntitlementSource
 import com.openfuel.app.domain.model.EntitlementState
+import com.openfuel.app.domain.model.GoalProfile
 import com.openfuel.app.domain.model.MealEntry
 import com.openfuel.app.domain.model.MealEntryWithFood
 import com.openfuel.app.domain.repository.LogRepository
+import com.openfuel.app.domain.repository.SettingsRepository
 import com.openfuel.app.domain.service.EntitlementService
 import java.time.LocalDate
 import java.time.ZoneId
@@ -41,6 +44,7 @@ class InsightsViewModelTest {
         val viewModel = InsightsViewModel(
             entitlementService = entitlementService,
             logRepository = FakeInsightsLogRepository(),
+            settingsRepository = FakeInsightsSettingsRepository(),
             paywallPromptPolicy = PaywallPromptPolicy(),
             zoneId = ZoneId.of("UTC"),
         )
@@ -67,6 +71,7 @@ class InsightsViewModelTest {
                 ),
             ),
             logRepository = FakeInsightsLogRepository(),
+            settingsRepository = FakeInsightsSettingsRepository(),
             paywallPromptPolicy = PaywallPromptPolicy(),
             zoneId = ZoneId.of("UTC"),
         )
@@ -101,6 +106,7 @@ class InsightsViewModelTest {
                 ),
             ),
             logRepository = FakeInsightsLogRepository(),
+            settingsRepository = FakeInsightsSettingsRepository(),
             paywallPromptPolicy = PaywallPromptPolicy(),
             zoneId = ZoneId.of("UTC"),
         )
@@ -173,4 +179,35 @@ private class FakeInsightsLogRepository : LogRepository {
     ): Flow<List<MealEntryWithFood>> {
         return flowOf(emptyList())
     }
+}
+
+private class FakeInsightsSettingsRepository : SettingsRepository {
+    override val onlineLookupEnabled: Flow<Boolean> = flowOf(true)
+    override val goalProfile: Flow<GoalProfile?> = flowOf(null)
+    override val goalProfileOverlays: Flow<Set<DietaryOverlay>> = flowOf(emptySet())
+    override val goalProfileOnboardingCompleted: Flow<Boolean> = flowOf(false)
+    override val goalsCustomised: Flow<Boolean> = flowOf(false)
+    override val fastLogReminderEnabled: Flow<Boolean> = flowOf(true)
+    override val fastLogReminderWindowStartHour: Flow<Int> = flowOf(7)
+    override val fastLogReminderWindowEndHour: Flow<Int> = flowOf(21)
+    override val fastLogQuietHoursEnabled: Flow<Boolean> = flowOf(true)
+    override val fastLogQuietHoursStartHour: Flow<Int> = flowOf(21)
+    override val fastLogQuietHoursEndHour: Flow<Int> = flowOf(7)
+    override val fastLogLastImpressionEpochDay: Flow<Long?> = flowOf(null)
+    override val fastLogImpressionCountForDay: Flow<Int> = flowOf(0)
+    override val fastLogConsecutiveDismissals: Flow<Int> = flowOf(0)
+    override val fastLogLastDismissedEpochDay: Flow<Long?> = flowOf(null)
+
+    override suspend fun setOnlineLookupEnabled(enabled: Boolean) = Unit
+    override suspend fun setGoalProfile(profile: GoalProfile?) = Unit
+    override suspend fun setGoalProfileOverlays(overlays: Set<DietaryOverlay>) = Unit
+    override suspend fun setGoalProfileOnboardingCompleted(completed: Boolean) = Unit
+    override suspend fun setGoalsCustomised(customised: Boolean) = Unit
+    override suspend fun setFastLogReminderEnabled(enabled: Boolean) = Unit
+    override suspend fun setFastLogReminderWindow(startHour: Int, endHour: Int) = Unit
+    override suspend fun setFastLogQuietHoursEnabled(enabled: Boolean) = Unit
+    override suspend fun setFastLogQuietHoursWindow(startHour: Int, endHour: Int) = Unit
+    override suspend fun setFastLogReminderImpression(epochDay: Long, countForDay: Int) = Unit
+    override suspend fun setFastLogDismissalState(consecutiveDismissals: Int, lastDismissedEpochDay: Long?) = Unit
+    override suspend fun resetFastLogDismissalState() = Unit
 }

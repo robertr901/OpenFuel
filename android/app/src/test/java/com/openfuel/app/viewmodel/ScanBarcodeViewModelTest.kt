@@ -466,6 +466,10 @@ private class FakeScanSettingsRepository(
     override val fastLogQuietHoursEnabled: Flow<Boolean> = flowOf(true)
     override val fastLogQuietHoursStartHour: Flow<Int> = flowOf(21)
     override val fastLogQuietHoursEndHour: Flow<Int> = flowOf(7)
+    override val fastLogLastImpressionEpochDay: Flow<Long?> = flowOf(null)
+    override val fastLogImpressionCountForDay: Flow<Int> = flowOf(0)
+    override val fastLogConsecutiveDismissals: Flow<Int> = flowOf(0)
+    override val fastLogLastDismissedEpochDay: Flow<Long?> = flowOf(null)
 
     override suspend fun setOnlineLookupEnabled(enabled: Boolean) {
         // no-op
@@ -484,6 +488,18 @@ private class FakeScanSettingsRepository(
     }
 
     override suspend fun setFastLogQuietHoursWindow(startHour: Int, endHour: Int) {
+        // no-op
+    }
+
+    override suspend fun setFastLogReminderImpression(epochDay: Long, countForDay: Int) {
+        // no-op
+    }
+
+    override suspend fun setFastLogDismissalState(consecutiveDismissals: Int, lastDismissedEpochDay: Long?) {
+        // no-op
+    }
+
+    override suspend fun resetFastLogDismissalState() {
         // no-op
     }
 }

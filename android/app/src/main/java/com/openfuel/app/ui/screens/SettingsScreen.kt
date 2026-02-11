@@ -211,6 +211,39 @@ fun SettingsScreen(
                         )
                     },
                 )
+                OFRow(
+                    title = "Fast log reminders",
+                    subtitle = "Show a calm in-app reminder when no meals are logged today.",
+                    trailing = {
+                        Switch(
+                            checked = uiState.fastLogReminderEnabled,
+                            onCheckedChange = viewModel::setFastLogReminderEnabled,
+                            modifier = Modifier
+                                .testTag("settings_fast_log_reminder_switch")
+                                .semantics {
+                                    contentDescription = "Fast log reminder toggle"
+                                    stateDescription = if (uiState.fastLogReminderEnabled) "On" else "Off"
+                                },
+                        )
+                    },
+                )
+                OFRow(
+                    title = "Quiet hours",
+                    subtitle = "Suppress reminders during quiet hours.",
+                    trailing = {
+                        Switch(
+                            checked = uiState.fastLogQuietHoursEnabled,
+                            onCheckedChange = viewModel::setFastLogQuietHoursEnabled,
+                            enabled = uiState.fastLogReminderEnabled,
+                            modifier = Modifier
+                                .testTag("settings_fast_log_quiet_hours_switch")
+                                .semantics {
+                                    contentDescription = "Fast log quiet hours toggle"
+                                    stateDescription = if (uiState.fastLogQuietHoursEnabled) "On" else "Off"
+                                },
+                        )
+                    },
+                )
             }
             val onlineProviderSetup = uiState.providerDiagnostics.filterNot { provider ->
                 provider.key == "static_sample" || provider.key.endsWith("_stub")

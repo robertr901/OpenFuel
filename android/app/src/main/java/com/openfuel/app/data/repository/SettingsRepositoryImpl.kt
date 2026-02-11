@@ -53,6 +53,18 @@ class SettingsRepositoryImpl(
             preferences[SettingsKeys.FAST_LOG_QUIET_HOURS_END_HOUR] ?: DEFAULT_FAST_LOG_QUIET_HOURS_END_HOUR
         }
 
+    override val fastLogLastImpressionEpochDay: Flow<Long?> = dataStore.data
+        .map { preferences -> preferences[SettingsKeys.FAST_LOG_LAST_IMPRESSION_EPOCH_DAY] }
+
+    override val fastLogImpressionCountForDay: Flow<Int> = dataStore.data
+        .map { preferences -> preferences[SettingsKeys.FAST_LOG_IMPRESSION_COUNT_FOR_DAY] ?: 0 }
+
+    override val fastLogConsecutiveDismissals: Flow<Int> = dataStore.data
+        .map { preferences -> preferences[SettingsKeys.FAST_LOG_CONSECUTIVE_DISMISSALS] ?: 0 }
+
+    override val fastLogLastDismissedEpochDay: Flow<Long?> = dataStore.data
+        .map { preferences -> preferences[SettingsKeys.FAST_LOG_LAST_DISMISSED_EPOCH_DAY] }
+
     override suspend fun setOnlineLookupEnabled(enabled: Boolean) {
         dataStore.edit { preferences ->
             preferences[SettingsKeys.ONLINE_LOOKUP_ENABLED] = enabled
@@ -82,6 +94,31 @@ class SettingsRepositoryImpl(
         dataStore.edit { preferences ->
             preferences[SettingsKeys.FAST_LOG_QUIET_HOURS_START_HOUR] = startHour.coerceIn(0, 23)
             preferences[SettingsKeys.FAST_LOG_QUIET_HOURS_END_HOUR] = endHour.coerceIn(0, 23)
+        }
+    }
+
+    override suspend fun setFastLogReminderImpression(epochDay: Long, countForDay: Int) {
+        dataStore.edit { preferences ->
+            preferences[SettingsKeys.FAST_LOG_LAST_IMPRESSION_EPOCH_DAY] = epochDay
+            preferences[SettingsKeys.FAST_LOG_IMPRESSION_COUNT_FOR_DAY] = countForDay.coerceAtLeast(0)
+        }
+    }
+
+    override suspend fun setFastLogDismissalState(consecutiveDismissals: Int, lastDismissedEpochDay: Long?) {
+        dataStore.edit { preferences ->
+            preferences[SettingsKeys.FAST_LOG_CONSECUTIVE_DISMISSALS] = consecutiveDismissals.coerceAtLeast(0)
+            if (lastDismissedEpochDay == null) {
+                preferences.remove(SettingsKeys.FAST_LOG_LAST_DISMISSED_EPOCH_DAY)
+            } else {
+                preferences[SettingsKeys.FAST_LOG_LAST_DISMISSED_EPOCH_DAY] = lastDismissedEpochDay
+            }
+        }
+    }
+
+    override suspend fun resetFastLogDismissalState() {
+        dataStore.edit { preferences ->
+            preferences[SettingsKeys.FAST_LOG_CONSECUTIVE_DISMISSALS] = 0
+            preferences.remove(SettingsKeys.FAST_LOG_LAST_DISMISSED_EPOCH_DAY)
         }
     }
 }

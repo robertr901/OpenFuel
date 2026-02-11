@@ -57,6 +57,7 @@ import com.openfuel.app.domain.util.EntryValidation
 import com.openfuel.app.ui.components.EmptyState
 import com.openfuel.app.ui.components.MetricPill
 import com.openfuel.app.ui.components.PillKind
+import com.openfuel.app.ui.components.OFPrimaryButton
 import com.openfuel.app.ui.components.OFMetricRow
 import com.openfuel.app.ui.components.OFRow
 import com.openfuel.app.ui.components.SectionHeader
@@ -96,6 +97,12 @@ fun HomeScreen(
         val message = uiState.message ?: return@LaunchedEffect
         snackbarHostState.showSnackbar(message)
         viewModel.consumeMessage()
+    }
+
+    LaunchedEffect(uiState.showFastLogReminder) {
+        if (uiState.showFastLogReminder) {
+            viewModel.onFastLogReminderShown()
+        }
     }
 
     if (editEntry != null) {
@@ -181,6 +188,17 @@ fun HomeScreen(
                 .padding(horizontal = Dimens.m),
             verticalArrangement = Arrangement.spacedBy(Dimens.m),
         ) {
+            if (uiState.showFastLogReminder) {
+                item {
+                    FastLogReminderCard(
+                        onLogNow = {
+                            viewModel.onFastLogReminderActioned()
+                            onAddFood()
+                        },
+                        onDismiss = viewModel::dismissFastLogReminder,
+                    )
+                }
+            }
             item {
                 TotalsCard(
                     calories = uiState.totals.caloriesKcal,
@@ -221,6 +239,41 @@ private fun EmptyDayState() {
         modifier = Modifier.fillMaxWidth(),
         icon = Icons.Rounded.Add,
     )
+}
+
+@Composable
+private fun FastLogReminderCard(
+    onLogNow: () -> Unit,
+    onDismiss: () -> Unit,
+) {
+    StandardCard(
+        modifier = Modifier
+            .fillMaxWidth()
+            .testTag("home_fast_log_reminder_card"),
+    ) {
+        SectionHeader(
+            title = "Fast log reminder",
+            subtitle = "No meals logged today. Add a meal in under a minute.",
+            modifier = Modifier.semantics { heading() },
+        )
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(Dimens.s),
+        ) {
+            OFPrimaryButton(
+                text = "Log now",
+                onClick = onLogNow,
+                modifier = Modifier.weight(1f),
+                testTag = "home_fast_log_reminder_action",
+            )
+            TextButton(
+                onClick = onDismiss,
+                modifier = Modifier.testTag("home_fast_log_reminder_dismiss"),
+            ) {
+                Text("Dismiss")
+            }
+        }
+    }
 }
 
 @Composable

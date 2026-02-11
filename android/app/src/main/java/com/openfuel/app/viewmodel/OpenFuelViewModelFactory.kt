@@ -13,6 +13,7 @@ class OpenFuelViewModelFactory(
         val viewModel: ViewModel = when (modelClass) {
             HomeViewModel::class.java -> HomeViewModel(
                 logRepository = container.logRepository,
+                settingsRepository = container.settingsRepository,
                 goalsRepository = container.goalsRepository,
                 savedStateHandle = extras.createSavedStateHandle(),
             )

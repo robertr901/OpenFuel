@@ -42,7 +42,7 @@ class SettingsViewModel(
     private val advancedExportRedacted = MutableStateFlow(false)
     private val advancedExportPreview = MutableStateFlow(AdvancedExportPreview.empty())
 
-    private val baseUiState = combine(
+    private val baseSettingsUiState = combine(
         settingsRepository.onlineLookupEnabled,
         entitlementService.getEntitlementState(),
         exportState,
@@ -61,6 +61,17 @@ class SettingsViewModel(
             lastProviderExecution = providerExecutionSnapshot,
             exportState = exportStateValue,
             dailyGoal = dailyGoal,
+        )
+    }
+
+    private val baseUiState = combine(
+        baseSettingsUiState,
+        settingsRepository.fastLogReminderEnabled,
+        settingsRepository.fastLogQuietHoursEnabled,
+    ) { baseState, fastLogReminderEnabled, fastLogQuietHoursEnabled ->
+        baseState.copy(
+            fastLogReminderEnabled = fastLogReminderEnabled,
+            fastLogQuietHoursEnabled = fastLogQuietHoursEnabled,
         )
     }
 
@@ -93,6 +104,8 @@ class SettingsViewModel(
         started = SharingStarted.WhileSubscribed(5_000),
         initialValue = SettingsUiState(
             onlineLookupEnabled = true,
+            fastLogReminderEnabled = true,
+            fastLogQuietHoursEnabled = true,
             isPro = false,
             showDebugProToggle = false,
             showSecurityWarning = false,
@@ -120,6 +133,18 @@ class SettingsViewModel(
     fun setOnlineLookupEnabled(enabled: Boolean) {
         viewModelScope.launch {
             settingsRepository.setOnlineLookupEnabled(enabled)
+        }
+    }
+
+    fun setFastLogReminderEnabled(enabled: Boolean) {
+        viewModelScope.launch {
+            settingsRepository.setFastLogReminderEnabled(enabled)
+        }
+    }
+
+    fun setFastLogQuietHoursEnabled(enabled: Boolean) {
+        viewModelScope.launch {
+            settingsRepository.setFastLogQuietHoursEnabled(enabled)
         }
     }
 
@@ -287,6 +312,8 @@ class SettingsViewModel(
 
 data class SettingsUiState(
     val onlineLookupEnabled: Boolean = true,
+    val fastLogReminderEnabled: Boolean = true,
+    val fastLogQuietHoursEnabled: Boolean = true,
     val isPro: Boolean = false,
     val showDebugProToggle: Boolean = false,
     val showSecurityWarning: Boolean = false,

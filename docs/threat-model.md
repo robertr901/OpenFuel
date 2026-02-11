@@ -1,103 +1,85 @@
-# OpenFuel Threat Model (v0)
+# OpenFuel Threat Model
 
 ## Scope
-OpenFuel is a local-first nutrition tracking app. By default, all logs, foods, goals, and calculations are stored on-device. Optional online lookups exist only when explicitly triggered by the user (e.g., searching a public food database or scanning a barcode).
+OpenFuel is an Android nutrition logger with an offline-first default.
 
-This threat model covers:
-- Local storage (Room + DataStore)
-- Export (local file generation)
-- Optional online lookups (explicit user action only)
-- Quick add helpers (text/voice) as local-only input features
-- Entitlements/paywall flows (explicit purchase/restore actions)
+This model covers:
+- local storage (Room + DataStore),
+- explicit export and share actions,
+- optional explicit online lookup,
+- barcode and quick-add capture surfaces.
 
-Out of scope (for now):
-- Cloud sync
-- Accounts/authentication
-- Telemetry/analytics
+Out of scope for this model iteration:
+- cloud sync,
+- account systems,
+- third-party tracking services.
 
-## Assets to protect
-- Meal logs (personal diet history)
-- User-entered foods and favourites
-- Goals and preferences
-- Exported data files
-- Device identifiers and metadata (avoid collecting)
+## Assets
+- Meal history and nutrition logs.
+- User goals and preferences.
+- Exported user data files.
+- Provider configuration values.
 
 ## Trust boundaries
-- Device storage (trusted, but vulnerable to physical compromise / malware)
-- OS services (voice recognition, camera, file picker)
-- Network boundary (only crossed on explicit user action)
-- Third-party food providers (untrusted data source)
+- Device storage boundary.
+- OS service boundary (camera, file picker, speech services where supported).
+- Network boundary crossed only on explicit user action.
+- Third-party food provider payload boundary (untrusted input).
 
 ## Data egress boundaries
-- No telemetry, ads, trackers, or background analytics egress is permitted.
-- Online provider calls cross the network boundary only after explicit user action.
-- Billing network calls are limited to explicit purchase/restore actions and explicit foreground refresh behaviour.
-- Export and share actions are explicit user actions and are never auto-triggered.
-- There are no background provider polling loops, no silent refresh, and no background sync of personal logs.
-- Boundary references:
-  - `SECURITY.md`
-  - `docs/architecture.md`
-  - `docs/verification.md`
+- No ad IDs or tracking egress.
+- No sensitive free-text payload capture.
+- Online provider requests must be explicitly user-triggered.
+- Export/share is explicit and user-controlled.
+- No background provider calls from passive screens.
 
-## Threats and mitigations
+## Main threats and mitigations
 
-### 1) Unintended network calls (privacy leak)
-**Threat:** App makes background or implicit network calls.
-**Mitigations:**
-- No network calls by default.
-- All online lookups must be initiated by explicit user action (button tap).
-- Guardrails enforce “user-initiated token” requirement in online execution path.
-- Online lookup can be disabled in Settings and must block online actions cleanly.
-- Deterministic instrumentation tests verify online gating behavior.
+### 1. Unintended online requests
+Threat:
+- Network calls occur without explicit user intent.
 
-### 2) Data exfiltration via export
-**Threat:** User exports sensitive data and shares it accidentally.
-**Mitigations:**
-- Export is always explicit user action.
-- Export format is documented, inspectable JSON with schemaVersion/appVersion.
-- Advanced export includes explicit redaction options before sharing.
-- UI copy warns that export may contain sensitive personal history.
+Mitigations:
+- User-action guardrails in viewmodel and provider execution paths.
+- Deterministic tests that assert typing and passive states do not invoke online provider calls.
 
-### 3) Local data compromise
-**Threat:** Other apps, malware, or physical attacker accesses local database/files.
-**Mitigations:**
-- Use app-private storage for DB/DataStore.
-- Use Android OS sandbox.
-- Avoid writing sensitive data to logs.
-- Consider optional encrypted export (future).
+### 2. Untrusted provider payloads
+Threat:
+- Malformed or inconsistent provider payloads degrade data quality or crash mapping.
 
-### 4) Provider data integrity and poisoning
-**Threat:** Online provider returns malformed or misleading nutrition data.
-**Mitigations:**
-- Treat provider data as untrusted.
-- Defensive parsing (missing fields tolerated, nutrients bounded/sanitised).
-- Provenance labels shown in UI.
-- User must explicitly Save or Save+Log, no auto-log from online results.
-- Provider mapping is locked by deterministic fixture contract tests (OFF/USDA/Nutritionix) to catch payload drift regressions.
+Mitigations:
+- Defensive mapping and bounded parsing.
+- Deterministic fixture-based provider contract tests.
 
-### 5) Voice privacy and persistence
-**Threat:** Voice capture records audio, stores it, or sends it off-device.
-**Mitigations:**
-- Voice is explicit action only.
-- No audio persistence, only transcribed text is used.
-- Prefer offline recognition where possible; handle “offline unavailable” gracefully.
-- No always-listening, no background capture.
+### 3. Sensitive data leakage via logging
+Threat:
+- Sensitive user content appears in debug or runtime logs.
 
-### 6) Camera/barcode permissions abuse
-**Threat:** Camera used outside explicit user intent.
-**Mitigations:**
-- Barcode scanning is an explicit screen/action.
-- Clear permission rationale.
-- No background camera use.
+Mitigations:
+- Strict no-sensitive-logging policy.
+- Local diagnostics only, with redaction requirements.
 
-## Residual risks / open questions
-- Offline speech recognition availability varies by device/language packs.
-- INTERNET permission is broad when optional online features exist; no TLS pinning currently.
-- Export sharing risk remains user-driven even with redaction options; users may still share sensitive context inadvertently.
+### 4. Export misuse
+Threat:
+- User shares sensitive data unintentionally.
 
-## Verification strategy
-- Unit tests for domain logic and parsers.
-- Deterministic instrumentation tests for:
-  - Online gating and explicit-action enforcement
-  - Unified search controls flow
-  - Quick add text and voice helper flows (no mic/system UI dependency in tests)
+Mitigations:
+- Export remains explicit user action.
+- Clear UX warnings and controllable export steps.
+
+### 5. Device compromise
+Threat:
+- Data at rest exposed by malware or physical compromise.
+
+Mitigations:
+- App-private storage boundaries.
+- Minimal persistence of non-essential sensitive state.
+
+## Residual risks
+- Device-level compromise cannot be fully mitigated by app code.
+- Provider payload drift remains a recurring risk and requires continued fixture maintenance.
+
+## Verification links
+- `docs/verification.md`
+- `SECURITY.md`
+- `docs/provider_contract.md`

@@ -1,84 +1,68 @@
-# Provider Contract (Phase 9)
+# Provider Contract
 
 ## Purpose
-This document defines the canonical contract for remote nutrition catalog providers used by Unified Add Food.
+This document defines the contract for remote food providers used by Add Food online lookup.
+
+## Contract boundaries
+- Local search remains local-first.
+- Provider execution is explicit-action only.
+- Typing, debounce, and passive lifecycle states must not trigger provider calls.
 
 ## Required provider metadata
-- `providerId`: stable unique key (for diagnostics, cache keys, provenance).
-- `displayName`: user-facing provider name.
-- `priority`: lower number executes first for deterministic merge tie-breaks.
+- `providerId`: stable unique key.
+- `displayName`: user-facing provider label.
+- `priority`: deterministic ordering key.
 - `capabilities`: one or both of:
   - `TEXT_SEARCH`
   - `BARCODE_LOOKUP`
 
 ## Request contract
-- All online lookups must be explicitly user-initiated and provide a valid `UserInitiatedNetworkToken`.
-- Provider requests are typed:
-  - `TEXT_SEARCH` with non-blank `query`
-  - `BARCODE_LOOKUP` with non-blank `barcode`
-- `SearchSourceFilter` controls whether online providers are eligible to run.
-- Typing, local query updates, and app start events must not trigger provider execution.
+- Calls require a valid user-initiated network token.
+- Request types:
+  - text search with non-blank query,
+  - barcode lookup with non-blank barcode.
+- Source filters and settings determine whether online providers can run.
 
-## Canonical result contract
-Each provider execution returns:
+## Result contract
+Each provider run returns structured output:
 - `providerId`
 - `capability`
-- `status` (success/empty/disabled/error class)
-- `items` (`RemoteFoodCandidate` list)
-- timing (`elapsedMs`)
+- `status`
+- mapped `items`
+- `elapsedMs`
 - optional diagnostics (local-only)
-- cache source marker (`fromCache`)
+- cache marker (`fromCache`)
 
-Provider execution must never throw to UI layers. Failures are represented as structured statuses.
+Provider execution must not throw UI-facing exceptions.
 
-## Normalization and dedupe rules
-- Primary dedupe key:
-  - barcode (if present, trimmed non-blank)
-  - else normalized `name + brand + servingSize`
-  - fallback to source-scoped identity when brand/serving context is missing
-- Text normalization:
-  - trim
-  - collapse repeated whitespace
-  - lowercase with `Locale.ROOT`
+## Deterministic merge and dedupe
+- Primary key precedence:
+  - barcode when present,
+  - otherwise normalised name and brand context,
+  - fallback identity key when needed.
+- Deterministic tie-breaks use stable ordering and consistent richness rules.
+- Provenance is preserved for user trust cues.
 
 ## Error model
-- Friendly UX errors only.
+- Use user-safe error states.
 - No stack traces in UI.
 - No sensitive payload logging.
-- Common statuses:
-  - `DISABLED_BY_SETTINGS`
-  - `DISABLED_BY_SOURCE_FILTER`
-  - `MISCONFIGURED`
-  - `UNSUPPORTED_CAPABILITY`
-  - `GUARD_REJECTED`
-  - `NETWORK_UNAVAILABLE`
-  - `HTTP_ERROR`
-  - `PARSING_ERROR`
-  - `RATE_LIMITED`
-  - `TIMEOUT`
-  - `ERROR`
-
-## Provenance
-- Merged candidates retain provider provenance via `providerKey`.
-- UI-level stable ids include provenance to avoid collisions across providers.
-
-## Trust and provenance direction (Phase 27 roadmap)
-- Phase 27 direction focuses on clearer provenance and completeness messaging in the UI.
-- This is roadmap direction only and does not change current provider execution behaviour.
-- Reference: `docs/phase-25/phase-25-plan.md` (Phase 27 - Data Trust Layer v1).
+- Typical statuses include:
+  - disabled by settings,
+  - misconfigured,
+  - unsupported capability,
+  - guard rejected,
+  - network unavailable,
+  - timeout,
+  - parsing or service error.
 
 ## Caching policy
-- Cache key includes normalized input + request type + provider id.
-- Cache stores only public nutrition candidate fields.
-- Default TTL: 24h.
-- Cache row contract includes `cacheVersion`; current version is `1`.
-- Version bump policy: bump `cacheVersion` when serialized payload shape changes incompatibly.
-- Cache reads are allowed for fast-path results.
-- Version mismatch rows are purged and treated as cache misses.
-- Corrupted payload JSON is treated as cache miss and overwritten on next successful fetch.
-- No silent background network refresh; refresh requires explicit user action.
+- Cache key includes normalised input, request type, and provider id.
+- Cache stores public nutrition candidate fields only.
+- Cache reads are allowed for explicit fast-path responses.
+- No silent background refresh.
 
-## Observability (local-only)
-- Track per-provider elapsed time, status, and counts.
-- Track overall elapsed time and cache hit/miss counters.
-- Diagnostics are local debug information only and are never transmitted.
+## Test and quality requirements
+- Provider mapping should be locked with fixture-based contract tests.
+- Regression coverage should remain deterministic and local.
+- Changes to this contract must update tests and docs in the same slice.

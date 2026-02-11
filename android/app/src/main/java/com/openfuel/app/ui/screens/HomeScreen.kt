@@ -1,5 +1,6 @@
 package com.openfuel.app.ui.screens
 
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -45,6 +46,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -83,6 +86,7 @@ fun HomeScreen(
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     var editEntry by remember { mutableStateOf<MealEntryUi?>(null) }
     var deleteEntry by remember { mutableStateOf<MealEntryUi?>(null) }
+    var isTotalsDetailsExpanded by rememberSaveable { mutableStateOf(false) }
     val snackbarHostState = remember { SnackbarHostState() }
 
     val formattedDate = remember(uiState.date) {
@@ -185,6 +189,8 @@ fun HomeScreen(
                     carbs = uiState.totals.carbsG,
                     fat = uiState.totals.fatG,
                     goal = uiState.goal,
+                    isDetailsExpanded = isTotalsDetailsExpanded,
+                    onToggleDetails = { isTotalsDetailsExpanded = !isTotalsDetailsExpanded },
                 )
             }
             if (uiState.meals.all { it.entries.isEmpty() }) {
@@ -211,7 +217,7 @@ fun HomeScreen(
 private fun EmptyDayState() {
     OFEmptyState(
         title = "No meals logged yet",
-        body = "Tap Add food to start logging this day and build your streak.",
+        body = "Tap Add food to start logging this day.",
         modifier = Modifier.fillMaxWidth(),
         icon = Icons.Rounded.Add,
     )
@@ -224,11 +230,22 @@ private fun TotalsCard(
     carbs: Double,
     fat: Double,
     goal: DailyGoal?,
+    isDetailsExpanded: Boolean,
+    onToggleDetails: () -> Unit,
 ) {
     OFCard(modifier = Modifier.fillMaxWidth()) {
         OFSectionHeader(
             title = "Daily totals",
             subtitle = "Clear progress at a glance.",
+            modifier = Modifier.semantics { heading() },
+            trailing = {
+                TextButton(
+                    onClick = onToggleDetails,
+                    modifier = Modifier.testTag("home_totals_details_toggle"),
+                ) {
+                    Text(if (isDetailsExpanded) "Hide details" else "Show details")
+                }
+            },
         )
         Text(
             text = "${formatCalories(calories)} kcal",
@@ -240,45 +257,50 @@ private fun TotalsCard(
             OFStatPill(text = "C ${formatMacro(carbs)}g")
             OFStatPill(text = "F ${formatMacro(fat)}g")
         }
-        OFMetricRow(label = "Protein", value = "${formatMacro(protein)} g")
-        OFMetricRow(label = "Carbs", value = "${formatMacro(carbs)} g")
-        OFMetricRow(label = "Fat", value = "${formatMacro(fat)} g")
-        if (goal != null) {
-            if (goal.caloriesKcalTarget > 0.0) {
-                Spacer(modifier = Modifier.height(Dimens.s))
-                GoalProgressRow(
-                    label = "Calories",
-                    consumed = calories,
-                    target = goal.caloriesKcalTarget,
-                    unit = "kcal",
-                )
-            }
-            if (goal.proteinGTarget > 0.0) {
-                Spacer(modifier = Modifier.height(Dimens.s))
-                GoalProgressRow(
-                    label = "Protein",
-                    consumed = protein,
-                    target = goal.proteinGTarget,
-                    unit = "g",
-                )
-            }
-            if (goal.carbsGTarget > 0.0) {
-                Spacer(modifier = Modifier.height(Dimens.s))
-                GoalProgressRow(
-                    label = "Carbs",
-                    consumed = carbs,
-                    target = goal.carbsGTarget,
-                    unit = "g",
-                )
-            }
-            if (goal.fatGTarget > 0.0) {
-                Spacer(modifier = Modifier.height(Dimens.s))
-                GoalProgressRow(
-                    label = "Fat",
-                    consumed = fat,
-                    target = goal.fatGTarget,
-                    unit = "g",
-                )
+        AnimatedVisibility(visible = isDetailsExpanded) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .testTag("home_totals_details_content"),
+                verticalArrangement = Arrangement.spacedBy(Dimens.s),
+            ) {
+                OFMetricRow(label = "Protein", value = "${formatMacro(protein)} g")
+                OFMetricRow(label = "Carbs", value = "${formatMacro(carbs)} g")
+                OFMetricRow(label = "Fat", value = "${formatMacro(fat)} g")
+                if (goal != null) {
+                    if (goal.caloriesKcalTarget > 0.0) {
+                        GoalProgressRow(
+                            label = "Calories",
+                            consumed = calories,
+                            target = goal.caloriesKcalTarget,
+                            unit = "kcal",
+                        )
+                    }
+                    if (goal.proteinGTarget > 0.0) {
+                        GoalProgressRow(
+                            label = "Protein",
+                            consumed = protein,
+                            target = goal.proteinGTarget,
+                            unit = "g",
+                        )
+                    }
+                    if (goal.carbsGTarget > 0.0) {
+                        GoalProgressRow(
+                            label = "Carbs",
+                            consumed = carbs,
+                            target = goal.carbsGTarget,
+                            unit = "g",
+                        )
+                    }
+                    if (goal.fatGTarget > 0.0) {
+                        GoalProgressRow(
+                            label = "Fat",
+                            consumed = fat,
+                            target = goal.fatGTarget,
+                            unit = "g",
+                        )
+                    }
+                }
             }
         }
     }
@@ -328,6 +350,7 @@ private fun MealSection(
         OFSectionHeader(
             title = mealSection.mealType.displayName(),
             subtitle = "${formatCalories(mealSection.totals.caloriesKcal)} kcal",
+            modifier = Modifier.semantics { heading() },
         )
         Spacer(modifier = Modifier.height(Dimens.s))
         if (mealSection.entries.isEmpty()) {

@@ -80,6 +80,7 @@ fun SettingsScreen(
     val context = LocalContext.current
     val snackbarHostState = remember { SnackbarHostState() }
     var showGoalsDialog by rememberSaveable { mutableStateOf(false) }
+    var isProviderSetupDetailsExpanded by rememberSaveable { mutableStateOf(false) }
     var isDiagnosticsExpanded by rememberSaveable { mutableStateOf(false) }
 
     LaunchedEffect(uiState.exportState) {
@@ -177,6 +178,13 @@ fun SettingsScreen(
                 .verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.spacedBy(Dimens.m),
         ) {
+            OFSectionHeader(
+                title = "Privacy and online lookup",
+                modifier = Modifier
+                    .testTag("settings_section_privacy_online")
+                    .semantics { heading() },
+            )
+
             OFCard(modifier = Modifier.fillMaxWidth()) {
                 OFSectionHeader(
                     title = "Privacy",
@@ -217,19 +225,61 @@ fun SettingsScreen(
                         title = "Online provider setup",
                         subtitle = "Local status only. Secrets are never displayed.",
                         modifier = Modifier.semantics { heading() },
+                        trailing = {
+                            TextButton(
+                                modifier = Modifier.testTag("settings_provider_setup_details_toggle"),
+                                onClick = { isProviderSetupDetailsExpanded = !isProviderSetupDetailsExpanded },
+                            ) {
+                                Text(
+                                    if (isProviderSetupDetailsExpanded) {
+                                        "Hide details"
+                                    } else {
+                                        "Show details"
+                                    },
+                                )
+                            }
+                        },
                     )
                     onlineProviderSetup.forEach { provider ->
                         val setupState = providerSetupState(provider)
                         OFRow(
                             title = provider.displayName,
-                            subtitle = "$setupState · ${provider.statusReason}",
-                            contentDescription = "${provider.displayName}. $setupState. ${provider.statusReason}",
+                            subtitle = setupState,
+                            contentDescription = "${provider.displayName}. $setupState.",
                             testTag = "settings_online_provider_setup_row_${provider.key}",
                         )
                     }
+
+                    AnimatedVisibility(
+                        visible = isProviderSetupDetailsExpanded,
+                        enter = fadeIn(),
+                        exit = fadeOut(),
+                    ) {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .testTag("settings_provider_setup_details_content"),
+                            verticalArrangement = Arrangement.spacedBy(Dimens.xs),
+                        ) {
+                            onlineProviderSetup.forEach { provider ->
+                                Text(
+                                    text = "${provider.displayName}: ${provider.statusReason}",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                            }
+                        }
+                    }
                 }
             }
+
             if (uiState.showDebugProToggle) {
+                OFSectionHeader(
+                    title = "Pro and diagnostics",
+                    modifier = Modifier
+                        .testTag("settings_section_pro_debug")
+                        .semantics { heading() },
+                )
                 OFCard(modifier = Modifier.fillMaxWidth()) {
                     OFSectionHeader(
                         title = "Developer",
@@ -310,6 +360,14 @@ fun SettingsScreen(
                     }
                 }
             }
+
+            OFSectionHeader(
+                title = "Goals and export",
+                modifier = Modifier
+                    .testTag("settings_section_goals_export")
+                    .semantics { heading() },
+            )
+
             OFCard(modifier = Modifier.fillMaxWidth()) {
                 OFSectionHeader(
                     title = "Goals",

@@ -55,10 +55,10 @@ import com.openfuel.app.domain.service.FoodCatalogProviderDescriptor
 import com.openfuel.app.domain.model.DailyGoal
 import com.openfuel.app.domain.util.GoalValidation
 import com.openfuel.app.export.ExportFormat
-import com.openfuel.app.ui.components.OFCard
+import com.openfuel.app.ui.components.StandardCard
 import com.openfuel.app.ui.components.OFPrimaryButton
 import com.openfuel.app.ui.components.OFRow
-import com.openfuel.app.ui.components.OFSectionHeader
+import com.openfuel.app.ui.components.SectionHeader
 import com.openfuel.app.ui.components.OFSecondaryButton
 import com.openfuel.app.ui.components.ProPaywallDialog
 import com.openfuel.app.ui.theme.Dimens
@@ -178,15 +178,15 @@ fun SettingsScreen(
                 .verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.spacedBy(Dimens.m),
         ) {
-            OFSectionHeader(
+            SectionHeader(
                 title = "Privacy and online lookup",
                 modifier = Modifier
                     .testTag("settings_section_privacy_online")
                     .semantics { heading() },
             )
 
-            OFCard(modifier = Modifier.fillMaxWidth()) {
-                OFSectionHeader(
+            StandardCard(modifier = Modifier.fillMaxWidth()) {
+                SectionHeader(
                     title = "Privacy",
                     subtitle = "Your logs stay on device. Online lookup is optional.",
                     modifier = Modifier.semantics { heading() },
@@ -216,12 +216,12 @@ fun SettingsScreen(
                 provider.key == "static_sample" || provider.key.endsWith("_stub")
             }
             if (onlineProviderSetup.isNotEmpty()) {
-                OFCard(
+                StandardCard(
                     modifier = Modifier
                         .fillMaxWidth()
                         .testTag("settings_online_provider_setup_section"),
                 ) {
-                    OFSectionHeader(
+                    SectionHeader(
                         title = "Online provider setup",
                         subtitle = "Local status only. Secrets are never displayed.",
                         modifier = Modifier.semantics { heading() },
@@ -274,14 +274,14 @@ fun SettingsScreen(
             }
 
             if (uiState.showDebugProToggle) {
-                OFSectionHeader(
+                SectionHeader(
                     title = "Pro and diagnostics",
                     modifier = Modifier
                         .testTag("settings_section_pro_debug")
                         .semantics { heading() },
                 )
-                OFCard(modifier = Modifier.fillMaxWidth()) {
-                    OFSectionHeader(
+                StandardCard(modifier = Modifier.fillMaxWidth()) {
+                    SectionHeader(
                         title = "Developer",
                         subtitle = "Debug-only controls and local diagnostics.",
                         trailing = {
@@ -319,7 +319,7 @@ fun SettingsScreen(
                             modifier = Modifier.fillMaxWidth(),
                             verticalArrangement = Arrangement.spacedBy(Dimens.s),
                         ) {
-                            OFSectionHeader(
+                            SectionHeader(
                                 title = "Provider diagnostics",
                                 subtitle = "Local-only execution and capability metadata.",
                             )
@@ -335,7 +335,7 @@ fun SettingsScreen(
                             }
                             val lastExecution = uiState.lastProviderExecution
                             if (lastExecution != null) {
-                                OFSectionHeader(title = "Last execution")
+                                SectionHeader(title = "Last execution")
                                 Text(
                                     text = "Elapsed: ${lastExecution.report.overallElapsedMs} ms",
                                     style = MaterialTheme.typography.bodySmall,
@@ -361,15 +361,15 @@ fun SettingsScreen(
                 }
             }
 
-            OFSectionHeader(
+            SectionHeader(
                 title = "Goals and export",
                 modifier = Modifier
                     .testTag("settings_section_goals_export")
                     .semantics { heading() },
             )
 
-            OFCard(modifier = Modifier.fillMaxWidth()) {
-                OFSectionHeader(
+            StandardCard(modifier = Modifier.fillMaxWidth()) {
+                SectionHeader(
                     title = "Goals",
                     subtitle = "Optional targets stored locally on this device and applied to all days.",
                 )
@@ -380,8 +380,8 @@ fun SettingsScreen(
                 )
             }
 
-            OFCard(modifier = Modifier.fillMaxWidth()) {
-                OFSectionHeader(
+            StandardCard(modifier = Modifier.fillMaxWidth()) {
+                SectionHeader(
                     title = "Export",
                     subtitle = "Export all data to a JSON file you can store or share.",
                 )
@@ -418,8 +418,8 @@ fun SettingsScreen(
                 }
             }
 
-            OFCard(modifier = Modifier.fillMaxWidth()) {
-                OFSectionHeader(
+            StandardCard(modifier = Modifier.fillMaxWidth()) {
+                SectionHeader(
                     title = "Advanced Export (Pro)",
                 )
                 if (uiState.isPro) {

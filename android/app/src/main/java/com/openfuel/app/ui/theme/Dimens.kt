@@ -5,14 +5,14 @@ import com.openfuel.app.ui.design.OFRadius
 import com.openfuel.app.ui.design.OFSpacing
 
 object Dimens {
-    val xxs = 2.dp
-    val xs = OFSpacing.x4
-    val s = OFSpacing.x8
+    val xxs = OFSpacing.xxs
+    val xs = OFSpacing.xs
+    val s = OFSpacing.sm
     val sm = OFSpacing.x12
-    val m = OFSpacing.x16
-    val l = OFSpacing.x24
-    val xl = OFSpacing.x32
-    val xxl = 40.dp
+    val m = OFSpacing.md
+    val l = OFSpacing.lg
+    val xl = OFSpacing.xl
+    val xxl = OFSpacing.xxl
 
     val cardRadius = OFRadius.card
     val sectionRadius = OFRadius.control

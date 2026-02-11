@@ -1,6 +1,7 @@
 package com.openfuel.app.ui.screens
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -19,12 +20,8 @@ import androidx.compose.material.icons.automirrored.rounded.ArrowForward
 import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.Divider
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExtendedFloatingActionButton
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
@@ -57,11 +54,13 @@ import com.openfuel.app.domain.model.MealType
 import com.openfuel.app.domain.model.displayName
 import com.openfuel.app.domain.model.shortLabel
 import com.openfuel.app.domain.util.EntryValidation
-import com.openfuel.app.ui.components.OFCard
-import com.openfuel.app.ui.components.OFEmptyState
+import com.openfuel.app.ui.components.EmptyState
+import com.openfuel.app.ui.components.MetricPill
+import com.openfuel.app.ui.components.PillKind
 import com.openfuel.app.ui.components.OFMetricRow
-import com.openfuel.app.ui.components.OFSectionHeader
-import com.openfuel.app.ui.components.OFStatPill
+import com.openfuel.app.ui.components.OFRow
+import com.openfuel.app.ui.components.SectionHeader
+import com.openfuel.app.ui.components.StandardCard
 import com.openfuel.app.ui.components.MealTypeDropdown
 import com.openfuel.app.ui.components.UnitDropdown
 import com.openfuel.app.ui.theme.Dimens
@@ -200,6 +199,7 @@ fun HomeScreen(
             }
             items(uiState.meals, key = { it.mealType.name }) { meal ->
                 MealSection(
+                    modifier = Modifier.animateContentSize(),
                     mealSection = meal,
                     onEntryClick = onOpenFoodDetail,
                     onEditEntry = { editEntry = it },
@@ -215,7 +215,7 @@ fun HomeScreen(
 
 @Composable
 private fun EmptyDayState() {
-    OFEmptyState(
+    EmptyState(
         title = "No meals logged yet",
         body = "Tap Add food to start logging this day.",
         modifier = Modifier.fillMaxWidth(),
@@ -233,8 +233,8 @@ private fun TotalsCard(
     isDetailsExpanded: Boolean,
     onToggleDetails: () -> Unit,
 ) {
-    OFCard(modifier = Modifier.fillMaxWidth()) {
-        OFSectionHeader(
+    StandardCard(modifier = Modifier.fillMaxWidth()) {
+        SectionHeader(
             title = "Daily totals",
             subtitle = "Clear progress at a glance.",
             modifier = Modifier.semantics { heading() },
@@ -249,13 +249,13 @@ private fun TotalsCard(
         )
         Text(
             text = "${formatCalories(calories)} kcal",
-            style = MaterialTheme.typography.headlineMedium,
+            style = MaterialTheme.typography.displaySmall,
             fontWeight = FontWeight.SemiBold,
         )
         Row(horizontalArrangement = Arrangement.spacedBy(Dimens.s)) {
-            OFStatPill(text = "P ${formatMacro(protein)}g")
-            OFStatPill(text = "C ${formatMacro(carbs)}g")
-            OFStatPill(text = "F ${formatMacro(fat)}g")
+            MetricPill(text = "Protein ${formatMacro(protein)}g", kind = PillKind.DEFAULT)
+            MetricPill(text = "Carbs ${formatMacro(carbs)}g", kind = PillKind.DEFAULT)
+            MetricPill(text = "Fat ${formatMacro(fat)}g", kind = PillKind.DEFAULT)
         }
         AnimatedVisibility(visible = isDetailsExpanded) {
             Column(
@@ -341,13 +341,14 @@ private fun GoalProgressRow(
 
 @Composable
 private fun MealSection(
+    modifier: Modifier = Modifier,
     mealSection: MealSectionUi,
     onEntryClick: (String) -> Unit,
     onEditEntry: (MealEntryUi) -> Unit,
     onDeleteEntry: (MealEntryUi) -> Unit,
 ) {
-    Column {
-        OFSectionHeader(
+    Column(modifier = modifier) {
+        SectionHeader(
             title = mealSection.mealType.displayName(),
             subtitle = "${formatCalories(mealSection.totals.caloriesKcal)} kcal",
             modifier = Modifier.semantics { heading() },
@@ -368,7 +369,7 @@ private fun MealSection(
                     onDelete = { onDeleteEntry(entry) },
                 )
                 if (index < mealSection.entries.lastIndex) {
-                    HorizontalDivider(modifier = Modifier.padding(vertical = Dimens.s))
+                    Spacer(modifier = Modifier.height(Dimens.s))
                 }
             }
         }
@@ -382,30 +383,33 @@ private fun MealEntryRow(
     onEdit: () -> Unit,
     onDelete: () -> Unit,
 ) {
-    Row(
+    StandardCard(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable(onClick = onClick)
-            .padding(vertical = Dimens.s),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically,
+            .clickable(onClick = onClick),
+        contentPadding = androidx.compose.foundation.layout.PaddingValues(
+            horizontal = Dimens.m,
+            vertical = Dimens.sm,
+        ),
     ) {
-        Column(modifier = Modifier.weight(1f)) {
-            Text(text = entry.name, style = MaterialTheme.typography.bodyLarge)
-            OFStatPill(text = "${formatQuantity(entry.quantity)} ${entry.unit.shortLabel()}")
-            Row(horizontalArrangement = Arrangement.spacedBy(Dimens.s)) {
-                TextButton(onClick = onEdit) {
-                    Text("Edit")
-                }
-                TextButton(onClick = onDelete) {
-                    Text("Delete")
-                }
+        OFRow(
+            title = entry.name,
+            subtitle = "${formatQuantity(entry.quantity)} ${entry.unit.shortLabel()}",
+            trailing = {
+                Text(
+                    text = "${formatCalories(entry.caloriesKcal)} kcal",
+                    style = MaterialTheme.typography.bodyMedium,
+                )
+            },
+        )
+        Row(horizontalArrangement = Arrangement.spacedBy(Dimens.s)) {
+            TextButton(onClick = onEdit) {
+                Text("Edit")
+            }
+            TextButton(onClick = onDelete) {
+                Text("Delete")
             }
         }
-        Text(
-            text = "${formatCalories(entry.caloriesKcal)} kcal",
-            style = MaterialTheme.typography.bodyMedium,
-        )
     }
 }
 

@@ -5,6 +5,7 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -18,6 +19,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.rounded.Mic
+import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
@@ -77,12 +79,12 @@ import com.openfuel.app.domain.voice.VoiceTranscribeResult
 import com.openfuel.app.domain.voice.VoiceTranscriber
 import com.openfuel.app.domain.voice.messageOrNull
 import com.openfuel.app.ui.components.MealTypeDropdown
-import com.openfuel.app.ui.components.OFCard
+import com.openfuel.app.ui.components.StandardCard
 import com.openfuel.app.ui.components.OFEmptyState
 import com.openfuel.app.ui.components.OFPill
 import com.openfuel.app.ui.components.OFPrimaryButton
 import com.openfuel.app.ui.components.OFRow
-import com.openfuel.app.ui.components.OFSectionHeader
+import com.openfuel.app.ui.components.SectionHeader
 import com.openfuel.app.ui.components.OFSecondaryButton
 import com.openfuel.app.ui.components.UnitDropdown
 import com.openfuel.app.ui.theme.Dimens
@@ -179,7 +181,7 @@ fun AddFoodScreen(
             val queryBlank = searchInput.isBlank()
             if (queryBlank) {
                 item {
-                    OFSectionHeader(
+                    SectionHeader(
                         title = "Recent logs",
                         subtitle = "Fastest way to repeat your usual foods.",
                     )
@@ -211,7 +213,7 @@ fun AddFoodScreen(
                 }
 
                 item {
-                    OFSectionHeader(
+                    SectionHeader(
                         title = "Favorites",
                         subtitle = "Pin foods you log often.",
                     )
@@ -245,7 +247,7 @@ fun AddFoodScreen(
                 val resultSections = buildUnifiedSearchSections(uiState.sourceFilter)
                 resultSections.forEach { section ->
                     item {
-                        OFSectionHeader(
+                        SectionHeader(
                             title = section.title,
                             subtitle = section.subtitle,
                             modifier = Modifier.testTag(section.headerTestTag),
@@ -282,12 +284,12 @@ fun AddFoodScreen(
 
                         UnifiedSearchSectionType.ONLINE -> {
                             item {
-                                OFCard(
+                                StandardCard(
                                     modifier = Modifier
                                         .fillMaxWidth()
                                         .testTag("add_food_unified_online_section_summary"),
                                 ) {
-                                    OFSectionHeader(
+                                    SectionHeader(
                                         title = "Online sources",
                                         subtitle = "Runs only after explicit online actions.",
                                         modifier = Modifier.semantics { heading() },
@@ -377,7 +379,7 @@ fun AddFoodScreen(
                                         verticalArrangement = Arrangement.spacedBy(Dimens.s),
                                     ) {
                                         if (uiState.onlineProviderRuns.isNotEmpty()) {
-                                            OFCard(
+                                            StandardCard(
                                                 modifier = Modifier
                                                     .fillMaxWidth()
                                                     .testTag("add_food_unified_online_sources"),
@@ -447,12 +449,12 @@ fun AddFoodScreen(
                                 uiState.addFlowCompletionMs != null
                             if (BuildConfig.DEBUG && hasDebugDiagnostics) {
                                 item {
-                                    OFCard(
+                                    StandardCard(
                                         modifier = Modifier
                                             .fillMaxWidth()
                                             .testTag("add_food_unified_provider_debug"),
                                     ) {
-                                        OFSectionHeader(
+                                        SectionHeader(
                                             title = "Provider diagnostics",
                                             subtitle = "Debug-only local execution details.",
                                             trailing = {
@@ -610,8 +612,13 @@ private fun UnifiedSearchControls(
     onRefreshOnline: () -> Unit,
 ) {
     val focusManager = LocalFocusManager.current
-    OFCard {
-        OFSectionHeader(
+    StandardCard(
+        contentPadding = PaddingValues(
+            horizontal = Dimens.l,
+            vertical = Dimens.m,
+        ),
+    ) {
+        SectionHeader(
             title = "Local search",
             subtitle = "Search foods already saved on this device.",
             modifier = Modifier.semantics { heading() },
@@ -620,6 +627,13 @@ private fun UnifiedSearchControls(
             value = query,
             onValueChange = onQueryChange,
             label = { Text("Search foods") },
+            leadingIcon = {
+                Icon(
+                    imageVector = Icons.Rounded.Search,
+                    contentDescription = null,
+                )
+            },
+            singleLine = true,
             keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
             keyboardActions = KeyboardActions(
                 onDone = { focusManager.clearFocus() },
@@ -922,8 +936,8 @@ private fun QuickActionsCard(
     onOpenQuickAdd: () -> Unit,
     onScanBarcode: () -> Unit,
 ) {
-    OFCard {
-        OFSectionHeader(
+    StandardCard {
+        SectionHeader(
             title = "Quick actions",
             subtitle = "Scan or launch quick add with explicit actions.",
             modifier = Modifier.semantics { heading() },
@@ -1131,7 +1145,7 @@ private fun SearchResultFoodRow(
     onOpenDetail: () -> Unit,
 ) {
     var selectedMeal by remember { mutableStateOf(MealType.BREAKFAST) }
-    OFCard(modifier = Modifier.fillMaxWidth()) {
+    StandardCard(modifier = Modifier.fillMaxWidth()) {
         Column(
             modifier = Modifier.fillMaxWidth(),
             verticalArrangement = Arrangement.spacedBy(Dimens.sm),
@@ -1179,7 +1193,7 @@ private fun OnlineResultRow(
     modifier: Modifier = Modifier,
 ) {
     val trustSignals = deriveOnlineCandidateTrustSignals(food)
-    OFCard(modifier = modifier.fillMaxWidth()) {
+    StandardCard(modifier = modifier.fillMaxWidth()) {
         Column(
             modifier = Modifier.fillMaxWidth(),
             verticalArrangement = Arrangement.spacedBy(Dimens.sm),

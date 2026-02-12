@@ -6,6 +6,7 @@ import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -52,5 +53,26 @@ class TodayScreenSmokeTest {
         composeRule.onNodeWithTag("home_add_food_fab").assertIsDisplayed().performClick()
         composeRule.waitForIdle()
         composeRule.onNodeWithTag("screen_add_food").assertIsDisplayed()
+    }
+
+    @Test
+    fun today_hasSinglePrimaryAddFoodCta_andSecondaryAffordancesAreLinks() {
+        composeRule.onNodeWithTag("screen_today").assertIsDisplayed()
+        composeRule.onAllNodesWithTag("home_add_food_fab").assertCountEquals(1)
+        composeRule.onAllNodesWithTag("home_primary_log_action").assertCountEquals(0)
+        composeRule.onAllNodesWithTag("home_fast_log_reminder_action").assertCountEquals(0)
+
+        val emptyStateNodes = composeRule.onAllNodesWithTag("home_empty_day_state").fetchSemanticsNodes()
+        if (emptyStateNodes.isNotEmpty()) {
+            composeRule.onNodeWithTag("home_empty_day_add_food_link").assertIsDisplayed()
+        }
+
+        val reminderNodes = composeRule.onAllNodesWithTag("home_fast_log_reminder_card").fetchSemanticsNodes()
+        if (reminderNodes.isNotEmpty()) {
+            composeRule.onNodeWithTag("home_fast_log_reminder_open_link").assertIsDisplayed()
+            composeRule
+                .onNodeWithText("No meals logged today yet. Add food when you are ready.")
+                .assertIsDisplayed()
+        }
     }
 }

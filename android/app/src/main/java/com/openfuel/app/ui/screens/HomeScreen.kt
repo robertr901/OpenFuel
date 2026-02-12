@@ -88,6 +88,7 @@ fun HomeScreen(
     viewModel: HomeViewModel,
     onAddFood: () -> Unit,
     onOpenSettings: () -> Unit,
+    onOpenWeeklyReview: () -> Unit,
     onOpenFoodDetail: (String) -> Unit,
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -239,6 +240,11 @@ fun HomeScreen(
                     onToggleDetails = { isTotalsDetailsExpanded = !isTotalsDetailsExpanded },
                 )
             }
+            if (uiState.showWeeklyReviewEntry) {
+                item {
+                    WeeklyReviewEntryCard(onOpenWeeklyReview = onOpenWeeklyReview)
+                }
+            }
             if (mealsWithEntries.isEmpty()) {
                 item {
                     EmptyDayState(onAddFood = onAddFood)
@@ -270,6 +276,29 @@ fun HomeScreen(
                 Spacer(modifier = Modifier.height(Dimens.xl))
             }
         }
+    }
+}
+
+@Composable
+private fun WeeklyReviewEntryCard(
+    onOpenWeeklyReview: () -> Unit,
+) {
+    StandardCard(
+        modifier = Modifier
+            .fillMaxWidth()
+            .testTag("home_weekly_review_entry_card"),
+    ) {
+        SectionHeader(
+            title = "Weekly review",
+            subtitle = "Review your last 7 days in under 30 seconds.",
+            modifier = Modifier.semantics { heading() },
+        )
+        OFPrimaryButton(
+            text = "Open weekly review",
+            onClick = onOpenWeeklyReview,
+            modifier = Modifier.fillMaxWidth(),
+            testTag = "home_open_weekly_review_button",
+        )
     }
 }
 

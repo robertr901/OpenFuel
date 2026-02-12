@@ -7,8 +7,11 @@ import com.openfuel.app.domain.model.EntitlementActionResult
 import com.openfuel.app.domain.model.EntitlementSource
 import com.openfuel.app.domain.model.EntitlementState
 import com.openfuel.app.domain.model.GoalProfile
+import com.openfuel.app.domain.model.FoodItem
+import com.openfuel.app.domain.model.FoodUnit
 import com.openfuel.app.domain.model.MealEntry
 import com.openfuel.app.domain.model.MealEntryWithFood
+import com.openfuel.app.domain.model.MealType
 import com.openfuel.app.domain.repository.LogRepository
 import com.openfuel.app.domain.repository.SettingsRepository
 import com.openfuel.app.domain.service.EntitlementService
@@ -156,6 +159,33 @@ class InsightsViewModelTest {
         assertEquals(setOf(DietaryOverlay.LOW_FODMAP), viewModel.uiState.value.goalProfileOverlays)
         collectJob.cancel()
     }
+
+    @Test
+    fun weeklyReviewEntry_visibleWhenLast7DaysHaveLogs_andNotDismissed() = runTest {
+        val viewModel = InsightsViewModel(
+            entitlementService = FakeEntitlementService(
+                EntitlementState(
+                    isPro = true,
+                    source = EntitlementSource.DEBUG_OVERRIDE,
+                    canToggleDebugOverride = true,
+                ),
+            ),
+            logRepository = FakeInsightsLogRepository(
+                entries = listOf(
+                    sampleInsightEntry(day = "2026-02-11"),
+                ),
+            ),
+            settingsRepository = FakeInsightsSettingsRepository(),
+            paywallPromptPolicy = PaywallPromptPolicy(),
+            zoneId = ZoneId.of("UTC"),
+        )
+        val collectJob = launch { viewModel.uiState.collect { } }
+
+        advanceUntilIdle()
+
+        assertTrue(viewModel.uiState.value.showWeeklyReviewEntry)
+        collectJob.cancel()
+    }
 }
 
 private class FakeEntitlementService(
@@ -186,7 +216,9 @@ private class FakeEntitlementService(
     }
 }
 
-private class FakeInsightsLogRepository : LogRepository {
+private class FakeInsightsLogRepository(
+    private val entries: List<MealEntryWithFood> = emptyList(),
+) : LogRepository {
     override suspend fun logMealEntry(entry: MealEntry) = Unit
 
     override suspend fun updateMealEntry(entry: MealEntry) = Unit
@@ -206,7 +238,7 @@ private class FakeInsightsLogRepository : LogRepository {
         endDateInclusive: LocalDate,
         zoneId: ZoneId,
     ): Flow<List<MealEntryWithFood>> {
-        return flowOf(emptyList())
+        return flowOf(entries)
     }
 }
 
@@ -218,6 +250,7 @@ private class FakeInsightsSettingsRepository : SettingsRepository {
     override val goalProfileOverlays: Flow<Set<DietaryOverlay>> = overlaysFlow
     override val goalProfileOnboardingCompleted: Flow<Boolean> = flowOf(false)
     override val goalsCustomised: Flow<Boolean> = flowOf(false)
+    override val weeklyReviewDismissedWeekStartEpochDay: Flow<Long?> = flowOf(null)
     override val fastLogReminderEnabled: Flow<Boolean> = flowOf(true)
     override val fastLogReminderWindowStartHour: Flow<Int> = flowOf(7)
     override val fastLogReminderWindowEndHour: Flow<Int> = flowOf(21)
@@ -234,6 +267,7 @@ private class FakeInsightsSettingsRepository : SettingsRepository {
     override suspend fun setGoalProfileOverlays(overlays: Set<DietaryOverlay>) = Unit
     override suspend fun setGoalProfileOnboardingCompleted(completed: Boolean) = Unit
     override suspend fun setGoalsCustomised(customised: Boolean) = Unit
+    override suspend fun setWeeklyReviewDismissedWeekStartEpochDay(epochDay: Long?) = Unit
     override suspend fun setFastLogReminderEnabled(enabled: Boolean) = Unit
     override suspend fun setFastLogReminderWindow(startHour: Int, endHour: Int) = Unit
     override suspend fun setFastLogQuietHoursEnabled(enabled: Boolean) = Unit
@@ -246,4 +280,30 @@ private class FakeInsightsSettingsRepository : SettingsRepository {
         goalProfileFlow.value = profile
         overlaysFlow.value = overlays
     }
+}
+
+private fun sampleInsightEntry(day: String): MealEntryWithFood {
+    val zoneId = ZoneId.of("UTC")
+    val date = LocalDate.parse(day)
+    val timestamp = date.atStartOfDay(zoneId).plusHours(12).toInstant()
+    return MealEntryWithFood(
+        entry = MealEntry(
+            id = "entry-$day",
+            timestamp = timestamp,
+            mealType = MealType.DINNER,
+            foodItemId = "food-$day",
+            quantity = 1.0,
+            unit = FoodUnit.SERVING,
+        ),
+        food = FoodItem(
+            id = "food-$day",
+            name = "Food $day",
+            brand = null,
+            caloriesKcal = 500.0,
+            proteinG = 30.0,
+            carbsG = 50.0,
+            fatG = 20.0,
+            createdAt = timestamp,
+        ),
+    )
 }

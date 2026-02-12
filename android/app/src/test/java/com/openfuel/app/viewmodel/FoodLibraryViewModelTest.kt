@@ -66,7 +66,12 @@ class FoodLibraryViewModelTest {
     fun quickLog_logsMealEntryWithDefaultServing() = runTest {
         val repository = FakeFoodRepository()
         val logRepository = FakeLibraryLogRepository()
-        val viewModel = FoodLibraryViewModel(repository, logRepository)
+        val fixedInstant = Instant.parse("2026-02-11T09:30:00Z")
+        val viewModel = FoodLibraryViewModel(
+            foodRepository = repository,
+            logRepository = logRepository,
+            nowInstant = { fixedInstant },
+        )
         val collectJob = launch { viewModel.uiState.collect { } }
 
         viewModel.logFood(foodId = "food-1", mealType = MealType.LUNCH)
@@ -75,6 +80,7 @@ class FoodLibraryViewModelTest {
         assertEquals(1, logRepository.entries.size)
         assertEquals("food-1", logRepository.entries.first().foodItemId)
         assertEquals(MealType.LUNCH, logRepository.entries.first().mealType)
+        assertEquals(fixedInstant, logRepository.entries.first().timestamp)
         assertEquals("Food logged.", viewModel.uiState.value.message)
         collectJob.cancel()
     }

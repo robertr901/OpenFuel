@@ -18,6 +18,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
+import org.junit.Assert.fail
 import org.junit.Test
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -65,14 +66,21 @@ class LogRepositoryImplTest {
     }
 
     @Test
-    fun logMealEntry_skipsInsert_whenFoodReferenceMissing() = runTest {
+    fun logMealEntry_throws_whenFoodReferenceMissing() = runTest {
         val mealEntryDao = FakeMealEntryDao()
         val foodDao = LogRepositoryFakeFoodDao(foodIds = emptySet())
         val repository = LogRepositoryImpl(mealEntryDao, foodDao)
 
-        repository.logMealEntry(sampleMealEntry(foodItemId = "missing-food"))
+        val error = try {
+            repository.logMealEntry(sampleMealEntry(foodItemId = "missing-food"))
+            fail("Expected IllegalStateException when food reference is missing.")
+            return@runTest
+        } catch (exception: IllegalStateException) {
+            exception
+        }
 
         assertEquals(null, mealEntryDao.lastUpsertedEntry)
+        assertEquals("Could not save meal entry. Food reference not found.", error.message)
     }
 
     @Test

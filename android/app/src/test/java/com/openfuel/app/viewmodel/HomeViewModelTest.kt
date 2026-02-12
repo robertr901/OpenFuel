@@ -176,6 +176,20 @@ class HomeViewModelTest {
     }
 
     @Test
+    fun selectedDate_defaultsToInjectedClockDateWhenSavedStateMissing() = runTest {
+        val viewModel = HomeViewModel(
+            logRepository = FakeLogRepository(),
+            settingsRepository = FakeHomeSettingsRepository(),
+            goalsRepository = FakeGoalsRepository(),
+            savedStateHandle = SavedStateHandle(),
+            zoneId = ZoneId.of("UTC"),
+            clock = Clock.fixed(Instant.parse("2026-02-09T23:15:00Z"), ZoneOffset.UTC),
+        )
+
+        assertEquals(LocalDate.parse("2026-02-09"), viewModel.selectedDate.value)
+    }
+
+    @Test
     fun fastLogReminder_showsForEmptyToday_andDismissesDeterministically() = runTest {
         val settingsRepository = FakeHomeSettingsRepository()
         val viewModel = HomeViewModel(

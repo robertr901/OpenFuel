@@ -7,6 +7,8 @@ import com.openfuel.app.data.remote.UserInitiatedNetworkGuard
 import com.openfuel.app.domain.analytics.AnalyticsService
 import com.openfuel.app.domain.analytics.NoOpAnalyticsService
 import com.openfuel.app.domain.analytics.ProductEventName
+import com.openfuel.app.domain.diagnostics.NoOpPerformanceTraceLogger
+import com.openfuel.app.domain.diagnostics.PerformanceTraceLogger
 import com.openfuel.app.domain.model.FoodItem
 import com.openfuel.app.domain.model.FoodUnit
 import com.openfuel.app.domain.model.MealEntry
@@ -47,6 +49,7 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
@@ -61,10 +64,12 @@ class AddFoodViewModel(
     private val userInitiatedNetworkGuard: UserInitiatedNetworkGuard,
     private val analyticsService: AnalyticsService = NoOpAnalyticsService,
     private val nowEpochMillis: () -> Long = { System.currentTimeMillis() },
+    private val nowInstant: () -> Instant = { Instant.now() },
     private val onlineSearchOrchestrator: OnlineSearchOrchestrator = ProviderExecutorOnlineSearchOrchestrator(
         providerExecutor = providerExecutor,
         providerRegistry = EmptyFoodCatalogProviderRegistry,
     ),
+    private val performanceTraceLogger: PerformanceTraceLogger = NoOpPerformanceTraceLogger,
 ) : ViewModel() {
     private companion object {
         private const val MAX_CALORIES_KCAL = 10_000.0
@@ -120,7 +125,7 @@ class AddFoodViewModel(
             initialValue = true,
         )
 
-    val uiState: StateFlow<AddFoodUiState> = combine(
+    private val baseUiState: StateFlow<AddFoodUiState> = combine(
         unifiedSearchState,
         localSearchSnapshotState,
         favoriteFoodsState,
@@ -135,7 +140,7 @@ class AddFoodViewModel(
             recentFoods = recentFoods,
             onlineEnabled = onlineEnabled,
         )
-    }.combine(transientState) { composed, transient ->
+    }.map { composed ->
         val mergedResults = applySourceFilter(
             results = mergeUnifiedSearchResults(
                 localResults = composed.localResults,
@@ -169,6 +174,18 @@ class AddFoodViewModel(
             onlineErrorMessage = effectiveUnifiedSearch.onlineError,
             localSearchLatencyMs = composed.localSearchLatencyMs,
             localSearchResultCount = composed.localResults.size,
+        )
+    }.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(5_000),
+        initialValue = AddFoodUiState(),
+    )
+
+    val uiState: StateFlow<AddFoodUiState> = combine(
+        baseUiState,
+        transientState,
+    ) { base, transient ->
+        base.copy(
             addFlowCompletionMs = transient.addFlowCompletionMs,
             selectedOnlineFood = transient.selectedOnlineFood,
             message = transient.message,
@@ -178,6 +195,17 @@ class AddFoodViewModel(
         started = SharingStarted.WhileSubscribed(5_000),
         initialValue = AddFoodUiState(),
     )
+
+    init {
+        viewModelScope.launch {
+            localSearchSnapshotState.first { snapshot -> snapshot.latencyMs != null }
+            recordPerformanceTrace(
+                section = "add_food.open",
+                startedAtMs = sessionStartedAtMs,
+                result = "ready",
+            )
+        }
+    }
 
     fun updateSearchQuery(query: String) {
         unifiedSearchState.update { current ->
@@ -212,6 +240,7 @@ class AddFoodViewModel(
     }
 
     private fun executeOnlineSearch(refreshPolicy: ProviderRefreshPolicy) {
+        val startedAtMs = nowEpochMillis()
         if (!onlineLookupEnabledState.value) {
             unifiedSearchState.update { current ->
                 current.copy(
@@ -226,6 +255,11 @@ class AddFoodViewModel(
                     onlineElapsedMs = 0L,
                 )
             }
+            recordPerformanceTrace(
+                section = "add_food.search_online",
+                startedAtMs = startedAtMs,
+                result = "blocked",
+            )
             return
         }
 
@@ -243,6 +277,11 @@ class AddFoodViewModel(
                     onlineElapsedMs = 0L,
                 )
             }
+            recordPerformanceTrace(
+                section = "add_food.search_online",
+                startedAtMs = startedAtMs,
+                result = "invalid_query",
+            )
             return
         }
 
@@ -287,6 +326,11 @@ class AddFoodViewModel(
                         onlineExecutionCount = current.onlineExecutionCount + 1,
                     )
                 }
+                recordPerformanceTrace(
+                    section = "add_food.search_online",
+                    startedAtMs = startedAtMs,
+                    result = "success",
+                )
             } catch (_: Exception) {
                 unifiedSearchState.update { current ->
                     current.copy(
@@ -301,6 +345,11 @@ class AddFoodViewModel(
                         onlineExecutionCount = current.onlineExecutionCount + 1,
                     )
                 }
+                recordPerformanceTrace(
+                    section = "add_food.search_online",
+                    startedAtMs = startedAtMs,
+                    result = "error",
+                )
             }
         }
     }
@@ -314,6 +363,7 @@ class AddFoodViewModel(
     }
 
     fun saveOnlineFood(food: RemoteFoodCandidate) {
+        val startedAtMs = nowEpochMillis()
         viewModelScope.launch {
             try {
                 foodRepository.upsertFood(food.toLocalFoodItem())
@@ -324,10 +374,20 @@ class AddFoodViewModel(
                         message = "Saved to My Foods.",
                     )
                 }
+                recordPerformanceTrace(
+                    section = "add_food.save_online_food",
+                    startedAtMs = startedAtMs,
+                    result = "success",
+                )
             } catch (_: Exception) {
                 transientState.update { current ->
                     current.copy(message = "Could not save food. Please try again.")
                 }
+                recordPerformanceTrace(
+                    section = "add_food.save_online_food",
+                    startedAtMs = startedAtMs,
+                    result = "error",
+                )
             }
         }
     }
@@ -338,11 +398,17 @@ class AddFoodViewModel(
         quantity: Double,
         unit: FoodUnit,
     ) {
+        val startedAtMs = nowEpochMillis()
         trackLoggingStarted(sourceType = "online_saved")
         if (!EntryValidation.isValidQuantity(quantity)) {
             transientState.update { current ->
                 current.copy(message = "Enter a valid quantity greater than 0.")
             }
+            recordPerformanceTrace(
+                section = "add_food.save_and_log_online_food",
+                startedAtMs = startedAtMs,
+                result = "invalid_quantity",
+            )
             return
         }
         viewModelScope.launch {
@@ -352,7 +418,7 @@ class AddFoodViewModel(
                 logRepository.logMealEntry(
                     MealEntry(
                         id = UUID.randomUUID().toString(),
-                        timestamp = Instant.now(),
+                        timestamp = nowInstant(),
                         mealType = mealType,
                         foodItemId = localFood.id,
                         quantity = quantity,
@@ -370,6 +436,11 @@ class AddFoodViewModel(
                     sourceType = "online_saved",
                     result = "success",
                 )
+                recordPerformanceTrace(
+                    section = "add_food.save_and_log_online_food",
+                    startedAtMs = startedAtMs,
+                    result = "success",
+                )
             } catch (_: Exception) {
                 trackLoggingCompleted(
                     sourceType = "online_saved",
@@ -378,6 +449,11 @@ class AddFoodViewModel(
                 transientState.update { current ->
                     current.copy(message = "Could not save and log food. Please try again.")
                 }
+                recordPerformanceTrace(
+                    section = "add_food.save_and_log_online_food",
+                    startedAtMs = startedAtMs,
+                    result = "error",
+                )
             }
         }
     }
@@ -387,24 +463,48 @@ class AddFoodViewModel(
     }
 
     fun logFood(foodId: String, mealType: MealType, quantity: Double, unit: FoodUnit) {
+        val startedAtMs = nowEpochMillis()
         trackLoggingStarted(sourceType = "local_search")
         viewModelScope.launch {
-            val entry = MealEntry(
-                id = UUID.randomUUID().toString(),
-                timestamp = Instant.now(),
-                mealType = mealType,
-                foodItemId = foodId,
-                quantity = quantity,
-                unit = unit,
-            )
-            logRepository.logMealEntry(entry)
-            transientState.update { current ->
-                current.copy(addFlowCompletionMs = elapsedSinceSessionStart())
+            try {
+                val entry = MealEntry(
+                    id = UUID.randomUUID().toString(),
+                    timestamp = nowInstant(),
+                    mealType = mealType,
+                    foodItemId = foodId,
+                    quantity = quantity,
+                    unit = unit,
+                )
+                logRepository.logMealEntry(entry)
+                transientState.update { current ->
+                    current.copy(
+                        addFlowCompletionMs = elapsedSinceSessionStart(),
+                        message = "Food logged.",
+                    )
+                }
+                trackLoggingCompleted(
+                    sourceType = "local_search",
+                    result = "success",
+                )
+                recordPerformanceTrace(
+                    section = "add_food.log_food",
+                    startedAtMs = startedAtMs,
+                    result = "success",
+                )
+            } catch (_: Exception) {
+                transientState.update { current ->
+                    current.copy(message = "Could not log food. Please try again.")
+                }
+                trackLoggingCompleted(
+                    sourceType = "local_search",
+                    result = "error",
+                )
+                recordPerformanceTrace(
+                    section = "add_food.log_food",
+                    startedAtMs = startedAtMs,
+                    result = "error",
+                )
             }
-            trackLoggingCompleted(
-                sourceType = "local_search",
-                result = "success",
-            )
         }
     }
 
@@ -416,39 +516,63 @@ class AddFoodViewModel(
         fatG: Double,
         mealType: MealType,
     ) {
+        val startedAtMs = nowEpochMillis()
         trackLoggingStarted(sourceType = "quick_add")
         viewModelScope.launch {
-            val safeCalories = caloriesKcal.coerceIn(0.0, MAX_CALORIES_KCAL)
-            val safeProtein = proteinG.coerceIn(0.0, MAX_MACRO_GRAMS)
-            val safeCarbs = carbsG.coerceIn(0.0, MAX_MACRO_GRAMS)
-            val safeFat = fatG.coerceIn(0.0, MAX_MACRO_GRAMS)
-            val food = FoodItem(
-                id = UUID.randomUUID().toString(),
-                name = name.ifBlank { "Quick Add" },
-                brand = null,
-                caloriesKcal = safeCalories,
-                proteinG = safeProtein,
-                carbsG = safeCarbs,
-                fatG = safeFat,
-                createdAt = Instant.now(),
-            )
-            foodRepository.upsertFood(food)
-            val entry = MealEntry(
-                id = UUID.randomUUID().toString(),
-                timestamp = Instant.now(),
-                mealType = mealType,
-                foodItemId = food.id,
-                quantity = 1.0,
-                unit = FoodUnit.SERVING,
-            )
-            logRepository.logMealEntry(entry)
-            transientState.update { current ->
-                current.copy(addFlowCompletionMs = elapsedSinceSessionStart())
+            try {
+                val safeCalories = caloriesKcal.coerceIn(0.0, MAX_CALORIES_KCAL)
+                val safeProtein = proteinG.coerceIn(0.0, MAX_MACRO_GRAMS)
+                val safeCarbs = carbsG.coerceIn(0.0, MAX_MACRO_GRAMS)
+                val safeFat = fatG.coerceIn(0.0, MAX_MACRO_GRAMS)
+                val food = FoodItem(
+                    id = UUID.randomUUID().toString(),
+                    name = name.ifBlank { "Quick Add" },
+                    brand = null,
+                    caloriesKcal = safeCalories,
+                    proteinG = safeProtein,
+                    carbsG = safeCarbs,
+                    fatG = safeFat,
+                    createdAt = nowInstant(),
+                )
+                foodRepository.upsertFood(food)
+                val entry = MealEntry(
+                    id = UUID.randomUUID().toString(),
+                    timestamp = nowInstant(),
+                    mealType = mealType,
+                    foodItemId = food.id,
+                    quantity = 1.0,
+                    unit = FoodUnit.SERVING,
+                )
+                logRepository.logMealEntry(entry)
+                transientState.update { current ->
+                    current.copy(
+                        addFlowCompletionMs = elapsedSinceSessionStart(),
+                        message = "Quick add logged.",
+                    )
+                }
+                trackLoggingCompleted(
+                    sourceType = "quick_add",
+                    result = "success",
+                )
+                recordPerformanceTrace(
+                    section = "add_food.quick_add",
+                    startedAtMs = startedAtMs,
+                    result = "success",
+                )
+            } catch (_: Exception) {
+                transientState.update { current ->
+                    current.copy(message = "Could not log quick add. Please try again.")
+                }
+                trackLoggingCompleted(
+                    sourceType = "quick_add",
+                    result = "error",
+                )
+                recordPerformanceTrace(
+                    section = "add_food.quick_add",
+                    startedAtMs = startedAtMs,
+                    result = "error",
+                )
             }
-            trackLoggingCompleted(
-                sourceType = "quick_add",
-                result = "success",
-            )
         }
     }
 
@@ -519,6 +643,18 @@ class AddFoodViewModel(
             latencyMs <= 5_000L -> "1_to_5s"
             else -> "gt_5s"
         }
+    }
+
+    private fun recordPerformanceTrace(
+        section: String,
+        startedAtMs: Long,
+        result: String,
+    ) {
+        performanceTraceLogger.record(
+            section = section,
+            durationMs = (nowEpochMillis() - startedAtMs).coerceAtLeast(0L),
+            result = result,
+        )
     }
 }
 

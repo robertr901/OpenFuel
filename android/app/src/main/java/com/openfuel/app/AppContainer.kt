@@ -41,6 +41,8 @@ import com.openfuel.app.domain.repository.GoalsRepository
 import com.openfuel.app.domain.repository.LogRepository
 import com.openfuel.app.domain.repository.SettingsRepository
 import com.openfuel.app.domain.entitlement.PaywallPromptPolicy
+import com.openfuel.app.domain.diagnostics.LocalDebugPerformanceTraceLogger
+import com.openfuel.app.domain.diagnostics.PerformanceTraceLogger
 import com.openfuel.app.domain.security.SecurityPostureProvider
 import com.openfuel.app.domain.intelligence.IntelligenceService
 import com.openfuel.app.domain.intelligence.RuleBasedIntelligenceService
@@ -100,6 +102,7 @@ class AppContainer(
     }
     val paywallPromptPolicy: PaywallPromptPolicy = PaywallPromptPolicy()
     val analyticsService: AnalyticsService = LocalAnalyticsStore()
+    val performanceTraceLogger: PerformanceTraceLogger = LocalDebugPerformanceTraceLogger()
     val remoteFoodDataSource: RemoteFoodDataSource = OpenFoodFactsRemoteFoodDataSource.create(
         okHttpClient = onlineHttpClient,
         userInitiatedNetworkGuard = userInitiatedNetworkGuard,

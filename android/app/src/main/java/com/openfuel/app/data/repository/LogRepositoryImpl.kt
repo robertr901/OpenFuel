@@ -18,12 +18,12 @@ class LogRepositoryImpl(
     private val foodDao: FoodDao? = null,
 ) : LogRepository {
     override suspend fun logMealEntry(entry: MealEntry) {
-        if (!hasFoodReference(entry.foodItemId)) return
+        ensureFoodReference(entry.foodItemId)
         mealEntryDao.upsertEntry(entry.toEntity())
     }
 
     override suspend fun updateMealEntry(entry: MealEntry) {
-        if (!hasFoodReference(entry.foodItemId)) return
+        ensureFoodReference(entry.foodItemId)
         mealEntryDao.upsertEntry(entry.toEntity())
     }
 
@@ -61,8 +61,11 @@ class LogRepositoryImpl(
             }
     }
 
-    private suspend fun hasFoodReference(foodId: String): Boolean {
-        val dao = foodDao ?: return true
-        return dao.getFoodById(foodId) != null
+    private suspend fun ensureFoodReference(foodId: String) {
+        val dao = foodDao ?: return
+        if (dao.getFoodById(foodId) != null) {
+            return
+        }
+        throw IllegalStateException("Could not save meal entry. Food reference not found.")
     }
 }

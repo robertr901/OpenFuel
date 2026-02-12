@@ -41,11 +41,11 @@ class GoalProfileOnboardingTest {
         composeRule.onNodeWithTag("goal_profile_onboarding_dialog").assertIsDisplayed()
         composeRule.onNodeWithTag("goal_profile_skip_button").performClick()
         composeRule.waitForIdle()
-        composeRule.onAllNodesWithTag("goal_profile_onboarding_dialog").assertCountEquals(0)
+        assertOnboardingDialogHidden()
 
         composeRule.activityRule.scenario.recreate()
         composeRule.waitForIdle()
-        composeRule.onAllNodesWithTag("goal_profile_onboarding_dialog").assertCountEquals(0)
+        assertOnboardingDialogHidden()
     }
 
     @Test
@@ -75,5 +75,14 @@ class GoalProfileOnboardingTest {
         composeRule.onNodeWithTag("tab_today").performClick()
         composeRule.waitForIdle()
         composeRule.onNodeWithTag("home_goal_profile_summary").assertIsDisplayed()
+    }
+
+    private fun assertOnboardingDialogHidden() {
+        composeRule.waitUntil(timeoutMillis = 5_000) {
+            composeRule.onAllNodesWithTag("goal_profile_onboarding_dialog")
+                .fetchSemanticsNodes()
+                .isEmpty()
+        }
+        composeRule.onAllNodesWithTag("goal_profile_onboarding_dialog").assertCountEquals(0)
     }
 }

@@ -56,6 +56,7 @@ class WeeklyReviewViewModelTest {
 
         assertTrue(state.isEligible)
         assertTrue(state.showInsufficientData)
+        assertTrue(state.showReviewAndFixEntries)
         assertNull(state.suggestion)
     }
 
@@ -121,6 +122,7 @@ class WeeklyReviewViewModelTest {
         assertNotNull(note)
         assertTrue(note!!.contains("incomplete nutrition values"))
         assertFalse(state.showInsufficientData)
+        assertTrue(state.showReviewAndFixEntries)
     }
 }
 

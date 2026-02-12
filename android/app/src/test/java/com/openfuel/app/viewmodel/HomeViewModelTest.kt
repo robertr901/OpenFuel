@@ -5,14 +5,16 @@ import com.openfuel.app.MainDispatcherRule
 import com.openfuel.app.domain.analytics.AnalyticsService
 import com.openfuel.app.domain.analytics.ProductEvent
 import com.openfuel.app.domain.analytics.ProductEventName
+import com.openfuel.app.domain.quality.FoodDataQualityLevel
+import com.openfuel.app.domain.quality.FoodDataQualitySignals
 import com.openfuel.app.domain.model.DietaryOverlay
 import com.openfuel.app.domain.model.FoodItem
 import com.openfuel.app.domain.model.FoodUnit
 import com.openfuel.app.domain.model.GoalProfile
+import com.openfuel.app.domain.model.DailyGoal
 import com.openfuel.app.domain.model.MealEntry
 import com.openfuel.app.domain.model.MealEntryWithFood
 import com.openfuel.app.domain.model.MealType
-import com.openfuel.app.domain.model.DailyGoal
 import com.openfuel.app.domain.repository.GoalsRepository
 import com.openfuel.app.domain.repository.LogRepository
 import com.openfuel.app.domain.repository.SettingsRepository
@@ -407,6 +409,27 @@ class HomeViewModelTest {
         collectJob.cancel()
     }
 
+    @Test
+    fun uiState_marksLowConfidenceEntriesAsNeedsReview() = runTest {
+        val viewModel = HomeViewModel(
+            logRepository = FakeLogRepository(entries = listOf(sampleLowConfidenceEntryWithFood())),
+            settingsRepository = FakeHomeSettingsRepository(),
+            goalsRepository = FakeGoalsRepository(),
+            savedStateHandle = SavedStateHandle(),
+            zoneId = ZoneId.of("UTC"),
+        )
+        val collectJob = launch { viewModel.uiState.collect { } }
+
+        advanceUntilIdle()
+        val firstEntry = viewModel.uiState.value.meals
+            .first { it.entries.isNotEmpty() }
+            .entries
+            .first()
+
+        assertTrue(firstEntry.dataQuality.needsReview)
+        collectJob.cancel()
+    }
+
     private fun sampleUiEntry(): MealEntryUi {
         return MealEntryUi(
             id = "entry-1",
@@ -417,6 +440,7 @@ class HomeViewModelTest {
             quantity = 1.0,
             unit = FoodUnit.SERVING,
             caloriesKcal = 100.0,
+            dataQuality = FoodDataQualitySignals(level = FoodDataQualityLevel.COMPLETE),
         )
     }
 
@@ -442,6 +466,29 @@ class HomeViewModelTest {
                 proteinG = 5.0,
                 carbsG = 27.0,
                 fatG = 3.0,
+                createdAt = Instant.parse("2026-02-10T10:00:00Z"),
+            ),
+        )
+    }
+
+    private fun sampleLowConfidenceEntryWithFood(): MealEntryWithFood {
+        return MealEntryWithFood(
+            entry = MealEntry(
+                id = "entry-low-confidence",
+                timestamp = Instant.parse("2026-02-11T08:00:00Z"),
+                mealType = MealType.BREAKFAST,
+                foodItemId = "food-low-confidence",
+                quantity = 1.0,
+                unit = FoodUnit.SERVING,
+            ),
+            food = FoodItem(
+                id = "food-low-confidence",
+                name = "Unknown item",
+                brand = null,
+                caloriesKcal = 0.0,
+                proteinG = 0.0,
+                carbsG = 0.0,
+                fatG = 0.0,
                 createdAt = Instant.parse("2026-02-10T10:00:00Z"),
             ),
         )

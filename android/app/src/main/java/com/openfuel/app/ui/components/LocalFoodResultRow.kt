@@ -4,8 +4,8 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -13,6 +13,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
+import com.openfuel.app.domain.quality.classifyFoodItemQuality
 import com.openfuel.app.domain.model.FoodItem
 import com.openfuel.app.domain.model.MealType
 import com.openfuel.app.ui.theme.Dimens
@@ -30,6 +31,7 @@ fun LocalFoodResultRow(
     testTagPrefix: String? = null,
 ) {
     var selectedMeal by rememberSaveable(food.id) { mutableStateOf(initialMealType) }
+    val qualitySignals = classifyFoodItemQuality(food)
 
     StandardCard(
         modifier = modifier
@@ -49,6 +51,11 @@ fun LocalFoodResultRow(
                 text = "${formatCalories(food.caloriesKcal)} kcal · " +
                     "${formatMacro(food.proteinG)}p ${formatMacro(food.carbsG)}c ${formatMacro(food.fatG)}f",
                 style = instrumentTextStyle(),
+            )
+            FoodTrustCueRow(
+                signals = qualitySignals,
+                onReviewAndFix = if (qualitySignals.needsReview) onOpenPortion else null,
+                testTagPrefix = testTagPrefix,
             )
             MealTypeDropdown(
                 selected = selectedMeal,

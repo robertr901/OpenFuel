@@ -64,6 +64,10 @@ class WeeklyReviewViewModel(
             suggestion = if (isSuggestionDismissedForCurrentWeek) null else suggestion,
             isSuggestionDismissedForCurrentWeek = isSuggestionDismissedForCurrentWeek,
             dataQualityNote = buildDataQualityNote(summary),
+            showReviewAndFixEntries = isEligible && (
+                summary.loggedDays < MINIMUM_LOGGED_DAYS_FOR_ACTION ||
+                    summary.unknownEntryCount > 0
+                ),
         )
     }.stateIn(
         scope = viewModelScope,
@@ -85,6 +89,7 @@ class WeeklyReviewViewModel(
             suggestion = null,
             isSuggestionDismissedForCurrentWeek = false,
             dataQualityNote = null,
+            showReviewAndFixEntries = false,
         ),
     )
 
@@ -125,4 +130,5 @@ data class WeeklyReviewUiState(
     val suggestion: WeeklyReviewSuggestion?,
     val isSuggestionDismissedForCurrentWeek: Boolean,
     val dataQualityNote: String?,
+    val showReviewAndFixEntries: Boolean,
 )

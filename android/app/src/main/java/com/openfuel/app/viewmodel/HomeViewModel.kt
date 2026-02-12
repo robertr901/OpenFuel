@@ -6,6 +6,8 @@ import androidx.lifecycle.viewModelScope
 import com.openfuel.app.domain.analytics.AnalyticsService
 import com.openfuel.app.domain.analytics.NoOpAnalyticsService
 import com.openfuel.app.domain.analytics.ProductEventName
+import com.openfuel.app.domain.quality.FoodDataQualitySignals
+import com.openfuel.app.domain.quality.classifyMealEntryQuality
 import com.openfuel.app.domain.retention.FastLogReminderContext
 import com.openfuel.app.domain.retention.FastLogReminderSettings
 import com.openfuel.app.domain.retention.RetentionPolicy
@@ -392,6 +394,7 @@ class HomeViewModel(
                         quantity = entryWithFood.entry.quantity,
                         unit = entryWithFood.entry.unit,
                         caloriesKcal = macros.caloriesKcal,
+                        dataQuality = classifyMealEntryQuality(entryWithFood),
                     )
                 },
                 totals = mealTotals,
@@ -458,4 +461,5 @@ data class MealEntryUi(
     val quantity: Double,
     val unit: FoodUnit,
     val caloriesKcal: Double,
+    val dataQuality: FoodDataQualitySignals,
 )

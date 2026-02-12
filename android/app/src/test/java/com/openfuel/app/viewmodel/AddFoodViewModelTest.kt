@@ -832,6 +832,7 @@ private class FakeSettingsRepository(
     override val goalProfileOverlays: Flow<Set<DietaryOverlay>> = flowOf(emptySet())
     override val goalProfileOnboardingCompleted: Flow<Boolean> = flowOf(false)
     override val goalsCustomised: Flow<Boolean> = flowOf(false)
+    override val weeklyReviewDismissedWeekStartEpochDay: Flow<Long?> = flowOf(null)
     override val fastLogReminderEnabled: Flow<Boolean> = flowOf(true)
     override val fastLogReminderWindowStartHour: Flow<Int> = flowOf(7)
     override val fastLogReminderWindowEndHour: Flow<Int> = flowOf(21)
@@ -860,6 +861,10 @@ private class FakeSettingsRepository(
     }
 
     override suspend fun setGoalsCustomised(customised: Boolean) {
+        // no-op
+    }
+
+    override suspend fun setWeeklyReviewDismissedWeekStartEpochDay(epochDay: Long?) {
         // no-op
     }
 

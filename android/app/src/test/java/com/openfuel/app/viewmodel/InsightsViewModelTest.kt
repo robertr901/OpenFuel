@@ -218,6 +218,7 @@ private class FakeInsightsSettingsRepository : SettingsRepository {
     override val goalProfileOverlays: Flow<Set<DietaryOverlay>> = overlaysFlow
     override val goalProfileOnboardingCompleted: Flow<Boolean> = flowOf(false)
     override val goalsCustomised: Flow<Boolean> = flowOf(false)
+    override val weeklyReviewDismissedWeekStartEpochDay: Flow<Long?> = flowOf(null)
     override val fastLogReminderEnabled: Flow<Boolean> = flowOf(true)
     override val fastLogReminderWindowStartHour: Flow<Int> = flowOf(7)
     override val fastLogReminderWindowEndHour: Flow<Int> = flowOf(21)
@@ -234,6 +235,7 @@ private class FakeInsightsSettingsRepository : SettingsRepository {
     override suspend fun setGoalProfileOverlays(overlays: Set<DietaryOverlay>) = Unit
     override suspend fun setGoalProfileOnboardingCompleted(completed: Boolean) = Unit
     override suspend fun setGoalsCustomised(customised: Boolean) = Unit
+    override suspend fun setWeeklyReviewDismissedWeekStartEpochDay(epochDay: Long?) = Unit
     override suspend fun setFastLogReminderEnabled(enabled: Boolean) = Unit
     override suspend fun setFastLogReminderWindow(startHour: Int, endHour: Int) = Unit
     override suspend fun setFastLogQuietHoursEnabled(enabled: Boolean) = Unit

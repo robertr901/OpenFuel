@@ -447,6 +447,7 @@ private class FakeHomeSettingsRepository(
     private val goalProfileOverlaysFlow = MutableStateFlow<Set<DietaryOverlay>>(emptySet())
     private val goalProfileOnboardingCompletedFlow = MutableStateFlow(false)
     private val goalsCustomisedFlow = MutableStateFlow(initialGoalsCustomised)
+    private val weeklyReviewDismissedWeekStartEpochDayFlow = MutableStateFlow<Long?>(null)
     private val fastLogReminderEnabledFlow = MutableStateFlow(true)
     private val fastLogReminderWindowStartHourFlow = MutableStateFlow(7)
     private val fastLogReminderWindowEndHourFlow = MutableStateFlow(21)
@@ -471,6 +472,7 @@ private class FakeHomeSettingsRepository(
     override val goalProfileOverlays: Flow<Set<DietaryOverlay>> = goalProfileOverlaysFlow
     override val goalProfileOnboardingCompleted: Flow<Boolean> = goalProfileOnboardingCompletedFlow
     override val goalsCustomised: Flow<Boolean> = goalsCustomisedFlow
+    override val weeklyReviewDismissedWeekStartEpochDay: Flow<Long?> = weeklyReviewDismissedWeekStartEpochDayFlow
     override val fastLogReminderEnabled: Flow<Boolean> = fastLogReminderEnabledFlow
     override val fastLogReminderWindowStartHour: Flow<Int> = fastLogReminderWindowStartHourFlow
     override val fastLogReminderWindowEndHour: Flow<Int> = fastLogReminderWindowEndHourFlow
@@ -500,6 +502,10 @@ private class FakeHomeSettingsRepository(
 
     override suspend fun setGoalsCustomised(customised: Boolean) {
         goalsCustomisedFlow.value = customised
+    }
+
+    override suspend fun setWeeklyReviewDismissedWeekStartEpochDay(epochDay: Long?) {
+        weeklyReviewDismissedWeekStartEpochDayFlow.value = epochDay
     }
 
     override suspend fun setFastLogReminderEnabled(enabled: Boolean) {

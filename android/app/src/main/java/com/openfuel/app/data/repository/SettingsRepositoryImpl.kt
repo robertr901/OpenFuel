@@ -47,6 +47,11 @@ class SettingsRepositoryImpl(
             preferences[SettingsKeys.GOALS_CUSTOMISED] ?: false
         }
 
+    override val weeklyReviewDismissedWeekStartEpochDay: Flow<Long?> = dataStore.data
+        .map { preferences ->
+            preferences[SettingsKeys.WEEKLY_REVIEW_DISMISSED_WEEK_START_EPOCH_DAY]
+        }
+
     override val fastLogReminderEnabled: Flow<Boolean> = dataStore.data
         .map { preferences ->
             preferences[SettingsKeys.FAST_LOG_REMINDER_ENABLED] ?: DEFAULT_FAST_LOG_REMINDER_ENABLED
@@ -124,6 +129,16 @@ class SettingsRepositoryImpl(
     override suspend fun setGoalsCustomised(customised: Boolean) {
         dataStore.edit { preferences ->
             preferences[SettingsKeys.GOALS_CUSTOMISED] = customised
+        }
+    }
+
+    override suspend fun setWeeklyReviewDismissedWeekStartEpochDay(epochDay: Long?) {
+        dataStore.edit { preferences ->
+            if (epochDay == null) {
+                preferences.remove(SettingsKeys.WEEKLY_REVIEW_DISMISSED_WEEK_START_EPOCH_DAY)
+            } else {
+                preferences[SettingsKeys.WEEKLY_REVIEW_DISMISSED_WEEK_START_EPOCH_DAY] = epochDay
+            }
         }
     }
 

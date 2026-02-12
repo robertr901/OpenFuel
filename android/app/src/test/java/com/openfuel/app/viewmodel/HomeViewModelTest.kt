@@ -180,7 +180,7 @@ class HomeViewModelTest {
             logRepository = FakeLogRepository(),
             settingsRepository = settingsRepository,
             goalsRepository = FakeGoalsRepository(),
-            savedStateHandle = SavedStateHandle(),
+            savedStateHandle = SavedStateHandle(mapOf("selectedDate" to "2026-02-11")),
             zoneId = ZoneId.of("UTC"),
             clock = Clock.fixed(Instant.parse("2026-02-11T12:00:00Z"), ZoneOffset.UTC),
         )
@@ -258,7 +258,7 @@ class HomeViewModelTest {
             logRepository = FakeLogRepository(),
             settingsRepository = settingsRepository,
             goalsRepository = FakeGoalsRepository(),
-            savedStateHandle = SavedStateHandle(),
+            savedStateHandle = SavedStateHandle(mapOf("selectedDate" to "2026-02-11")),
             zoneId = ZoneId.of("UTC"),
             clock = Clock.fixed(Instant.parse("2026-02-11T12:00:00Z"), ZoneOffset.UTC),
         )

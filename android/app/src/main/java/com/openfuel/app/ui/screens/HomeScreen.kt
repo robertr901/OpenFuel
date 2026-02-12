@@ -78,6 +78,8 @@ import com.openfuel.app.ui.util.parseDecimalInput
 import com.openfuel.app.viewmodel.HomeViewModel
 import com.openfuel.app.viewmodel.MealEntryUi
 import com.openfuel.app.viewmodel.MealSectionUi
+import java.time.Instant
+import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 
@@ -216,6 +218,8 @@ fun HomeScreen(
             if (uiState.showFastLogReminder) {
                 item {
                     FastLogReminderCard(
+                        loggedDaysLast7 = uiState.loggedDaysLast7,
+                        lastLoggedAt = uiState.lastLoggedAt,
                         onLogNow = {
                             viewModel.onFastLogReminderActioned()
                             onAddFood()
@@ -341,6 +345,8 @@ private fun EmptyMealSlotsCard(
 
 @Composable
 private fun FastLogReminderCard(
+    loggedDaysLast7: Int,
+    lastLoggedAt: Instant?,
     onLogNow: () -> Unit,
     onDismiss: () -> Unit,
 ) {
@@ -354,6 +360,18 @@ private fun FastLogReminderCard(
             subtitle = "No meals logged today yet. Add food when you are ready.",
             modifier = Modifier.semantics { heading() },
         )
+        Text(
+            text = "Logged on $loggedDaysLast7 of last 7 days.",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        if (lastLoggedAt != null) {
+            Text(
+                text = "Last log: ${formatReminderLastLog(lastLoggedAt)}.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(Dimens.s),
@@ -375,6 +393,11 @@ private fun FastLogReminderCard(
             }
         }
     }
+}
+
+private fun formatReminderLastLog(lastLoggedAt: Instant): String {
+    return DateTimeFormatter.ofPattern("EEE h:mm a", Locale.getDefault())
+        .format(lastLoggedAt.atZone(ZoneId.systemDefault()))
 }
 
 @Composable

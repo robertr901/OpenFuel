@@ -45,6 +45,11 @@ class OpenFuelViewModelFactory(
                 paywallPromptPolicy = container.paywallPromptPolicy,
                 analyticsService = container.analyticsService,
             )
+            WeeklyReviewViewModel::class.java -> WeeklyReviewViewModel(
+                logRepository = container.logRepository,
+                settingsRepository = container.settingsRepository,
+                goalsRepository = container.goalsRepository,
+            )
             ScanBarcodeViewModel::class.java -> ScanBarcodeViewModel(
                 providerExecutor = container.providerExecutor,
                 userInitiatedNetworkGuard = container.networkGuard,

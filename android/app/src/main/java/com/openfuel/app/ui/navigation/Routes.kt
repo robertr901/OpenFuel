@@ -13,6 +13,7 @@ object Routes {
     const val ADD_FOOD = "add-food"
     const val SCAN_BARCODE = "scan-barcode"
     const val FOOD_DETAIL = "food-detail"
+    const val WEEKLY_REVIEW = "weekly-review"
 
     val topLevelRoutes: Set<String> = setOf(TODAY, HISTORY, FOODS, INSIGHTS, SETTINGS)
 

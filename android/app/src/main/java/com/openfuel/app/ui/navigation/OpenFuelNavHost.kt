@@ -40,6 +40,7 @@ import com.openfuel.app.ui.screens.HomeScreen
 import com.openfuel.app.ui.screens.InsightsScreen
 import com.openfuel.app.ui.screens.ScanBarcodeScreen
 import com.openfuel.app.ui.screens.SettingsScreen
+import com.openfuel.app.ui.screens.WeeklyReviewScreen
 import com.openfuel.app.viewmodel.AddFoodViewModel
 import com.openfuel.app.viewmodel.FoodLibraryViewModel
 import com.openfuel.app.viewmodel.FoodDetailViewModel
@@ -49,6 +50,7 @@ import com.openfuel.app.viewmodel.InsightsViewModel
 import com.openfuel.app.viewmodel.OpenFuelViewModelFactory
 import com.openfuel.app.viewmodel.ScanBarcodeViewModel
 import com.openfuel.app.viewmodel.SettingsViewModel
+import com.openfuel.app.viewmodel.WeeklyReviewViewModel
 
 @Composable
 fun OpenFuelAppRoot() {
@@ -160,6 +162,13 @@ fun OpenFuelAppRoot() {
             composable(Routes.INSIGHTS) {
                 val viewModel: InsightsViewModel = viewModel(factory = viewModelFactory)
                 InsightsScreen(viewModel = viewModel)
+            }
+            composable(Routes.WEEKLY_REVIEW) {
+                val viewModel: WeeklyReviewViewModel = viewModel(factory = viewModelFactory)
+                WeeklyReviewScreen(
+                    viewModel = viewModel,
+                    onNavigateBack = { navController.popBackStack() },
+                )
             }
             composable(Routes.ADD_FOOD) {
                 val viewModel: AddFoodViewModel = viewModel(factory = viewModelFactory)

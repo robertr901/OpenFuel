@@ -155,9 +155,8 @@ class HomeViewModel(
             ?.mapNotNull { it as? DietaryOverlay }
             ?.toSet()
             .orEmpty()
-        val goalProfileOnboardingCompleted = values[16] as Boolean
-        val weeklyConsistency = values[17] as WeeklyConsistencyState
         val goalProfileOnboardingCompleted = values[18] as Boolean
+        val weeklyConsistency = values[19] as WeeklyConsistencyState
 
         val now = LocalDateTime.now(clock.withZone(zoneId))
         val today = now.toLocalDate()

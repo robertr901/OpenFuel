@@ -16,6 +16,7 @@ OpenFuel is built around one promise:
 - Verification and deterministic gates: `docs/verification.md`
 - Security policy: `SECURITY.md`
 - Changelog: `CHANGELOG.md`
+- Phase 35 Review A: `docs/reviews/phase35-review-a.md`
 
 ## Historical archive
 Superseded plans and reviews are stored in:

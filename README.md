@@ -56,7 +56,7 @@ See `docs/verification.md` for deterministic test guidance.
 Instrumentation tests use `OpenFuelAndroidTestRunner` for deterministic offline-safe overrides.
 
 ## Product status
-- Current direction: Phase 35 Review A completed with evidence audit and roadmap rebaseline for phases 36-40.
+- Current direction: Phase 40 Review B docs checkpoint, with phases 36-39 shipped and roadmap lock/outline refreshed.
 - Forward roadmap: `docs/roadmap.md`
 - Change history: `CHANGELOG.md`
 

@@ -4,6 +4,32 @@ All notable changes to OpenFuel are documented here.
 
 ## Unreleased
 
+### Phase 40: Review B docs checkpoint
+- Published Phase 40 review artefact in `docs/reviews/phase40-review-b.md`.
+- Updated roadmap to lock phases 41-50 and outline phases 51-60.
+- Added delta notes since Phase 35 and a constrained wearables future placeholder.
+- Refreshed docs status surfaces (`README.md`, `docs/README.md`, `CHANGELOG.md`) for shipped phases.
+
+### Phase 39: Trust and data quality v1 shipped
+- Added deterministic local data-quality classification and shared trust cues across core food surfaces.
+- Added review-and-fix correction affordances on Today, Foods, Add Food, and Weekly Review where confidence is low.
+- Preserved explicit-action online triggers and regression coverage.
+
+### Phase 38: Habit loops v1 shipped
+- Consolidated Today to one primary Add Food CTA (`home_add_food_fab`) and demoted secondary affordances to link style.
+- Added factual consistency feedback for the last 7 days without pressure language.
+- Preserved reminder caps, quiet-hours controls, and explicit-action networking invariants.
+
+### Phase 37: Weekly Review v1 shipped
+- Added one-tap weekly review entry from core surfaces when eligible.
+- Added local-only 7-day aggregation with calm summary and explainable suggested action.
+- Added dismiss-for-week behaviour and deterministic state coverage.
+
+### Phase 36: Foods 10x as one system shipped
+- Unified local food row composition and actions across Foods and Add Food surfaces.
+- Improved known-food flow coherence with consistent trust cues and correction affordances.
+- Preserved provider orchestration boundaries and explicit-action online behaviour.
+
 ### Phase 35: Review A
 - Published canonical evidence audit and risk register in `docs/reviews/phase35-review-a.md`.
 - Rebaselined roadmap phases 36-40 from reviewed product and engineering findings.

@@ -62,6 +62,7 @@ import com.openfuel.app.domain.model.displayName
 import com.openfuel.app.domain.model.shortLabel
 import com.openfuel.app.domain.util.EntryValidation
 import com.openfuel.app.ui.components.EmptyState
+import com.openfuel.app.ui.components.FoodTrustCueRow
 import com.openfuel.app.ui.components.MetricPill
 import com.openfuel.app.ui.components.PillKind
 import com.openfuel.app.ui.components.OFMetricRow
@@ -764,6 +765,11 @@ private fun MealEntryRow(
                     style = MaterialTheme.typography.bodyMedium,
                 )
             },
+        )
+        FoodTrustCueRow(
+            signals = entry.dataQuality,
+            onReviewAndFix = if (entry.dataQuality.needsReview) onEdit else null,
+            testTagPrefix = if (entry.dataQuality.needsReview) "home_entry_needs_review" else null,
         )
         Row(horizontalArrangement = Arrangement.spacedBy(Dimens.s)) {
             TextButton(onClick = onEdit) {

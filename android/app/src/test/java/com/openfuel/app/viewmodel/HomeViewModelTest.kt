@@ -5,14 +5,16 @@ import com.openfuel.app.MainDispatcherRule
 import com.openfuel.app.domain.analytics.AnalyticsService
 import com.openfuel.app.domain.analytics.ProductEvent
 import com.openfuel.app.domain.analytics.ProductEventName
+import com.openfuel.app.domain.quality.FoodDataQualityLevel
+import com.openfuel.app.domain.quality.FoodDataQualitySignals
 import com.openfuel.app.domain.model.DietaryOverlay
 import com.openfuel.app.domain.model.FoodItem
 import com.openfuel.app.domain.model.FoodUnit
 import com.openfuel.app.domain.model.GoalProfile
+import com.openfuel.app.domain.model.DailyGoal
 import com.openfuel.app.domain.model.MealEntry
 import com.openfuel.app.domain.model.MealEntryWithFood
 import com.openfuel.app.domain.model.MealType
-import com.openfuel.app.domain.model.DailyGoal
 import com.openfuel.app.domain.repository.GoalsRepository
 import com.openfuel.app.domain.repository.LogRepository
 import com.openfuel.app.domain.repository.SettingsRepository
@@ -417,6 +419,7 @@ class HomeViewModelTest {
             quantity = 1.0,
             unit = FoodUnit.SERVING,
             caloriesKcal = 100.0,
+            dataQuality = FoodDataQualitySignals(level = FoodDataQualityLevel.COMPLETE),
         )
     }
 

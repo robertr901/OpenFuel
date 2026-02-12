@@ -172,6 +172,7 @@ fun OpenFuelAppRoot() {
                 WeeklyReviewScreen(
                     viewModel = viewModel,
                     onNavigateBack = { navController.popBackStack() },
+                    onReviewAndFixEntries = { navController.navigateToTopLevel(Routes.TODAY) },
                 )
             }
             composable(Routes.ADD_FOOD) {

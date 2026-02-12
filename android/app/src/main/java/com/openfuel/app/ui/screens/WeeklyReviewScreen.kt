@@ -23,6 +23,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.openfuel.app.ui.components.EmptyState
 import com.openfuel.app.ui.components.OFMetricRow
 import com.openfuel.app.ui.components.OFPrimaryButton
+import com.openfuel.app.ui.components.OFSecondaryButton
 import com.openfuel.app.ui.components.OFSectionHeader
 import com.openfuel.app.ui.components.StandardCard
 import com.openfuel.app.ui.theme.Dimens
@@ -35,6 +36,7 @@ import com.openfuel.app.viewmodel.WeeklyReviewViewModel
 fun WeeklyReviewScreen(
     viewModel: WeeklyReviewViewModel,
     onNavigateBack: () -> Unit,
+    onReviewAndFixEntries: () -> Unit,
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
 
@@ -120,6 +122,15 @@ fun WeeklyReviewScreen(
                         subtitle = "Log meals on at least 3 days this week for a practical adjustment.",
                     )
                 }
+                if (uiState.showReviewAndFixEntries) {
+                    OFSecondaryButton(
+                        text = "Review and fix entries",
+                        onClick = onReviewAndFixEntries,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .testTag("weekly_review_review_and_fix_button"),
+                    )
+                }
             } else {
                 uiState.suggestion?.let { suggestion ->
                     StandardCard(
@@ -143,6 +154,15 @@ fun WeeklyReviewScreen(
                             testTag = "weekly_review_dismiss_action_button",
                         )
                     }
+                }
+                if (uiState.showReviewAndFixEntries) {
+                    OFSecondaryButton(
+                        text = "Review and fix entries",
+                        onClick = onReviewAndFixEntries,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .testTag("weekly_review_review_and_fix_button"),
+                    )
                 }
             }
         }

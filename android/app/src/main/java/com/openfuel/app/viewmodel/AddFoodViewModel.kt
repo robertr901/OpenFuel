@@ -389,22 +389,35 @@ class AddFoodViewModel(
     fun logFood(foodId: String, mealType: MealType, quantity: Double, unit: FoodUnit) {
         trackLoggingStarted(sourceType = "local_search")
         viewModelScope.launch {
-            val entry = MealEntry(
-                id = UUID.randomUUID().toString(),
-                timestamp = Instant.now(),
-                mealType = mealType,
-                foodItemId = foodId,
-                quantity = quantity,
-                unit = unit,
-            )
-            logRepository.logMealEntry(entry)
-            transientState.update { current ->
-                current.copy(addFlowCompletionMs = elapsedSinceSessionStart())
+            try {
+                val entry = MealEntry(
+                    id = UUID.randomUUID().toString(),
+                    timestamp = Instant.now(),
+                    mealType = mealType,
+                    foodItemId = foodId,
+                    quantity = quantity,
+                    unit = unit,
+                )
+                logRepository.logMealEntry(entry)
+                transientState.update { current ->
+                    current.copy(
+                        addFlowCompletionMs = elapsedSinceSessionStart(),
+                        message = "Food logged.",
+                    )
+                }
+                trackLoggingCompleted(
+                    sourceType = "local_search",
+                    result = "success",
+                )
+            } catch (_: Exception) {
+                transientState.update { current ->
+                    current.copy(message = "Could not log food. Please try again.")
+                }
+                trackLoggingCompleted(
+                    sourceType = "local_search",
+                    result = "error",
+                )
             }
-            trackLoggingCompleted(
-                sourceType = "local_search",
-                result = "success",
-            )
         }
     }
 
@@ -418,37 +431,50 @@ class AddFoodViewModel(
     ) {
         trackLoggingStarted(sourceType = "quick_add")
         viewModelScope.launch {
-            val safeCalories = caloriesKcal.coerceIn(0.0, MAX_CALORIES_KCAL)
-            val safeProtein = proteinG.coerceIn(0.0, MAX_MACRO_GRAMS)
-            val safeCarbs = carbsG.coerceIn(0.0, MAX_MACRO_GRAMS)
-            val safeFat = fatG.coerceIn(0.0, MAX_MACRO_GRAMS)
-            val food = FoodItem(
-                id = UUID.randomUUID().toString(),
-                name = name.ifBlank { "Quick Add" },
-                brand = null,
-                caloriesKcal = safeCalories,
-                proteinG = safeProtein,
-                carbsG = safeCarbs,
-                fatG = safeFat,
-                createdAt = Instant.now(),
-            )
-            foodRepository.upsertFood(food)
-            val entry = MealEntry(
-                id = UUID.randomUUID().toString(),
-                timestamp = Instant.now(),
-                mealType = mealType,
-                foodItemId = food.id,
-                quantity = 1.0,
-                unit = FoodUnit.SERVING,
-            )
-            logRepository.logMealEntry(entry)
-            transientState.update { current ->
-                current.copy(addFlowCompletionMs = elapsedSinceSessionStart())
+            try {
+                val safeCalories = caloriesKcal.coerceIn(0.0, MAX_CALORIES_KCAL)
+                val safeProtein = proteinG.coerceIn(0.0, MAX_MACRO_GRAMS)
+                val safeCarbs = carbsG.coerceIn(0.0, MAX_MACRO_GRAMS)
+                val safeFat = fatG.coerceIn(0.0, MAX_MACRO_GRAMS)
+                val food = FoodItem(
+                    id = UUID.randomUUID().toString(),
+                    name = name.ifBlank { "Quick Add" },
+                    brand = null,
+                    caloriesKcal = safeCalories,
+                    proteinG = safeProtein,
+                    carbsG = safeCarbs,
+                    fatG = safeFat,
+                    createdAt = Instant.now(),
+                )
+                foodRepository.upsertFood(food)
+                val entry = MealEntry(
+                    id = UUID.randomUUID().toString(),
+                    timestamp = Instant.now(),
+                    mealType = mealType,
+                    foodItemId = food.id,
+                    quantity = 1.0,
+                    unit = FoodUnit.SERVING,
+                )
+                logRepository.logMealEntry(entry)
+                transientState.update { current ->
+                    current.copy(
+                        addFlowCompletionMs = elapsedSinceSessionStart(),
+                        message = "Quick add logged.",
+                    )
+                }
+                trackLoggingCompleted(
+                    sourceType = "quick_add",
+                    result = "success",
+                )
+            } catch (_: Exception) {
+                transientState.update { current ->
+                    current.copy(message = "Could not log quick add. Please try again.")
+                }
+                trackLoggingCompleted(
+                    sourceType = "quick_add",
+                    result = "error",
+                )
             }
-            trackLoggingCompleted(
-                sourceType = "quick_add",
-                result = "success",
-            )
         }
     }
 

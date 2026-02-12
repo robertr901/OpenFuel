@@ -202,8 +202,6 @@ fun AddFoodScreen(
                             onLog = { mealType ->
                                 logFoodFromRow(
                                     viewModel = viewModel,
-                                    scope = scope,
-                                    snackbarHostState = snackbarHostState,
                                     food = food,
                                     mealType = mealType,
                                 )
@@ -234,8 +232,6 @@ fun AddFoodScreen(
                             onLog = { mealType ->
                                 logFoodFromRow(
                                     viewModel = viewModel,
-                                    scope = scope,
-                                    snackbarHostState = snackbarHostState,
                                     food = food,
                                     mealType = mealType,
                                 )
@@ -271,8 +267,6 @@ fun AddFoodScreen(
                                         onLog = { mealType ->
                                             logFoodFromRow(
                                                 viewModel = viewModel,
-                                                scope = scope,
-                                                snackbarHostState = snackbarHostState,
                                                 food = food,
                                                 mealType = mealType,
                                             )
@@ -1116,14 +1110,11 @@ private fun handleQuickAdd(
         fatG = fatValue,
         mealType = input.mealType,
     )
-    scope.launch { snackbarHostState.showSnackbar("Quick add logged") }
     return true
 }
 
 private fun logFoodFromRow(
     viewModel: AddFoodViewModel,
-    scope: CoroutineScope,
-    snackbarHostState: SnackbarHostState,
     food: FoodItem,
     mealType: MealType,
 ) {
@@ -1133,9 +1124,6 @@ private fun logFoodFromRow(
         quantity = 1.0,
         unit = FoodUnit.SERVING,
     )
-    scope.launch {
-        snackbarHostState.showSnackbar("Logged ${food.name}")
-    }
 }
 
 @Composable

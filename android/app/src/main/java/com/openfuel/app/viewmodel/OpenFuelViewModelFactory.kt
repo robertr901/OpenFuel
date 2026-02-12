@@ -32,6 +32,7 @@ class OpenFuelViewModelFactory(
             )
             FoodLibraryViewModel::class.java -> FoodLibraryViewModel(
                 foodRepository = container.foodRepository,
+                logRepository = container.logRepository,
             )
             FoodDetailViewModel::class.java -> FoodDetailViewModel(
                 foodRepository = container.foodRepository,

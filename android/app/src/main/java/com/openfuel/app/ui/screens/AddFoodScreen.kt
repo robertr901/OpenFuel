@@ -361,12 +361,8 @@ fun AddFoodScreen(
                                 }
                             }
 
-                            item {
-                                AnimatedVisibility(
-                                    visible = isOnlineSectionExpanded,
-                                    enter = fadeIn(),
-                                    exit = fadeOut(),
-                                ) {
+                            if (isOnlineSectionExpanded) {
+                                item {
                                     Column(
                                         modifier = Modifier
                                             .fillMaxWidth()
@@ -400,7 +396,11 @@ fun AddFoodScreen(
                                                     }
                                                 }
                                             }
-                                        } else if (!uiState.hasSearchedOnline && !uiState.isOnlineSearchInProgress && uiState.onlineErrorMessage == null) {
+                                        } else if (
+                                            !uiState.hasSearchedOnline &&
+                                            !uiState.isOnlineSearchInProgress &&
+                                            uiState.onlineErrorMessage == null
+                                        ) {
                                             OFEmptyState(
                                                 title = "Ready to search online",
                                                 body = "Tap Search online to fetch matching foods.",
@@ -408,25 +408,32 @@ fun AddFoodScreen(
                                             )
                                         }
 
-                                        if (uiState.hasSearchedOnline && uiState.onlineResults.isEmpty() && !uiState.isOnlineSearchInProgress && uiState.onlineErrorMessage == null) {
+                                        if (
+                                            uiState.hasSearchedOnline &&
+                                            uiState.onlineResults.isEmpty() &&
+                                            !uiState.isOnlineSearchInProgress &&
+                                            uiState.onlineErrorMessage == null
+                                        ) {
                                             OFEmptyState(
                                                 title = "No online matches found",
                                                 body = "No results for \"$searchInput\".",
                                                 modifier = Modifier.testTag("add_food_unified_online_empty_state"),
                                             )
                                         }
-
-                                        uiState.onlineResults.forEach { food ->
-                                            val candidateDecision =
-                                                uiState.onlineCandidateDecisions[onlineCandidateDecisionKey(food)]
-                                            OnlineResultRow(
-                                                food = food,
-                                                candidateDecision = candidateDecision,
-                                                onOpenPreview = { viewModel.openOnlineFoodPreview(food) },
-                                                modifier = Modifier.testTag("add_food_unified_online_result_${food.sourceId}"),
-                                            )
-                                        }
                                     }
+                                }
+                                items(
+                                    items = uiState.onlineResults,
+                                    key = { food -> "online-${food.source}-${food.sourceId}" },
+                                ) { food ->
+                                    val candidateDecision =
+                                        uiState.onlineCandidateDecisions[onlineCandidateDecisionKey(food)]
+                                    OnlineResultRow(
+                                        food = food,
+                                        candidateDecision = candidateDecision,
+                                        onOpenPreview = { viewModel.openOnlineFoodPreview(food) },
+                                        modifier = Modifier.testTag("add_food_unified_online_result_${food.sourceId}"),
+                                    )
                                 }
                             }
 
@@ -702,7 +709,9 @@ private fun QuickAddTextDialog(
     var voiceUiState by remember { mutableStateOf<QuickAddVoiceUiState>(QuickAddVoiceUiState.Idle) }
     var voiceJob by remember { mutableStateOf<Job?>(null) }
     var isManualDetailsExpanded by rememberSaveable { mutableStateOf(false) }
-    val intent = intelligenceService.parseFoodText(input)
+    val intent = remember(input, intelligenceService) {
+        intelligenceService.parseFoodText(input)
+    }
     val dismissDialog = {
         voiceJob?.cancel()
         voiceUiState = QuickAddVoiceUiState.Idle

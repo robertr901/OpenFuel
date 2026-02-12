@@ -140,9 +140,11 @@ class UnifiedSearchSmokeTest {
         composeRule.onNodeWithTag("add_food_unified_refresh_online").performClick()
         composeRule.waitForIdle()
         composeRule.onNodeWithTag("add_food_unified_results_list")
-            .performScrollToNode(hasTestTag("add_food_unified_provider_debug"))
-        composeRule.onNodeWithTag("add_food_unified_provider_debug_execution_count")
-            .assertTextContains("Execution #2")
+            .performScrollToNode(hasTestTag("add_food_unified_online_section_summary"))
+        composeRule.onNodeWithTag("add_food_unified_online_section_summary").assertIsDisplayed()
+        composeRule.onNodeWithTag("add_food_unified_results_list")
+            .performScrollToNode(hasTestTag("add_food_unified_online_result_sample-oatmeal-1"))
+        composeRule.onNodeWithTag("add_food_unified_online_result_sample-oatmeal-1").assertIsDisplayed()
     }
 
     @Test

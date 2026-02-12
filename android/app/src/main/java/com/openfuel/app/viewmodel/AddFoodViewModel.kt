@@ -120,7 +120,7 @@ class AddFoodViewModel(
             initialValue = true,
         )
 
-    val uiState: StateFlow<AddFoodUiState> = combine(
+    private val baseUiState: StateFlow<AddFoodUiState> = combine(
         unifiedSearchState,
         localSearchSnapshotState,
         favoriteFoodsState,
@@ -135,7 +135,7 @@ class AddFoodViewModel(
             recentFoods = recentFoods,
             onlineEnabled = onlineEnabled,
         )
-    }.combine(transientState) { composed, transient ->
+    }.map { composed ->
         val mergedResults = applySourceFilter(
             results = mergeUnifiedSearchResults(
                 localResults = composed.localResults,
@@ -169,6 +169,18 @@ class AddFoodViewModel(
             onlineErrorMessage = effectiveUnifiedSearch.onlineError,
             localSearchLatencyMs = composed.localSearchLatencyMs,
             localSearchResultCount = composed.localResults.size,
+        )
+    }.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(5_000),
+        initialValue = AddFoodUiState(),
+    )
+
+    val uiState: StateFlow<AddFoodUiState> = combine(
+        baseUiState,
+        transientState,
+    ) { base, transient ->
+        base.copy(
             addFlowCompletionMs = transient.addFlowCompletionMs,
             selectedOnlineFood = transient.selectedOnlineFood,
             message = transient.message,

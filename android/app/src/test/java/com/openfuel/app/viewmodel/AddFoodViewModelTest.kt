@@ -218,6 +218,36 @@ class AddFoodViewModelTest {
     }
 
     @Test
+    fun quickAdd_usesInjectedInstantForPersistedFoodAndEntry() = runTest {
+        val fixedInstant = Instant.parse("2026-02-11T10:15:00Z")
+        val foodRepository = AddFoodFakeFoodRepository()
+        val logRepository = AddFoodFakeLogRepository()
+        val viewModel = AddFoodViewModel(
+            foodRepository = foodRepository,
+            logRepository = logRepository,
+            settingsRepository = FakeSettingsRepository(enabled = true),
+            providerExecutor = FakeProviderExecutor(),
+            userInitiatedNetworkGuard = UserInitiatedNetworkGuard(),
+            nowInstant = { fixedInstant },
+        )
+
+        viewModel.quickAdd(
+            name = "Quick Oats",
+            caloriesKcal = 100.0,
+            proteinG = 5.0,
+            carbsG = 10.0,
+            fatG = 2.0,
+            mealType = MealType.BREAKFAST,
+        )
+        advanceUntilIdle()
+
+        assertEquals(1, foodRepository.upsertedFoods.size)
+        assertEquals(1, logRepository.loggedEntries.size)
+        assertEquals(fixedInstant, foodRepository.upsertedFoods.single().createdAt)
+        assertEquals(fixedInstant, logRepository.loggedEntries.single().timestamp)
+    }
+
+    @Test
     fun logFood_whenRepositoryFails_surfacesErrorMessage() = runTest {
         val viewModel = AddFoodViewModel(
             foodRepository = AddFoodFakeFoodRepository(),

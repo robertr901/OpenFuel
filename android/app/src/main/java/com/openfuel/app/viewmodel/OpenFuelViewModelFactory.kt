@@ -17,6 +17,7 @@ class OpenFuelViewModelFactory(
                 goalsRepository = container.goalsRepository,
                 savedStateHandle = extras.createSavedStateHandle(),
                 analyticsService = container.analyticsService,
+                performanceTraceLogger = container.performanceTraceLogger,
             )
             HistoryViewModel::class.java -> HistoryViewModel(
                 logRepository = container.logRepository,
@@ -29,10 +30,12 @@ class OpenFuelViewModelFactory(
                 userInitiatedNetworkGuard = container.networkGuard,
                 analyticsService = container.analyticsService,
                 onlineSearchOrchestrator = container.onlineSearchOrchestrator,
+                performanceTraceLogger = container.performanceTraceLogger,
             )
             FoodLibraryViewModel::class.java -> FoodLibraryViewModel(
                 foodRepository = container.foodRepository,
                 logRepository = container.logRepository,
+                performanceTraceLogger = container.performanceTraceLogger,
             )
             FoodDetailViewModel::class.java -> FoodDetailViewModel(
                 foodRepository = container.foodRepository,

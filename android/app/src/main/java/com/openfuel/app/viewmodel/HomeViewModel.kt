@@ -6,6 +6,8 @@ import androidx.lifecycle.viewModelScope
 import com.openfuel.app.domain.analytics.AnalyticsService
 import com.openfuel.app.domain.analytics.NoOpAnalyticsService
 import com.openfuel.app.domain.analytics.ProductEventName
+import com.openfuel.app.domain.diagnostics.NoOpPerformanceTraceLogger
+import com.openfuel.app.domain.diagnostics.PerformanceTraceLogger
 import com.openfuel.app.domain.quality.FoodDataQualitySignals
 import com.openfuel.app.domain.quality.classifyMealEntryQuality
 import com.openfuel.app.domain.retention.FastLogReminderContext
@@ -56,10 +58,12 @@ class HomeViewModel(
     private val analyticsService: AnalyticsService = NoOpAnalyticsService,
     private val zoneId: ZoneId = ZoneId.systemDefault(),
     private val clock: Clock = Clock.system(zoneId),
+    private val performanceTraceLogger: PerformanceTraceLogger = NoOpPerformanceTraceLogger,
 ) : ViewModel() {
+    private val screenOpenedAtMs = clock.millis()
     private val _selectedDate = MutableStateFlow(
         parseDate(savedStateHandle.get<String>(SELECTED_DATE_KEY))
-            ?: LocalDate.now(zoneId),
+            ?: currentDate(),
     )
     val selectedDate: StateFlow<LocalDate> = _selectedDate.asStateFlow()
     private val message = MutableStateFlow<String?>(null)
@@ -211,6 +215,17 @@ class HomeViewModel(
         started = SharingStarted.WhileSubscribed(5_000),
         initialValue = baseUiState.value,
     )
+
+    init {
+        viewModelScope.launch {
+            baseUiState.first()
+            performanceTraceLogger.record(
+                section = "today.open",
+                durationMs = (clock.millis() - screenOpenedAtMs).coerceAtLeast(0L),
+                result = "ready",
+            )
+        }
+    }
 
     fun goToPreviousDay() {
         selectDate(_selectedDate.value.minusDays(1))

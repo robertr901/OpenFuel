@@ -2,6 +2,8 @@ package com.openfuel.app.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.openfuel.app.domain.diagnostics.NoOpPerformanceTraceLogger
+import com.openfuel.app.domain.diagnostics.PerformanceTraceLogger
 import com.openfuel.app.domain.model.FoodItem
 import com.openfuel.app.domain.model.FoodUnit
 import com.openfuel.app.domain.model.MealEntry
@@ -22,6 +24,7 @@ import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
@@ -31,6 +34,9 @@ import kotlinx.coroutines.launch
 class FoodLibraryViewModel(
     private val foodRepository: FoodRepository,
     private val logRepository: LogRepository,
+    private val nowInstant: () -> Instant = { Instant.now() },
+    private val nowEpochMillis: () -> Long = { System.currentTimeMillis() },
+    private val performanceTraceLogger: PerformanceTraceLogger = NoOpPerformanceTraceLogger,
 ) : ViewModel() {
     private companion object {
         private const val SEARCH_LIMIT = 20
@@ -38,6 +44,7 @@ class FoodLibraryViewModel(
 
     private val searchQuery = MutableStateFlow("")
     private val message = MutableStateFlow<String?>(null)
+    private val screenOpenedAtMs = nowEpochMillis()
 
     private val debouncedSearchQuery: StateFlow<String> = searchQuery
         .map { query -> query.trim() }
@@ -100,6 +107,17 @@ class FoodLibraryViewModel(
             ),
         )
 
+    init {
+        viewModelScope.launch {
+            uiState.first()
+            recordPerformanceTrace(
+                section = "foods.open",
+                startedAtMs = screenOpenedAtMs,
+                result = "ready",
+            )
+        }
+    }
+
     fun updateSearchQuery(query: String) {
         searchQuery.update { query }
     }
@@ -110,8 +128,14 @@ class FoodLibraryViewModel(
         quantity: Double = 1.0,
         unit: FoodUnit = FoodUnit.SERVING,
     ) {
+        val startedAtMs = nowEpochMillis()
         if (!EntryValidation.isValidQuantity(quantity)) {
             message.update { "Enter a valid quantity greater than 0." }
+            recordPerformanceTrace(
+                section = "foods.log_food",
+                startedAtMs = startedAtMs,
+                result = "invalid_quantity",
+            )
             return
         }
         viewModelScope.launch {
@@ -119,7 +143,7 @@ class FoodLibraryViewModel(
                 logRepository.logMealEntry(
                     MealEntry(
                         id = UUID.randomUUID().toString(),
-                        timestamp = Instant.now(),
+                        timestamp = nowInstant(),
                         mealType = mealType,
                         foodItemId = foodId,
                         quantity = quantity,
@@ -127,8 +151,18 @@ class FoodLibraryViewModel(
                     ),
                 )
                 message.update { "Food logged." }
+                recordPerformanceTrace(
+                    section = "foods.log_food",
+                    startedAtMs = startedAtMs,
+                    result = "success",
+                )
             } catch (_: Exception) {
                 message.update { "Could not log food. Please try again." }
+                recordPerformanceTrace(
+                    section = "foods.log_food",
+                    startedAtMs = startedAtMs,
+                    result = "error",
+                )
             }
         }
     }
@@ -142,6 +176,18 @@ class FoodLibraryViewModel(
             return flowOf(emptyList())
         }
         return foodRepository.allFoods(query)
+    }
+
+    private fun recordPerformanceTrace(
+        section: String,
+        startedAtMs: Long,
+        result: String,
+    ) {
+        performanceTraceLogger.record(
+            section = section,
+            durationMs = (nowEpochMillis() - startedAtMs).coerceAtLeast(0L),
+            result = result,
+        )
     }
 }
 

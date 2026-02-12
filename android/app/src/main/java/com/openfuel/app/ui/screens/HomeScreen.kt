@@ -1,7 +1,6 @@
 package com.openfuel.app.ui.screens
 
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -259,7 +258,6 @@ fun HomeScreen(
                 items(mealsWithEntries, key = { it.mealType.name }) { meal ->
                     MealSection(
                         modifier = Modifier
-                            .animateContentSize()
                             .testTag("home_meal_sections_logged"),
                         mealSection = meal,
                         onEntryClick = onOpenFoodDetail,

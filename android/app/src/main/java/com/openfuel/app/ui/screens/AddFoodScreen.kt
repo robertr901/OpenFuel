@@ -84,6 +84,7 @@ import com.openfuel.app.ui.components.OFEmptyState
 import com.openfuel.app.ui.components.OFPill
 import com.openfuel.app.ui.components.OFPrimaryButton
 import com.openfuel.app.ui.components.OFRow
+import com.openfuel.app.ui.components.LocalFoodResultRow
 import com.openfuel.app.ui.components.SectionHeader
 import com.openfuel.app.ui.components.OFSecondaryButton
 import com.openfuel.app.ui.components.UnitDropdown
@@ -1144,45 +1145,12 @@ private fun SearchResultFoodRow(
     onLog: (MealType) -> Unit,
     onOpenDetail: () -> Unit,
 ) {
-    var selectedMeal by remember { mutableStateOf(MealType.BREAKFAST) }
-    StandardCard(modifier = Modifier.fillMaxWidth()) {
-        Column(
-            modifier = Modifier.fillMaxWidth(),
-            verticalArrangement = Arrangement.spacedBy(Dimens.sm),
-        ) {
-            OFRow(
-                title = food.name,
-                subtitle = food.brand?.takeIf { it.isNotBlank() },
-                trailing = {
-                    OFPill(text = sourceLabel)
-                },
-            )
-            Text(
-                text = "${formatCalories(food.caloriesKcal)} kcal · ${formatMacro(food.proteinG)}p ${formatMacro(food.carbsG)}c ${formatMacro(food.fatG)}f",
-                style = instrumentTextStyle(),
-            )
-            MealTypeDropdown(
-                selected = selectedMeal,
-                onSelected = { selectedMeal = it },
-                modifier = Modifier.fillMaxWidth(),
-            )
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(Dimens.sm),
-                modifier = Modifier.fillMaxWidth(),
-            ) {
-                OFPrimaryButton(
-                    text = "Log",
-                    onClick = { onLog(selectedMeal) },
-                    modifier = Modifier.weight(1f),
-                )
-                OFSecondaryButton(
-                    text = "Details",
-                    onClick = onOpenDetail,
-                    modifier = Modifier.weight(1f),
-                )
-            }
-        }
-    }
+    LocalFoodResultRow(
+        food = food,
+        sourceLabel = sourceLabel,
+        onLog = onLog,
+        onOpenPortion = onOpenDetail,
+    )
 }
 
 @Composable

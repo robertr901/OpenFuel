@@ -34,4 +34,6 @@ object SettingsKeys {
     val GOAL_PROFILE_OVERLAYS = stringSetPreferencesKey("goal_profile_overlays")
     val GOAL_PROFILE_ONBOARDING_COMPLETED = booleanPreferencesKey("goal_profile_onboarding_completed")
     val GOALS_CUSTOMISED = booleanPreferencesKey("goals_customised")
+    val WEEKLY_REVIEW_DISMISSED_WEEK_START_EPOCH_DAY =
+        longPreferencesKey("weekly_review_dismissed_week_start_epoch_day")
 }

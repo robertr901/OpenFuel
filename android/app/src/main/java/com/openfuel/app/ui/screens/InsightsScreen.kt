@@ -34,6 +34,7 @@ import com.openfuel.app.viewmodel.InsightsViewModel
 @Composable
 fun InsightsScreen(
     viewModel: InsightsViewModel,
+    onOpenWeeklyReview: () -> Unit,
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
 
@@ -64,6 +65,9 @@ fun InsightsScreen(
                     overlays = uiState.goalProfileOverlays,
                     emphasis = uiState.goalProfileEmphasis,
                 )
+            }
+            if (uiState.showWeeklyReviewEntry) {
+                InsightsWeeklyReviewEntryCard(onOpenWeeklyReview = onOpenWeeklyReview)
             }
             if (!uiState.isPro) {
                 OFCard(modifier = Modifier.fillMaxWidth()) {
@@ -116,6 +120,27 @@ fun InsightsScreen(
             onDismiss = viewModel::dismissPaywall,
             onPurchaseClick = viewModel::purchasePro,
             onRestoreClick = viewModel::restorePurchases,
+        )
+    }
+}
+
+@Composable
+private fun InsightsWeeklyReviewEntryCard(
+    onOpenWeeklyReview: () -> Unit,
+) {
+    OFCard(
+        modifier = Modifier
+            .fillMaxWidth()
+            .testTag("insights_weekly_review_entry_card"),
+    ) {
+        OFSectionHeader(
+            title = "Weekly review",
+            subtitle = "See your last 7 days with one practical next step.",
+        )
+        OFPrimaryButton(
+            text = "Open weekly review",
+            onClick = onOpenWeeklyReview,
+            testTag = "insights_open_weekly_review_button",
         )
     }
 }

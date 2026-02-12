@@ -10,6 +10,7 @@ interface SettingsRepository {
     val goalProfileOverlays: Flow<Set<DietaryOverlay>>
     val goalProfileOnboardingCompleted: Flow<Boolean>
     val goalsCustomised: Flow<Boolean>
+    val weeklyReviewDismissedWeekStartEpochDay: Flow<Long?>
     val fastLogReminderEnabled: Flow<Boolean>
     val fastLogReminderWindowStartHour: Flow<Int>
     val fastLogReminderWindowEndHour: Flow<Int>
@@ -25,6 +26,7 @@ interface SettingsRepository {
     suspend fun setGoalProfileOverlays(overlays: Set<DietaryOverlay>)
     suspend fun setGoalProfileOnboardingCompleted(completed: Boolean)
     suspend fun setGoalsCustomised(customised: Boolean)
+    suspend fun setWeeklyReviewDismissedWeekStartEpochDay(epochDay: Long?)
     suspend fun setFastLogReminderEnabled(enabled: Boolean)
     suspend fun setFastLogReminderWindow(startHour: Int, endHour: Int)
     suspend fun setFastLogQuietHoursEnabled(enabled: Boolean)

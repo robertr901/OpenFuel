@@ -218,6 +218,48 @@ class HomeViewModelTest {
     }
 
     @Test
+    fun weeklyReviewEntry_visible_whenRecentLoggedDayExistsAndNotDismissed() = runTest {
+        val viewModel = HomeViewModel(
+            logRepository = FakeLogRepository(
+                loggedDates = listOf(LocalDate.parse("2026-02-10")),
+            ),
+            settingsRepository = FakeHomeSettingsRepository(),
+            goalsRepository = FakeGoalsRepository(),
+            savedStateHandle = SavedStateHandle(mapOf("selectedDate" to "2026-02-11")),
+            zoneId = ZoneId.of("UTC"),
+            clock = Clock.fixed(Instant.parse("2026-02-11T12:00:00Z"), ZoneOffset.UTC),
+        )
+        val collectJob = launch { viewModel.uiState.collect { } }
+
+        advanceUntilIdle()
+
+        assertTrue(viewModel.uiState.value.showWeeklyReviewEntry)
+        collectJob.cancel()
+    }
+
+    @Test
+    fun weeklyReviewEntry_hidden_whenDismissedForCurrentWeek() = runTest {
+        val settingsRepository = FakeHomeSettingsRepository()
+        settingsRepository.setWeeklyReviewDismissedWeekStartEpochDay(LocalDate.parse("2026-02-09").toEpochDay())
+        val viewModel = HomeViewModel(
+            logRepository = FakeLogRepository(
+                loggedDates = listOf(LocalDate.parse("2026-02-10")),
+            ),
+            settingsRepository = settingsRepository,
+            goalsRepository = FakeGoalsRepository(),
+            savedStateHandle = SavedStateHandle(mapOf("selectedDate" to "2026-02-11")),
+            zoneId = ZoneId.of("UTC"),
+            clock = Clock.fixed(Instant.parse("2026-02-11T12:00:00Z"), ZoneOffset.UTC),
+        )
+        val collectJob = launch { viewModel.uiState.collect { } }
+
+        advanceUntilIdle()
+
+        assertFalse(viewModel.uiState.value.showWeeklyReviewEntry)
+        collectJob.cancel()
+    }
+
+    @Test
     fun fastLogReminder_tracksShownDismissedAndActedEvents() = runTest {
         val analytics = FakeAnalyticsService()
         val settingsRepository = FakeHomeSettingsRepository()
@@ -410,6 +452,7 @@ private class FakeLogRepository(
     private val throwOnDelete: Boolean = false,
     private val entries: List<MealEntryWithFood> = emptyList(),
     private val rangeEntries: List<MealEntryWithFood> = entries,
+    private val loggedDates: List<LocalDate> = emptyList(),
 ) : LogRepository {
     val requestedDates = mutableListOf<LocalDate>()
     var updatedEntry: MealEntry? = null
@@ -444,7 +487,7 @@ private class FakeLogRepository(
     }
 
     override fun loggedDates(zoneId: ZoneId): Flow<List<LocalDate>> {
-        return flowOf(emptyList())
+        return flowOf(loggedDates)
     }
 }
 
@@ -478,6 +521,7 @@ private class FakeHomeSettingsRepository(
     private val goalProfileOverlaysFlow = MutableStateFlow<Set<DietaryOverlay>>(emptySet())
     private val goalProfileOnboardingCompletedFlow = MutableStateFlow(false)
     private val goalsCustomisedFlow = MutableStateFlow(initialGoalsCustomised)
+    private val weeklyReviewDismissedWeekStartEpochDayFlow = MutableStateFlow<Long?>(null)
     private val fastLogReminderEnabledFlow = MutableStateFlow(true)
     private val fastLogReminderWindowStartHourFlow = MutableStateFlow(7)
     private val fastLogReminderWindowEndHourFlow = MutableStateFlow(21)
@@ -502,6 +546,7 @@ private class FakeHomeSettingsRepository(
     override val goalProfileOverlays: Flow<Set<DietaryOverlay>> = goalProfileOverlaysFlow
     override val goalProfileOnboardingCompleted: Flow<Boolean> = goalProfileOnboardingCompletedFlow
     override val goalsCustomised: Flow<Boolean> = goalsCustomisedFlow
+    override val weeklyReviewDismissedWeekStartEpochDay: Flow<Long?> = weeklyReviewDismissedWeekStartEpochDayFlow
     override val fastLogReminderEnabled: Flow<Boolean> = fastLogReminderEnabledFlow
     override val fastLogReminderWindowStartHour: Flow<Int> = fastLogReminderWindowStartHourFlow
     override val fastLogReminderWindowEndHour: Flow<Int> = fastLogReminderWindowEndHourFlow
@@ -531,6 +576,10 @@ private class FakeHomeSettingsRepository(
 
     override suspend fun setGoalsCustomised(customised: Boolean) {
         goalsCustomisedFlow.value = customised
+    }
+
+    override suspend fun setWeeklyReviewDismissedWeekStartEpochDay(epochDay: Long?) {
+        weeklyReviewDismissedWeekStartEpochDayFlow.value = epochDay
     }
 
     override suspend fun setFastLogReminderEnabled(enabled: Boolean) {

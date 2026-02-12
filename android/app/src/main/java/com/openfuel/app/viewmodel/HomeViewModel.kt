@@ -27,9 +27,11 @@ import com.openfuel.app.domain.util.MealTotalsCalculator
 import com.openfuel.app.domain.util.UnitConversion
 import java.time.Instant
 import java.time.Clock
+import java.time.DayOfWeek
 import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.ZoneId
+import java.time.temporal.TemporalAdjusters
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -121,6 +123,8 @@ class HomeViewModel(
         settingsRepository.fastLogImpressionCountForDay,
         settingsRepository.fastLogConsecutiveDismissals,
         settingsRepository.fastLogLastDismissedEpochDay,
+        settingsRepository.weeklyReviewDismissedWeekStartEpochDay,
+        logRepository.loggedDates(zoneId),
         fastLogReminderConsumedInSession,
         fastLogReminderVisibleInSession,
         settingsRepository.goalProfile,
@@ -140,19 +144,28 @@ class HomeViewModel(
         val impressionCountForDay = values[9] as Int
         val consecutiveDismissals = values[10] as Int
         val lastDismissedEpochDay = values[11] as Long?
-        val reminderConsumed = values[12] as Boolean
-        val reminderVisible = values[13] as Boolean
-        val goalProfile = values[14] as GoalProfile?
-        val goalProfileOverlays = (values[15] as? Set<*>)
+        val weeklyReviewDismissedWeekStartEpochDay = values[12] as Long?
+        val loggedDates = (values[13] as? List<*>)
+            ?.mapNotNull { it as? LocalDate }
+            .orEmpty()
+        val reminderConsumed = values[14] as Boolean
+        val reminderVisible = values[15] as Boolean
+        val goalProfile = values[16] as GoalProfile?
+        val goalProfileOverlays = (values[17] as? Set<*>)
             ?.mapNotNull { it as? DietaryOverlay }
             ?.toSet()
             .orEmpty()
         val goalProfileOnboardingCompleted = values[16] as Boolean
         val weeklyConsistency = values[17] as WeeklyConsistencyState
+        val goalProfileOnboardingCompleted = values[18] as Boolean
 
         val now = LocalDateTime.now(clock.withZone(zoneId))
         val today = now.toLocalDate()
         val hasEntriesForSelectedDay = baseState.meals.any { meal -> meal.entries.isNotEmpty() }
+        val loggedDaysInWindow = loggedDates.count { date ->
+            !date.isBefore(today.minusDays(6)) && !date.isAfter(today)
+        }
+        val currentWeekStartEpochDay = weekStartFor(today).toEpochDay()
         val canRenderReminder = baseState.date == today
         val impressionsToday = if (lastImpressionEpochDay == today.toEpochDay()) {
             impressionCountForDay
@@ -188,6 +201,9 @@ class HomeViewModel(
                 (reminderVisible || (evaluation.shouldShow && !reminderConsumed)),
             loggedDaysLast7 = weeklyConsistency.loggedDaysLast7,
             lastLoggedAt = weeklyConsistency.lastLoggedAt,
+            showWeeklyReviewEntry = baseState.date == today &&
+                loggedDaysInWindow > 0 &&
+                weeklyReviewDismissedWeekStartEpochDay != currentWeekStartEpochDay,
         )
     }.stateIn(
         scope = viewModelScope,
@@ -393,6 +409,10 @@ class HomeViewModel(
 
     private fun currentDate(): LocalDate = LocalDate.now(clock.withZone(zoneId))
 
+    private fun weekStartFor(date: LocalDate): LocalDate {
+        return date.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY))
+    }
+
     private companion object {
         private const val SELECTED_DATE_KEY = "selectedDate"
 
@@ -415,6 +435,7 @@ data class HomeUiState(
     val showFastLogReminder: Boolean = false,
     val loggedDaysLast7: Int = 0,
     val lastLoggedAt: Instant? = null,
+    val showWeeklyReviewEntry: Boolean = false,
     val message: String? = null,
 )
 

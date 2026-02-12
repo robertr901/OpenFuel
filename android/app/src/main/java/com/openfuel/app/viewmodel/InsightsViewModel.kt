@@ -18,8 +18,10 @@ import com.openfuel.app.domain.repository.SettingsRepository
 import com.openfuel.app.domain.service.EntitlementService
 import com.openfuel.app.domain.util.InsightsCalculator
 import java.time.Clock
+import java.time.DayOfWeek
 import java.time.LocalDate
 import java.time.ZoneId
+import java.time.temporal.TemporalAdjusters
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -38,6 +40,13 @@ class InsightsViewModel(
 ) : ViewModel() {
     private val today: LocalDate = LocalDate.now(clock.withZone(zoneId))
     private val paywallUiState = MutableStateFlow(InsightsPaywallUiState())
+    private val goalProfileBundle = combine(
+        settingsRepository.goalProfile,
+        settingsRepository.goalProfileOverlays,
+        settingsRepository.weeklyReviewDismissedWeekStartEpochDay,
+    ) { goalProfile, goalProfileOverlays, dismissedWeekStartEpochDay ->
+        Triple(goalProfile, goalProfileOverlays, dismissedWeekStartEpochDay)
+    }
 
     val uiState: StateFlow<InsightsUiState> = combine(
         entitlementService.getEntitlementState(),
@@ -46,16 +55,22 @@ class InsightsViewModel(
             endDateInclusive = today,
             zoneId = zoneId,
         ),
-        settingsRepository.goalProfile,
-        settingsRepository.goalProfileOverlays,
+        goalProfileBundle,
         paywallUiState,
-    ) { entitlementState, entries, goalProfile, goalProfileOverlays, paywall ->
+    ) { entitlementState, entries, profileBundle, paywall ->
+        val goalProfile = profileBundle.first
+        val goalProfileOverlays = profileBundle.second
+        val dismissalEpochDay = profileBundle.third
+        val snapshot = InsightsCalculator.buildSnapshot(entries, today, zoneId)
+        val currentWeekStartEpochDay = weekStartFor(today).toEpochDay()
         InsightsUiState(
             isPro = entitlementState.isPro,
-            snapshot = InsightsCalculator.buildSnapshot(entries, today, zoneId),
+            snapshot = snapshot,
             goalProfile = goalProfile,
             goalProfileOverlays = goalProfileOverlays,
             goalProfileEmphasis = goalProfile?.let(GoalProfileDefaults::emphasisFor),
+            showWeeklyReviewEntry = snapshot.last7Days.loggedDays > 0 &&
+                dismissalEpochDay != currentWeekStartEpochDay,
             showPaywall = paywall.showPaywall,
             isEntitlementActionInProgress = paywall.isActionInProgress,
             entitlementActionMessage = paywall.message,
@@ -69,6 +84,7 @@ class InsightsViewModel(
             goalProfile = null,
             goalProfileOverlays = emptySet(),
             goalProfileEmphasis = null,
+            showWeeklyReviewEntry = false,
             showPaywall = false,
             isEntitlementActionInProgress = false,
             entitlementActionMessage = null,
@@ -168,6 +184,10 @@ class InsightsViewModel(
             ),
         )
     }
+
+    private fun weekStartFor(date: LocalDate): LocalDate {
+        return date.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY))
+    }
 }
 
 data class InsightsUiState(
@@ -176,6 +196,7 @@ data class InsightsUiState(
     val goalProfile: GoalProfile?,
     val goalProfileOverlays: Set<DietaryOverlay>,
     val goalProfileEmphasis: GoalProfileEmphasis?,
+    val showWeeklyReviewEntry: Boolean,
     val showPaywall: Boolean,
     val isEntitlementActionInProgress: Boolean,
     val entitlementActionMessage: String?,

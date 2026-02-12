@@ -409,6 +409,27 @@ class HomeViewModelTest {
         collectJob.cancel()
     }
 
+    @Test
+    fun uiState_marksLowConfidenceEntriesAsNeedsReview() = runTest {
+        val viewModel = HomeViewModel(
+            logRepository = FakeLogRepository(entries = listOf(sampleLowConfidenceEntryWithFood())),
+            settingsRepository = FakeHomeSettingsRepository(),
+            goalsRepository = FakeGoalsRepository(),
+            savedStateHandle = SavedStateHandle(),
+            zoneId = ZoneId.of("UTC"),
+        )
+        val collectJob = launch { viewModel.uiState.collect { } }
+
+        advanceUntilIdle()
+        val firstEntry = viewModel.uiState.value.meals
+            .first { it.entries.isNotEmpty() }
+            .entries
+            .first()
+
+        assertTrue(firstEntry.dataQuality.needsReview)
+        collectJob.cancel()
+    }
+
     private fun sampleUiEntry(): MealEntryUi {
         return MealEntryUi(
             id = "entry-1",
@@ -445,6 +466,29 @@ class HomeViewModelTest {
                 proteinG = 5.0,
                 carbsG = 27.0,
                 fatG = 3.0,
+                createdAt = Instant.parse("2026-02-10T10:00:00Z"),
+            ),
+        )
+    }
+
+    private fun sampleLowConfidenceEntryWithFood(): MealEntryWithFood {
+        return MealEntryWithFood(
+            entry = MealEntry(
+                id = "entry-low-confidence",
+                timestamp = Instant.parse("2026-02-11T08:00:00Z"),
+                mealType = MealType.BREAKFAST,
+                foodItemId = "food-low-confidence",
+                quantity = 1.0,
+                unit = FoodUnit.SERVING,
+            ),
+            food = FoodItem(
+                id = "food-low-confidence",
+                name = "Unknown item",
+                brand = null,
+                caloriesKcal = 0.0,
+                proteinG = 0.0,
+                carbsG = 0.0,
+                fatG = 0.0,
                 createdAt = Instant.parse("2026-02-10T10:00:00Z"),
             ),
         )

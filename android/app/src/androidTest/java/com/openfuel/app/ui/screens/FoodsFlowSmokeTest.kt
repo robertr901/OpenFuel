@@ -79,7 +79,40 @@ class FoodsFlowSmokeTest {
         composeRule.onNodeWithTag("screen_foods").assertIsDisplayed()
     }
 
-    private fun seedFoodViaQuickAdd(foodName: String) {
+    @Test
+    fun foodsRow_needsReviewShowsTrustCue_andReviewAndFixOpensDetail() {
+        val foodName = "Foods trust seed ${System.currentTimeMillis()}"
+        seedFoodViaQuickAdd(
+            foodName = foodName,
+            calories = "0",
+            protein = "0",
+            carbs = "0",
+            fat = "0",
+        )
+
+        composeRule.onNodeWithTag("tab_foods").performClick()
+        composeRule.waitForIdle()
+        composeRule.onNodeWithTag("foods_query_input").performTextInput(foodName)
+        composeRule.waitUntil(timeoutMillis = 10_000) {
+            runCatching {
+                composeRule.onNodeWithTag("foods_local_0_trust_level").assertIsDisplayed()
+            }.isSuccess
+        }
+
+        composeRule.onNodeWithTag("foods_local_0_trust_level").assertIsDisplayed()
+        composeRule.onNodeWithTag("foods_local_0_review_fix").assertIsDisplayed().performClick()
+        composeRule.waitForIdle()
+
+        composeRule.onNodeWithText("Food detail").assertIsDisplayed()
+    }
+
+    private fun seedFoodViaQuickAdd(
+        foodName: String,
+        calories: String = "210",
+        protein: String = "12",
+        carbs: String = "25",
+        fat: String = "8",
+    ) {
         composeRule.onNodeWithTag("screen_today").assertIsDisplayed()
         composeRule.onNodeWithTag("home_add_food_fab").performClick()
         composeRule.waitForIdle()
@@ -88,10 +121,10 @@ class FoodsFlowSmokeTest {
         composeRule.onNodeWithTag("add_food_quick_add_text_button").performClick()
         composeRule.onNodeWithTag("add_food_quick_manual_toggle").performClick()
         composeRule.onNodeWithTag("add_food_quick_name_input").performTextInput(foodName)
-        composeRule.onNodeWithTag("add_food_quick_calories_input").performTextInput("210")
-        composeRule.onNodeWithTag("add_food_quick_protein_input").performTextInput("12")
-        composeRule.onNodeWithTag("add_food_quick_carbs_input").performTextInput("25")
-        composeRule.onNodeWithTag("add_food_quick_fat_input").performTextInput("8")
+        composeRule.onNodeWithTag("add_food_quick_calories_input").performTextInput(calories)
+        composeRule.onNodeWithTag("add_food_quick_protein_input").performTextInput(protein)
+        composeRule.onNodeWithTag("add_food_quick_carbs_input").performTextInput(carbs)
+        composeRule.onNodeWithTag("add_food_quick_fat_input").performTextInput(fat)
         composeRule.onNodeWithTag("add_food_quick_log_button").performClick()
         composeRule.waitForIdle()
 

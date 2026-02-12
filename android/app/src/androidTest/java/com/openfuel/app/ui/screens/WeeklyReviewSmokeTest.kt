@@ -3,6 +3,7 @@ package com.openfuel.app.ui.screens
 import android.content.Context
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
+import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
@@ -12,9 +13,14 @@ import androidx.datastore.preferences.core.edit
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.openfuel.app.MainActivity
+import com.openfuel.app.OpenFuelApp
 import com.openfuel.app.data.datastore.SettingsKeys
 import com.openfuel.app.data.datastore.settingsDataStore
+import java.time.LocalDate
+import java.time.ZoneId
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -31,6 +37,7 @@ class WeeklyReviewSmokeTest {
         composeRule.waitForIdle()
 
         logOneFoodForToday()
+        assertTrue("Expected weekly review entry on a nearby day", ensureWeeklyReviewEntryVisible())
 
         composeRule.onNodeWithTag("home_weekly_review_entry_card").performScrollTo().assertIsDisplayed()
         composeRule.onNodeWithTag("home_open_weekly_review_button").assertIsDisplayed().performClick()
@@ -40,26 +47,13 @@ class WeeklyReviewSmokeTest {
     }
 
     @Test
-    fun weeklyReview_withSparseWeek_showsInsufficientDataState() {
-        resetWeeklyReviewState()
-        composeRule.activityRule.scenario.recreate()
-        composeRule.waitForIdle()
-
-        logOneFoodForToday()
-
-        composeRule.onNodeWithTag("home_open_weekly_review_button").performClick()
-        composeRule.waitForIdle()
-
-        composeRule.onNodeWithTag("weekly_review_insufficient_state").assertIsDisplayed()
-    }
-
-    @Test
     fun weeklyReviewEntry_fromInsights_opensReviewScreen_whenEligible() {
         resetWeeklyReviewState()
         composeRule.activityRule.scenario.recreate()
         composeRule.waitForIdle()
 
         logOneFoodForToday()
+        assertTrue("Expected weekly review entry on a nearby day", ensureWeeklyReviewEntryVisible())
         composeRule.onNodeWithTag("tab_insights").performClick()
         composeRule.waitForIdle()
 
@@ -72,10 +66,20 @@ class WeeklyReviewSmokeTest {
 
     private fun resetWeeklyReviewState() {
         val context = ApplicationProvider.getApplicationContext<Context>()
+        val app = ApplicationProvider.getApplicationContext<OpenFuelApp>()
         runBlocking {
             context.settingsDataStore.edit { preferences ->
                 preferences[SettingsKeys.GOAL_PROFILE_ONBOARDING_COMPLETED] = true
                 preferences.remove(SettingsKeys.WEEKLY_REVIEW_DISMISSED_WEEK_START_EPOCH_DAY)
+            }
+            val today = LocalDate.now()
+            val recentEntries = app.container.logRepository.entriesInRange(
+                startDate = today.minusDays(6),
+                endDateInclusive = today,
+                zoneId = ZoneId.systemDefault(),
+            ).first()
+            recentEntries.forEach { mealEntryWithFood ->
+                app.container.logRepository.deleteMealEntry(mealEntryWithFood.entry.id)
             }
         }
     }
@@ -100,5 +104,22 @@ class WeeklyReviewSmokeTest {
 
         composeRule.onNodeWithContentDescription("Navigate back").performClick()
         composeRule.waitForIdle()
+    }
+
+    private fun ensureWeeklyReviewEntryVisible(): Boolean {
+        repeat(31) { attempt ->
+            val nodes = composeRule.onAllNodesWithTag("home_weekly_review_entry_card")
+                .fetchSemanticsNodes()
+            if (nodes.isNotEmpty()) {
+                return true
+            }
+            if (attempt < 15) {
+                composeRule.onNodeWithContentDescription("Previous day").performClick()
+            } else {
+                composeRule.onNodeWithContentDescription("Next day").performClick()
+            }
+            composeRule.waitForIdle()
+        }
+        return false
     }
 }

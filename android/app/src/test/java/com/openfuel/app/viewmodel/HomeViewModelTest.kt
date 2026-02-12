@@ -218,6 +218,48 @@ class HomeViewModelTest {
     }
 
     @Test
+    fun weeklyReviewEntry_visible_whenRecentLoggedDayExistsAndNotDismissed() = runTest {
+        val viewModel = HomeViewModel(
+            logRepository = FakeLogRepository(
+                loggedDates = listOf(LocalDate.parse("2026-02-10")),
+            ),
+            settingsRepository = FakeHomeSettingsRepository(),
+            goalsRepository = FakeGoalsRepository(),
+            savedStateHandle = SavedStateHandle(mapOf("selectedDate" to "2026-02-11")),
+            zoneId = ZoneId.of("UTC"),
+            clock = Clock.fixed(Instant.parse("2026-02-11T12:00:00Z"), ZoneOffset.UTC),
+        )
+        val collectJob = launch { viewModel.uiState.collect { } }
+
+        advanceUntilIdle()
+
+        assertTrue(viewModel.uiState.value.showWeeklyReviewEntry)
+        collectJob.cancel()
+    }
+
+    @Test
+    fun weeklyReviewEntry_hidden_whenDismissedForCurrentWeek() = runTest {
+        val settingsRepository = FakeHomeSettingsRepository()
+        settingsRepository.setWeeklyReviewDismissedWeekStartEpochDay(LocalDate.parse("2026-02-09").toEpochDay())
+        val viewModel = HomeViewModel(
+            logRepository = FakeLogRepository(
+                loggedDates = listOf(LocalDate.parse("2026-02-10")),
+            ),
+            settingsRepository = settingsRepository,
+            goalsRepository = FakeGoalsRepository(),
+            savedStateHandle = SavedStateHandle(mapOf("selectedDate" to "2026-02-11")),
+            zoneId = ZoneId.of("UTC"),
+            clock = Clock.fixed(Instant.parse("2026-02-11T12:00:00Z"), ZoneOffset.UTC),
+        )
+        val collectJob = launch { viewModel.uiState.collect { } }
+
+        advanceUntilIdle()
+
+        assertFalse(viewModel.uiState.value.showWeeklyReviewEntry)
+        collectJob.cancel()
+    }
+
+    @Test
     fun fastLogReminder_tracksShownDismissedAndActedEvents() = runTest {
         val analytics = FakeAnalyticsService()
         val settingsRepository = FakeHomeSettingsRepository()
@@ -379,6 +421,7 @@ class HomeViewModelTest {
 private class FakeLogRepository(
     private val throwOnDelete: Boolean = false,
     private val entries: List<MealEntryWithFood> = emptyList(),
+    private val loggedDates: List<LocalDate> = emptyList(),
 ) : LogRepository {
     val requestedDates = mutableListOf<LocalDate>()
     var updatedEntry: MealEntry? = null
@@ -413,7 +456,7 @@ private class FakeLogRepository(
     }
 
     override fun loggedDates(zoneId: ZoneId): Flow<List<LocalDate>> {
-        return flowOf(emptyList())
+        return flowOf(loggedDates)
     }
 }
 

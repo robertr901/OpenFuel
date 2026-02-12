@@ -139,6 +139,7 @@ fun OpenFuelAppRoot() {
                     viewModel = viewModel,
                     onAddFood = { navController.navigate(Routes.ADD_FOOD) },
                     onOpenSettings = { navController.navigateToTopLevel(Routes.SETTINGS) },
+                    onOpenWeeklyReview = { navController.navigate(Routes.WEEKLY_REVIEW) },
                     onOpenFoodDetail = { foodId -> navController.navigate(Routes.foodDetailRoute(foodId)) },
                 )
             }
@@ -161,7 +162,10 @@ fun OpenFuelAppRoot() {
             }
             composable(Routes.INSIGHTS) {
                 val viewModel: InsightsViewModel = viewModel(factory = viewModelFactory)
-                InsightsScreen(viewModel = viewModel)
+                InsightsScreen(
+                    viewModel = viewModel,
+                    onOpenWeeklyReview = { navController.navigate(Routes.WEEKLY_REVIEW) },
+                )
             }
             composable(Routes.WEEKLY_REVIEW) {
                 val viewModel: WeeklyReviewViewModel = viewModel(factory = viewModelFactory)

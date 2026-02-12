@@ -40,6 +40,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -86,6 +87,29 @@ class HomeViewModel(
             ),
         )
 
+    private val weeklyConsistencyState: StateFlow<WeeklyConsistencyState> = selectedDate
+        .flatMapLatest { date ->
+            logRepository.entriesInRange(
+                startDate = date.minusDays(6),
+                endDateInclusive = date,
+                zoneId = zoneId,
+            ).map { entries ->
+                val loggedDays = entries
+                    .map { entry -> entry.entry.timestamp.atZone(zoneId).toLocalDate() }
+                    .distinct()
+                    .size
+                val lastLoggedAt = entries.maxOfOrNull { entry -> entry.entry.timestamp }
+                WeeklyConsistencyState(
+                    loggedDaysLast7 = loggedDays,
+                    lastLoggedAt = lastLoggedAt,
+                )
+            }
+        }.stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5_000),
+            initialValue = WeeklyConsistencyState(),
+        )
+
     val uiState: StateFlow<HomeUiState> = combine(
         baseUiState,
         message,
@@ -106,6 +130,7 @@ class HomeViewModel(
         settingsRepository.goalProfile,
         settingsRepository.goalProfileOverlays,
         settingsRepository.goalProfileOnboardingCompleted,
+        weeklyConsistencyState,
     ) { values ->
         val baseState = values[0] as HomeUiState
         val currentMessage = values[1] as String?
@@ -130,6 +155,8 @@ class HomeViewModel(
             ?.mapNotNull { it as? DietaryOverlay }
             ?.toSet()
             .orEmpty()
+        val goalProfileOnboardingCompleted = values[16] as Boolean
+        val weeklyConsistency = values[17] as WeeklyConsistencyState
         val goalProfileOnboardingCompleted = values[18] as Boolean
 
         val now = LocalDateTime.now(clock.withZone(zoneId))
@@ -172,6 +199,8 @@ class HomeViewModel(
             showGoalProfileOnboarding = !goalProfileOnboardingCompleted && goalProfile == null && baseState.date == today,
             showFastLogReminder = canRenderReminder &&
                 (reminderVisible || (evaluation.shouldShow && !reminderConsumed)),
+            loggedDaysLast7 = weeklyConsistency.loggedDaysLast7,
+            lastLoggedAt = weeklyConsistency.lastLoggedAt,
             showWeeklyReviewEntry = baseState.date == today &&
                 loggedDaysInWindow > 0 &&
                 weeklyReviewDismissedWeekStartEpochDay != currentWeekStartEpochDay,
@@ -404,8 +433,15 @@ data class HomeUiState(
     val goalProfileEmphasis: GoalProfileEmphasis? = null,
     val showGoalProfileOnboarding: Boolean = false,
     val showFastLogReminder: Boolean = false,
+    val loggedDaysLast7: Int = 0,
+    val lastLoggedAt: Instant? = null,
     val showWeeklyReviewEntry: Boolean = false,
     val message: String? = null,
+)
+
+private data class WeeklyConsistencyState(
+    val loggedDaysLast7: Int = 0,
+    val lastLoggedAt: Instant? = null,
 )
 
 data class MealSectionUi(

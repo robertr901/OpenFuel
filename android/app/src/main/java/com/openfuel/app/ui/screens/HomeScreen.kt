@@ -64,7 +64,6 @@ import com.openfuel.app.domain.util.EntryValidation
 import com.openfuel.app.ui.components.EmptyState
 import com.openfuel.app.ui.components.MetricPill
 import com.openfuel.app.ui.components.PillKind
-import com.openfuel.app.ui.components.OFPrimaryButton
 import com.openfuel.app.ui.components.OFMetricRow
 import com.openfuel.app.ui.components.OFRow
 import com.openfuel.app.ui.components.SectionHeader
@@ -79,6 +78,8 @@ import com.openfuel.app.ui.util.parseDecimalInput
 import com.openfuel.app.viewmodel.HomeViewModel
 import com.openfuel.app.viewmodel.MealEntryUi
 import com.openfuel.app.viewmodel.MealSectionUi
+import java.time.Instant
+import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 
@@ -218,6 +219,8 @@ fun HomeScreen(
             if (uiState.showFastLogReminder) {
                 item {
                     FastLogReminderCard(
+                        loggedDaysLast7 = uiState.loggedDaysLast7,
+                        lastLoggedAt = uiState.lastLoggedAt,
                         onLogNow = {
                             viewModel.onFastLogReminderActioned()
                             onAddFood()
@@ -308,16 +311,19 @@ private fun EmptyDayState(
 ) {
     EmptyState(
         title = "No meals logged yet",
-        body = "Tap Add food to start logging this day.",
+        body = "Add food when you are ready.",
         modifier = Modifier.fillMaxWidth(),
         icon = Icons.Rounded.Add,
         primaryAction = {
-            OFPrimaryButton(
-                text = "Add food",
+            TextButton(
                 onClick = onAddFood,
-                modifier = Modifier.fillMaxWidth(),
-                testTag = "home_primary_log_action",
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .testTag("home_empty_day_add_food_link"),
             )
+            {
+                Text("Add food")
+            }
         },
         testTag = "home_empty_day_state",
     )
@@ -368,6 +374,8 @@ private fun EmptyMealSlotsCard(
 
 @Composable
 private fun FastLogReminderCard(
+    loggedDaysLast7: Int,
+    lastLoggedAt: Instant?,
     onLogNow: () -> Unit,
     onDismiss: () -> Unit,
 ) {
@@ -378,19 +386,34 @@ private fun FastLogReminderCard(
     ) {
         SectionHeader(
             title = "Fast log reminder",
-            subtitle = "No meals logged today. Add a meal in under a minute.",
+            subtitle = "No meals logged today yet. Add food when you are ready.",
             modifier = Modifier.semantics { heading() },
         )
+        Text(
+            text = "Logged on $loggedDaysLast7 of last 7 days.",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        if (lastLoggedAt != null) {
+            Text(
+                text = "Last log: ${formatReminderLastLog(lastLoggedAt)}.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(Dimens.s),
         ) {
-            OFPrimaryButton(
-                text = "Open add food",
+            TextButton(
                 onClick = onLogNow,
-                modifier = Modifier.weight(1f),
-                testTag = "home_fast_log_reminder_action",
+                modifier = Modifier
+                    .weight(1f)
+                    .testTag("home_fast_log_reminder_open_link"),
             )
+            {
+                Text("Open add food")
+            }
             TextButton(
                 onClick = onDismiss,
                 modifier = Modifier.testTag("home_fast_log_reminder_dismiss"),
@@ -399,6 +422,11 @@ private fun FastLogReminderCard(
             }
         }
     }
+}
+
+private fun formatReminderLastLog(lastLoggedAt: Instant): String {
+    return DateTimeFormatter.ofPattern("EEE h:mm a", Locale.getDefault())
+        .format(lastLoggedAt.atZone(ZoneId.systemDefault()))
 }
 
 @Composable

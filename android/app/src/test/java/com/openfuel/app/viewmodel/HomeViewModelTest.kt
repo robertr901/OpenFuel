@@ -318,6 +318,32 @@ class HomeViewModelTest {
     }
 
     @Test
+    fun weeklyConsistencyMetrics_reflectLastSevenDaysEntries() = runTest {
+        val rangeEntries = listOf(
+            sampleEntryWithFoodAt(Instant.parse("2026-02-08T08:30:00Z")),
+            sampleEntryWithFoodAt(Instant.parse("2026-02-10T18:45:00Z")),
+            sampleEntryWithFoodAt(Instant.parse("2026-02-10T20:15:00Z")),
+        )
+        val viewModel = HomeViewModel(
+            logRepository = FakeLogRepository(rangeEntries = rangeEntries),
+            settingsRepository = FakeHomeSettingsRepository(),
+            goalsRepository = FakeGoalsRepository(),
+            savedStateHandle = SavedStateHandle(mapOf("selectedDate" to "2026-02-11")),
+            zoneId = ZoneId.of("UTC"),
+            clock = Clock.fixed(Instant.parse("2026-02-11T12:00:00Z"), ZoneOffset.UTC),
+        )
+        val collectJob = launch { viewModel.uiState.collect { } }
+
+        advanceUntilIdle()
+        assertEquals(2, viewModel.uiState.value.loggedDaysLast7)
+        assertEquals(
+            Instant.parse("2026-02-10T20:15:00Z"),
+            viewModel.uiState.value.lastLoggedAt,
+        )
+        collectJob.cancel()
+    }
+
+    @Test
     fun saveGoalProfileSelection_appliesDefaults_whenGoalsNotCustomised() = runTest {
         val settingsRepository = FakeHomeSettingsRepository()
         val goalsRepository = FakeGoalsRepository()
@@ -395,10 +421,14 @@ class HomeViewModelTest {
     }
 
     private fun sampleEntryWithFood(): MealEntryWithFood {
+        return sampleEntryWithFoodAt(Instant.parse("2026-02-11T08:00:00Z"))
+    }
+
+    private fun sampleEntryWithFoodAt(timestamp: Instant): MealEntryWithFood {
         return MealEntryWithFood(
             entry = MealEntry(
-                id = "entry-1",
-                timestamp = Instant.parse("2026-02-11T08:00:00Z"),
+                id = "entry-${timestamp.epochSecond}",
+                timestamp = timestamp,
                 mealType = MealType.BREAKFAST,
                 foodItemId = "food-1",
                 quantity = 1.0,
@@ -421,6 +451,7 @@ class HomeViewModelTest {
 private class FakeLogRepository(
     private val throwOnDelete: Boolean = false,
     private val entries: List<MealEntryWithFood> = emptyList(),
+    private val rangeEntries: List<MealEntryWithFood> = entries,
     private val loggedDates: List<LocalDate> = emptyList(),
 ) : LogRepository {
     val requestedDates = mutableListOf<LocalDate>()
@@ -452,7 +483,7 @@ private class FakeLogRepository(
         endDateInclusive: LocalDate,
         zoneId: ZoneId,
     ): Flow<List<MealEntryWithFood>> {
-        return flowOf(emptyList())
+        return flowOf(rangeEntries)
     }
 
     override fun loggedDates(zoneId: ZoneId): Flow<List<LocalDate>> {

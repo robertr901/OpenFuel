@@ -4,8 +4,10 @@ import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onAllNodesWithTag
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.openfuel.app.MainActivity
 import org.junit.Rule
@@ -20,12 +22,28 @@ class TodayScreenSmokeTest {
     @Test
     fun emptyMealSections_collapsedByDefault_andExpandable() {
         composeRule.onNodeWithTag("screen_today").assertIsDisplayed()
+        ensureEmptyMealSlotsToggleVisible()
         composeRule.onAllNodesWithTag("home_empty_meal_sections_content").assertCountEquals(0)
 
-        composeRule.onNodeWithTag("home_empty_meal_sections_toggle").assertIsDisplayed().performClick()
+        composeRule
+            .onNodeWithTag("home_empty_meal_sections_toggle")
+            .performScrollTo()
+            .assertIsDisplayed()
+            .performClick()
         composeRule.waitForIdle()
 
         composeRule.onNodeWithTag("home_empty_meal_sections_content").assertIsDisplayed()
+    }
+
+    private fun ensureEmptyMealSlotsToggleVisible() {
+        repeat(7) {
+            val toggleNodes = composeRule
+                .onAllNodesWithTag("home_empty_meal_sections_toggle")
+                .fetchSemanticsNodes()
+            if (toggleNodes.isNotEmpty()) return
+            composeRule.onNodeWithContentDescription("Next day").performClick()
+            composeRule.waitForIdle()
+        }
     }
 
     @Test

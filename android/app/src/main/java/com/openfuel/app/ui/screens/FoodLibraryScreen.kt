@@ -109,7 +109,9 @@ fun FoodLibraryScreen(
             )
 
             LazyColumn(
-                modifier = Modifier.fillMaxSize(),
+                modifier = Modifier
+                    .fillMaxSize()
+                    .testTag("foods_results_list"),
                 verticalArrangement = Arrangement.spacedBy(Dimens.s),
             ) {
                 if (queryBlank) {

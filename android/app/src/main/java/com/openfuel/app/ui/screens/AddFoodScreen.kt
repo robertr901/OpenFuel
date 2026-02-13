@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
@@ -260,7 +261,10 @@ fun AddFoodScreen(
                                     )
                                 }
                             } else {
-                                items(uiState.foods, key = { "local-${it.id}" }) { food ->
+                                itemsIndexed(
+                                    items = uiState.foods,
+                                    key = { _, food -> "local-${food.id}" },
+                                ) { index, food ->
                                     SearchResultFoodRow(
                                         food = food,
                                         sourceLabel = "Local",
@@ -272,6 +276,7 @@ fun AddFoodScreen(
                                             )
                                         },
                                         onOpenDetail = { onOpenFoodDetail(food.id) },
+                                        testTagPrefix = "add_food_local_$index",
                                     )
                                 }
                             }
@@ -1145,12 +1150,14 @@ private fun SearchResultFoodRow(
     sourceLabel: String,
     onLog: (MealType) -> Unit,
     onOpenDetail: () -> Unit,
+    testTagPrefix: String? = null,
 ) {
     LocalFoodResultRow(
         food = food,
         sourceLabel = sourceLabel,
         onLog = onLog,
         onOpenPortion = onOpenDetail,
+        testTagPrefix = testTagPrefix,
     )
 }
 

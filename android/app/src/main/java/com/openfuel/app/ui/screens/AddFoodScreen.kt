@@ -81,7 +81,6 @@ import com.openfuel.app.domain.voice.messageOrNull
 import com.openfuel.app.ui.components.MealTypeDropdown
 import com.openfuel.app.ui.components.StandardCard
 import com.openfuel.app.ui.components.OFEmptyState
-import com.openfuel.app.ui.components.OFPill
 import com.openfuel.app.ui.components.OFPrimaryButton
 import com.openfuel.app.ui.components.OFRow
 import com.openfuel.app.ui.components.LocalFoodResultRow
@@ -434,6 +433,7 @@ fun AddFoodScreen(
                                         candidateDecision = candidateDecision,
                                         onOpenPreview = { viewModel.openOnlineFoodPreview(food) },
                                         modifier = Modifier.testTag("add_food_unified_online_result_${food.sourceId}"),
+                                        testTagPrefix = "add_food_unified_online_result_${food.sourceId}",
                                     )
                                 }
                             }
@@ -1160,8 +1160,21 @@ private fun OnlineResultRow(
     candidateDecision: OnlineCandidateDecision?,
     onOpenPreview: () -> Unit,
     modifier: Modifier = Modifier,
+    testTagPrefix: String? = null,
 ) {
     val trustSignals = deriveOnlineCandidateTrustSignals(food)
+    var isDetailsExpanded by rememberSaveable(food.source, food.sourceId) { mutableStateOf(false) }
+    val trustSummary = buildString {
+        append("${SearchUserCopy.ONLINE_SOURCE_LABEL_PREFIX}: ${trustSignals.provenanceLabel}")
+        append(" · ")
+        append(
+            "${SearchUserCopy.ONLINE_COMPLETENESS_LABEL_PREFIX}: " +
+                SearchUserCopy.completenessLabel(trustSignals.completeness),
+        )
+        if (trustSignals.servingReviewStatus == OnlineServingReviewStatus.NEEDS_REVIEW) {
+            append(" · Needs review")
+        }
+    }
     StandardCard(modifier = modifier.fillMaxWidth()) {
         Column(
             modifier = Modifier.fillMaxWidth(),
@@ -1170,61 +1183,82 @@ private fun OnlineResultRow(
             OFRow(
                 title = food.name,
                 subtitle = food.brand?.takeIf { it.isNotBlank() },
-                trailing = {
-                    OFPill(text = trustSignals.provenanceLabel)
-                },
             )
-            Row(horizontalArrangement = Arrangement.spacedBy(Dimens.xs)) {
-                OFPill(
-                    text = "${SearchUserCopy.ONLINE_SOURCE_LABEL_PREFIX}: ${trustSignals.provenanceLabel}",
+            Text(
+                text = trustSummary,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.withOptionalTestTag(testTagPrefix, "trust_summary"),
+            )
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(Dimens.sm),
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                OFSecondaryButton(
+                    text = "Preview",
+                    onClick = onOpenPreview,
+                    modifier = Modifier
+                        .weight(1f)
+                        .withOptionalTestTag(testTagPrefix, "preview_button"),
                 )
-                OFPill(
-                    text = "${SearchUserCopy.ONLINE_COMPLETENESS_LABEL_PREFIX}: " +
-                        SearchUserCopy.completenessLabel(trustSignals.completeness),
-                )
-                if (trustSignals.servingReviewStatus == OnlineServingReviewStatus.NEEDS_REVIEW) {
-                    OFPill(text = "Needs review")
+                TextButton(
+                    onClick = { isDetailsExpanded = !isDetailsExpanded },
+                    modifier = Modifier
+                        .withOptionalTestTag(testTagPrefix, "details_toggle")
+                        .semantics {
+                            stateDescription = if (isDetailsExpanded) "Expanded" else "Collapsed"
+                        },
+                ) {
+                    Text(if (isDetailsExpanded) "Hide details" else "Details")
                 }
             }
-            val calories = food.caloriesKcalPer100g
-            val protein = food.proteinGPer100g
-            val carbs = food.carbsGPer100g
-            val fat = food.fatGPer100g
-            if (calories == null && protein == null && carbs == null && fat == null) {
-                Text(
-                    text = "Nutrition unknown",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            } else {
-                Text(
-                    text = "Per 100 g · " +
-                        "kcal ${formatCaloriesOrUnknown(calories)} · " +
-                        "p ${formatMacroOrUnknown(protein)} · " +
-                        "c ${formatMacroOrUnknown(carbs)} · " +
-                        "f ${formatMacroOrUnknown(fat)}",
-                    style = instrumentTextStyle(),
-                )
+            AnimatedVisibility(
+                visible = isDetailsExpanded,
+                enter = fadeIn(),
+                exit = fadeOut(),
+            ) {
+                Column(
+                    verticalArrangement = Arrangement.spacedBy(Dimens.xs),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .withOptionalTestTag(testTagPrefix, "details_content"),
+                ) {
+                    val calories = food.caloriesKcalPer100g
+                    val protein = food.proteinGPer100g
+                    val carbs = food.carbsGPer100g
+                    val fat = food.fatGPer100g
+                    if (calories == null && protein == null && carbs == null && fat == null) {
+                        Text(
+                            text = "Nutrition unknown",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    } else {
+                        Text(
+                            text = "Per 100 g · " +
+                                "kcal ${formatCaloriesOrUnknown(calories)} · " +
+                                "p ${formatMacroOrUnknown(protein)} · " +
+                                "c ${formatMacroOrUnknown(carbs)} · " +
+                                "f ${formatMacroOrUnknown(fat)}",
+                            style = instrumentTextStyle(),
+                        )
+                    }
+                    if (trustSignals.servingReviewStatus == OnlineServingReviewStatus.NEEDS_REVIEW) {
+                        Text(
+                            text = SearchUserCopy.ONLINE_REVIEW_REQUIRED_HINT,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                    candidateDecision?.let { decision ->
+                        Text(
+                            text = SearchUserCopy.whyThisResult(decision.reason),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                }
             }
-            if (trustSignals.servingReviewStatus == OnlineServingReviewStatus.NEEDS_REVIEW) {
-                Text(
-                    text = SearchUserCopy.ONLINE_REVIEW_REQUIRED_HINT,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-            candidateDecision?.let { decision ->
-                Text(
-                    text = SearchUserCopy.whyThisResult(decision.reason),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-            OFSecondaryButton(
-                text = "Preview",
-                onClick = onOpenPreview,
-                modifier = Modifier.fillMaxWidth(),
-            )
         }
     }
 }
@@ -1267,6 +1301,17 @@ private fun List<OnlineProviderRun>.toSummaryLine(): String {
             append(disabledCount)
             append(" disabled")
         }
+    }
+}
+
+private fun Modifier.withOptionalTestTag(
+    prefix: String?,
+    suffix: String,
+): Modifier {
+    return if (prefix.isNullOrBlank()) {
+        this
+    } else {
+        testTag("${prefix}_$suffix")
     }
 }
 

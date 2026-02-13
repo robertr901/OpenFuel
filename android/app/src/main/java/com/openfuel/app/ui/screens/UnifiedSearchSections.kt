@@ -20,7 +20,7 @@ internal fun buildUnifiedSearchSections(sourceFilter: SearchSourceFilter): List<
         sections += UnifiedSearchSection(
             type = UnifiedSearchSectionType.LOCAL,
             title = "Local results",
-            subtitle = "Instant matches from foods already on this device.",
+            subtitle = "First priority: instant matches already on this device.",
             headerTestTag = "add_food_unified_local_section",
         )
     }
@@ -28,7 +28,7 @@ internal fun buildUnifiedSearchSections(sourceFilter: SearchSourceFilter): List<
         sections += UnifiedSearchSection(
             type = UnifiedSearchSectionType.ONLINE,
             title = "Online results",
-            subtitle = "Fetched from enabled online catalogs when you tap Search online.",
+            subtitle = "Secondary results fetched only when you tap Search online.",
             headerTestTag = "add_food_unified_online_section",
         )
     }

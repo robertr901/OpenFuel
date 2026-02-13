@@ -160,22 +160,23 @@ fun AddFoodScreen(
             verticalArrangement = Arrangement.spacedBy(Dimens.l),
         ) {
             item {
-                QuickActionsCard(
-                    onOpenQuickAdd = {
-                        isQuickAddTextDialogVisible = true
-                    },
-                    onScanBarcode = onScanBarcode,
-                )
-            }
-            item {
                 UnifiedSearchControls(
                     query = searchInput,
                     sourceFilter = uiState.sourceFilter,
+                    hasSearchedOnline = uiState.hasSearchedOnline,
                     isOnlineSearchInProgress = uiState.isOnlineSearchInProgress,
                     onQueryChange = applySearchQuery,
                     onSourceFilterChange = viewModel::setSourceFilter,
                     onSearchOnline = viewModel::searchOnline,
                     onRefreshOnline = viewModel::refreshOnline,
+                )
+            }
+            item {
+                QuickActionsCard(
+                    onOpenQuickAdd = {
+                        isQuickAddTextDialogVisible = true
+                    },
+                    onScanBarcode = onScanBarcode,
                 )
             }
 
@@ -607,6 +608,7 @@ private data class QuickAddInput(
 private fun UnifiedSearchControls(
     query: String,
     sourceFilter: SearchSourceFilter,
+    hasSearchedOnline: Boolean,
     isOnlineSearchInProgress: Boolean,
     onQueryChange: (String) -> Unit,
     onSourceFilterChange: (SearchSourceFilter) -> Unit,
@@ -672,24 +674,26 @@ private fun UnifiedSearchControls(
                 )
             }
         }
-        Row(
+        OFPrimaryButton(
+            text = "Search online",
+            onClick = onSearchOnline,
+            enabled = query.isNotBlank() && !isOnlineSearchInProgress,
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(Dimens.sm),
-        ) {
-            OFPrimaryButton(
-                text = "Search online",
-                onClick = onSearchOnline,
-                enabled = query.isNotBlank() && !isOnlineSearchInProgress,
-                modifier = Modifier.weight(1f),
-                testTag = "add_food_unified_search_online",
-            )
-            OFSecondaryButton(
-                text = "Refresh online",
-                onClick = onRefreshOnline,
-                enabled = query.isNotBlank() && !isOnlineSearchInProgress,
-                modifier = Modifier.weight(1f),
-                testTag = "add_food_unified_refresh_online",
-            )
+            testTag = "add_food_unified_search_online",
+        )
+        if (hasSearchedOnline) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.End,
+            ) {
+                TextButton(
+                    onClick = onRefreshOnline,
+                    enabled = query.isNotBlank() && !isOnlineSearchInProgress,
+                    modifier = Modifier.testTag("add_food_unified_refresh_online"),
+                ) {
+                    Text("Refresh online")
+                }
+            }
         }
     }
 }

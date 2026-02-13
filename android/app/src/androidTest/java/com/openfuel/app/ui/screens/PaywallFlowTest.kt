@@ -107,7 +107,10 @@ class PaywallFlowTest {
             composeRule.onNodeWithTag("settings_open_paywall_button").performScrollTo().performClick()
             composeRule.onNodeWithTag("paywall_dialog").assertIsDisplayed()
             composeRule.onNodeWithTag("paywall_restore_button").performClick()
-            composeRule.waitForIdle()
+            composeRule.waitUntil(timeoutMillis = 5_000) {
+                composeRule.onAllNodesWithTag("paywall_dialog")
+                    .fetchSemanticsNodes().isEmpty()
+            }
 
             composeRule.onAllNodesWithTag("paywall_dialog").assertCountEquals(0)
             composeRule.onNodeWithTag("settings_advanced_export_button").performScrollTo().assertIsDisplayed()

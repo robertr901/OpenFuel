@@ -103,6 +103,10 @@ class UnifiedSearchSmokeTest {
         composeRule.onNodeWithTag("add_food_unified_results_list")
             .performScrollToNode(hasTestTag("add_food_unified_online_result_sample-oatmeal-1"))
         composeRule.onNodeWithTag("add_food_unified_online_result_sample-oatmeal-1").assertIsDisplayed()
+        composeRule.onNodeWithTag("add_food_unified_online_result_sample-oatmeal-1_trust_summary")
+            .assertIsDisplayed()
+        composeRule.onAllNodesWithTag("add_food_unified_online_result_sample-oatmeal-1_details_content")
+            .assertCountEquals(0)
         composeRule.onNode(
             hasTestTag("add_food_unified_online_result_sample-oatmeal-1")
                 .and(hasAnyDescendant(hasText("Source:", substring = true))),
@@ -111,6 +115,15 @@ class UnifiedSearchSmokeTest {
             hasTestTag("add_food_unified_online_result_sample-oatmeal-1")
                 .and(hasAnyDescendant(hasText("Completeness:", substring = true))),
         ).assertIsDisplayed()
+        composeRule.onNodeWithTag("add_food_unified_online_result_sample-oatmeal-1_details_toggle")
+            .assertIsDisplayed()
+            .performClick()
+        composeRule.onNodeWithTag("add_food_unified_online_result_sample-oatmeal-1_details_content")
+            .assertIsDisplayed()
+        composeRule.onNodeWithTag("add_food_unified_results_list")
+            .performScrollToNode(hasTestTag("add_food_unified_local_section"))
+        composeRule.onNodeWithTag("add_food_unified_local_section").assertIsDisplayed()
+
         composeRule.onNodeWithTag("add_food_unified_results_list")
             .performScrollToNode(hasTestTag("add_food_unified_online_sources"))
         composeRule.onNodeWithTag("add_food_unified_online_sources").assertIsDisplayed()
